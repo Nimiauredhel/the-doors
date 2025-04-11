@@ -7,7 +7,15 @@
 
 #include "serial_io.h"
 
-void serial_newline(void)
+static void serial_backspace_destructive(uint16_t count)
+{
+	for (uint16_t idx = 0; idx < count; idx++)
+	{
+		HAL_UART_Transmit(&huart3, (uint8_t *)"\b \b", 3, 0xff);
+	}
+}
+
+static void serial_newline(void)
 {
 	HAL_UART_Transmit(&huart3, (uint8_t *)"\n\r", 2, 0xff);
 }
@@ -25,14 +33,13 @@ void serial_print_line(const char *msg, uint16_t len)
 	serial_newline();
 }
 
-void serial_print_char(const char *c)
+void serial_print_char(const char c)
 {
-	HAL_UART_Transmit(&huart3, (uint8_t *)c, 1, 0xFF);
+	HAL_UART_Transmit(&huart3, (uint8_t *)&c, 1, 0xFF);
 }
 
 uint8_t serial_scan(char *buffer, const uint8_t max_len)
 {
-	static const char backspace = '\b';
 	uint8_t inchar = ' ';
 	uint8_t input_idx = 0;
 
@@ -40,28 +47,30 @@ uint8_t serial_scan(char *buffer, const uint8_t max_len)
 
 	for(;;)
 	{
-		if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x00))
+		if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x10))
 		{
-			if (inchar == backspace)
+			switch (inchar)
 			{
+			case '\b':
 				if (input_idx > 0)
 				{
 					buffer[input_idx] = '\0';
-					serial_print_char(&backspace);
+					serial_backspace_destructive(1);
 					input_idx--;
 				}
 				continue;
-			}
-			else if (input_idx >= max_len || inchar == '\n' || inchar == '\r')
-			{
+			case '\n':
+			case '\r':
 				buffer[input_idx] = '\0';
 				serial_newline();
 				return input_idx+1;
-			}
-			else
-			{
+			default:
+				if (input_idx >= max_len)
+				{
+					continue;
+				}
 				buffer[input_idx] = inchar;
-				serial_print_char(buffer + input_idx);
+				serial_print_char(inchar);
 				input_idx++;
 			}
 		}

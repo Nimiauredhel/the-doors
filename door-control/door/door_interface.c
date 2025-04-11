@@ -47,6 +47,10 @@ static void rx_evaluate(const char *rx_msg)
 		{
 			next_phase = IPHASE_SETPW;
 		}
+		else
+		{
+			next_phase = IPHASE_TOP;
+		}
 		break;
 	case IPHASE_CHECKPW:
 		auth_check_password(rx_msg);
