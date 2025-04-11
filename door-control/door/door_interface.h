@@ -12,6 +12,7 @@
 #include <stdbool.h>
 
 #include "main.h"
+#include "serial_io.h"
 #include "door_control.h"
 #include "door_auth.h"
 

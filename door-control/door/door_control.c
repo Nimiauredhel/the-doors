@@ -12,9 +12,9 @@ static const int door_close_pulse = 1600;
 
 static bool door_closed = false;
 
-static const char *redundant_msg = "Command Redundant.\n\r";
-static const char *closing_msg = "Closing Door!\n\r";
-static const char *opening_msg = "Opening Door!\n\r";
+static const char *redundant_msg = "Command Redundant.";
+static const char *closing_msg = "Closing Door!";
+static const char *opening_msg = "Opening Door!";
 
 void door_control_init(void)
 {
@@ -24,25 +24,29 @@ void door_control_init(void)
 	htim3.Instance->CCR1 = 800;
 }
 
-void door_set_state(bool closed)
+bool door_get_state(void)
+{
+	return door_closed;
+}
+
+bool door_set_state(bool closed)
 {
 	if (closed != door_closed)
 	{
 		if (closed)
 		{
-			HAL_UART_Transmit(&huart3, (uint8_t *)closing_msg, strlen(closing_msg), 0xff);
 			htim3.Instance->CCR1 = door_close_pulse;
 		}
 		else
 		{
-			HAL_UART_Transmit(&huart3, (uint8_t *)opening_msg, strlen(opening_msg), 0xff);
 			htim3.Instance->CCR1 = door_open_pulse;
 		}
 
 		door_closed = closed;
+		return true;
 	}
 	else
 	{
-			HAL_UART_Transmit(&huart3, (uint8_t *)redundant_msg, strlen(redundant_msg), 0xff);
+		return false;
 	}
 }

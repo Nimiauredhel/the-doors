@@ -11,7 +11,7 @@
 static uint16_t password = 0x0000;
 static bool is_auth = false;
 
-static uint16_t str_to_pass(char *rx_msg)
+static uint16_t str_to_pass(const char *rx_msg)
 {
 	uint16_t idx = 0;
 	uint16_t in_pass = 0x00;
@@ -26,6 +26,7 @@ static uint16_t str_to_pass(char *rx_msg)
 
 void auth_reset_auth(void)
 {
+	serial_print_line("Auth Status Reset.", 0);
 	is_auth = false;
 }
 
@@ -34,14 +35,16 @@ bool auth_is_auth(void)
 	return is_auth;
 }
 
-void auth_check_password(char *rx_msg)
+void auth_check_password(const char *rx_msg)
 {
 	uint16_t in_pass = str_to_pass(rx_msg);
 	if (in_pass == password) is_auth = true;
+	serial_print_line(is_auth ? "Password Accepted." : "Password Rejected.", 0);
 }
 
-void auth_set_password(char *rx_msg)
+void auth_set_password(const char *rx_msg)
 {
 	uint16_t in_pass = str_to_pass(rx_msg);
+	serial_print_line("Password Changed.", 0);
 	password = in_pass;
 }

@@ -13,10 +13,11 @@
 #include <stdint.h>
 
 #include "main.h"
+#include "serial_io.h"
 
 void auth_reset_auth(void);
 bool auth_is_auth(void);
-void auth_check_password(char *rx_msg);
-void auth_set_password(char *rx_msg);
+void auth_check_password(const char *rx_msg);
+void auth_set_password(const char *rx_msg);
 
 #endif /* DOOR_AUTH_H_ */
