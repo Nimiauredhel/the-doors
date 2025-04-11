@@ -10,7 +10,7 @@
 static const int door_open_angle = 10;
 static const int door_close_angle = 90;
 
-static bool door_closed = false;
+static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
 
 static void servo_set_angle(int16_t angle)
 {
@@ -29,41 +29,29 @@ static void servo_set_angle(int16_t angle)
 void door_control_init(void)
 {
 	serial_print_line("Initializing Door Control.", 0);
-	door_closed = false;
 	htim3.Instance->ARR = 20000-1;
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-	door_set_state(true);
+	door_set_closed(true);
 	HAL_Delay(500);
-	door_set_state(false);
+	door_set_closed(false);
 	HAL_Delay(500);
-	door_set_state(true);
+	door_set_closed(true);
 	HAL_Delay(1000);
 	serial_print_line("Door Control Initialized.", 0);
 }
 
-bool door_get_state(void)
+bool door_is_closed(void)
 {
-	return door_closed;
+	return door_state_flags & DOOR_FLAG_CLOSED;
 }
 
-bool door_set_state(bool closed)
+bool door_set_closed(bool closed)
 {
-	if (closed != door_closed)
-	{
-		if (closed)
-		{
-			servo_set_angle(door_close_angle);
-		}
-		else
-		{
-			servo_set_angle(door_open_angle);
-		}
+	if (closed == (door_state_flags & DOOR_FLAG_CLOSED)) return false;
 
-		door_closed = closed;
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	door_state_flags ^= DOOR_FLAG_CLOSED;
+	door_state_flags |= DOOR_FLAG_TRANSITION;
+	servo_set_angle(closed ? door_close_angle : door_open_angle);
+	door_state_flags &= ~DOOR_FLAG_TRANSITION;
+	return true;
 }
