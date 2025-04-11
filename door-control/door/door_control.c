@@ -10,7 +10,9 @@
 static const int door_open_angle = 10;
 static const int door_close_angle = 90;
 
+static bool initialized = false;
 static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
+static int16_t servo_last_angle;
 
 static void servo_set_angle(int16_t angle)
 {
@@ -24,6 +26,24 @@ static void servo_set_angle(int16_t angle)
 
 	uint32_t pulse = ((angle * (max_pulse_width - min_pulse_width)) / max_angle) + min_pulse_width;
 	htim3.Instance->CCR1 = pulse;
+	servo_last_angle = angle;
+}
+
+static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, uint16_t step_delay)
+{
+	if (step_size == 0) return;
+
+	uint16_t step = (0 > target_angle - servo_last_angle) ? -step_size : step_size;
+
+	if (step_delay < step_size) step_delay = step_size;
+
+	while(abs(target_angle - servo_last_angle) > step_size)
+	{
+		servo_set_angle(servo_last_angle + step);
+		HAL_Delay(step_delay);
+	}
+
+	servo_set_angle(target_angle);
 }
 
 void door_control_init(void)
@@ -32,10 +52,7 @@ void door_control_init(void)
 	htim3.Instance->ARR = 20000-1;
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 	door_set_closed(true);
-	HAL_Delay(500);
-	door_set_closed(false);
-	HAL_Delay(500);
-	door_set_closed(true);
+	initialized = true;
 	HAL_Delay(1000);
 	serial_print_line("Door Control Initialized.", 0);
 }
@@ -50,8 +67,21 @@ bool door_set_closed(bool closed)
 	if (closed == (door_state_flags & DOOR_FLAG_CLOSED)) return false;
 
 	door_state_flags ^= DOOR_FLAG_CLOSED;
-	door_state_flags |= DOOR_FLAG_TRANSITION;
-	servo_set_angle(closed ? door_close_angle : door_open_angle);
-	door_state_flags &= ~DOOR_FLAG_TRANSITION;
+
+	if (initialized)
+	{
+		serial_print_line("Door Changing State...", 0);
+		door_state_flags |= DOOR_FLAG_TRANSITION;
+		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle, 1, 50);
+		door_state_flags &= ~DOOR_FLAG_TRANSITION;
+		serial_print_line("Door State Changed.", 0);
+	}
+	else
+	{
+		serial_print_line("Initializing Door State.", 0);
+		servo_set_angle(closed ? door_close_angle : door_open_angle);
+		HAL_Delay(500);
+	}
+
 	return true;
 }

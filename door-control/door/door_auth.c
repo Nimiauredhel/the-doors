@@ -44,7 +44,14 @@ void auth_check_password(const char *rx_msg)
 
 void auth_set_password(const char *rx_msg)
 {
-	uint16_t in_pass = str_to_pass(rx_msg);
-	serial_print_line("Password Changed.", 0);
-	password = in_pass;
+	if (auth_is_auth())
+	{
+		uint16_t in_pass = str_to_pass(rx_msg);
+		serial_print_line("Password Changed.", 0);
+		password = in_pass;
+	}
+	else
+	{
+		serial_print_line("Cannot change password without authentication.", 0);
+	}
 }

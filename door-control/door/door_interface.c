@@ -50,11 +50,11 @@ static void phase_reset()
 static void phase_increment()
 {
 	phase_queue_index++;
-	serial_print_line("Index++.", 0);
+	//serial_print_line("Index++.", 0);
 
 	if (phase_queue_index > phase_queue_tail)
 	{
-		serial_print_line("Phase queue tail overtaken (this is normal).", 0);
+		//serial_print_line("Phase queue tail overtaken (this is normal).", 0);
 		phase_reset();
 	}
 	else if (phase_queue_index >= PHASE_QUEUE_SIZE
@@ -68,7 +68,7 @@ static void phase_increment()
 static void phase_push(InterfacePhase_t new_phase)
 {
 	phase_queue_tail++;
-	serial_print_line("Tail++.", 0);
+	//serial_print_line("Tail++.", 0);
 
 	if (phase_queue_tail < phase_queue_index)
 	{
@@ -93,13 +93,21 @@ static void rx_evaluate(const char *rx_msg)
 	case IPHASE_TOP:
 		if (strcmp(rx_msg, "open") == 0)
 		{
-			phase_push(IPHASE_CHECKPW);
-			phase_push(IPHASE_OPEN);
+			if (door_is_closed())
+			{
+				phase_push(IPHASE_CHECKPW);
+				phase_push(IPHASE_OPEN);
+			}
+			else serial_print_line("Command Redundant.", 0);
 		}
 		else if (strcmp(rx_msg, "close") == 0)
 		{
-			phase_push(IPHASE_CHECKPW);
-			phase_push(IPHASE_CLOSE);
+			if (!door_is_closed())
+			{
+				phase_push(IPHASE_CHECKPW);
+				phase_push(IPHASE_CLOSE);
+			}
+			else serial_print_line("Command Redundant.", 0);
 		}
 		else if (strcmp(rx_msg, "setpw") == 0)
 		{
@@ -116,15 +124,8 @@ static void rx_evaluate(const char *rx_msg)
 		auth_check_password(rx_msg);
 		break;
 	case IPHASE_SETPW:
-		if (auth_is_auth())
-		{
-			auth_set_password(rx_msg);
-			auth_reset_auth();
-		}
-		else
-		{
-			serial_print_line("Authentication Issue.", 0);
-		}
+		auth_set_password(rx_msg);
+		auth_reset_auth();
 		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:
@@ -153,18 +154,34 @@ void interface_loop(void)
 		case IPHASE_NONE:
 			phase_reset();
 			break;
+		case IPHASE_TOP:
+			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
+			rx_evaluate(input);
+			break;
 		case IPHASE_CHECKPW:
 			if (auth_is_auth())
 			{
 				serial_print_line("Auth already granted, skipping password check.", 0);
-				break;
 			}
-			// INTENTIONAL FALL-THROUGH when condition is false
-		case IPHASE_TOP:
+			else
+			{
+				serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+				serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
+				rx_evaluate(input);
+			}
+			break;
 		case IPHASE_SETPW:
-			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
-			rx_evaluate(input);
+			if (auth_is_auth())
+			{
+				serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+				serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
+				rx_evaluate(input);
+			}
+			else
+			{
+				serial_print_line("Cannot change password without authentication.", 0);
+			}
 			break;
 		case IPHASE_OPEN:
 		case IPHASE_CLOSE:
@@ -174,14 +191,14 @@ void interface_loop(void)
 			}
 			else if (auth_is_auth())
 			{
-				door_set_closed(current_phase == IPHASE_CLOSE);
 				serial_print_line(phase_prompts[current_phase], 0);
-				auth_reset_auth();
+				door_set_closed(current_phase == IPHASE_CLOSE);
 			}
 			else
 			{
-				serial_print_line("Authentication Issue.", 0);
+				serial_print_line("Cannot proceeed without authentication.", 0);
 			}
+			auth_reset_auth();
 			break;
 		}
 

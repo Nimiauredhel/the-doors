@@ -8,8 +8,10 @@
 #ifndef DOOR_CONTROL_H_
 #define DOOR_CONTROL_H_
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 
 #include "main.h"
 #include "serial_io.h"
