@@ -89,46 +89,6 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void rx_evaluate(const char *rx_msg)
-{
-	if (strcmp(rx_msg, "open") == 0)
-	{
-	  door_set_state(false);
-	}
-	else if (strcmp(rx_msg, "close") == 0)
-	{
-	  door_set_state(true);
-	}
-}
-
-void rx_loop(void)
-{
-  uint8_t inchar = ' ';
-  uint8_t input_idx = 0;
-  uint8_t input[5];
-
-  for(;;)
-  {
-	  if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x00))
-	  {
-		  if (input_idx >= 5 || inchar == '\n' || inchar == '\r')
-		  {
-			  input[input_idx] = '\0';
-			  input_idx++;
-			  HAL_UART_Transmit(&huart3, (uint8_t *)"\n\r", 2, 0xff);
-			  rx_evaluate((char *)input);
-			  input_idx = 0;
-			  inchar = ' ';
-		  }
-		  else
-		  {
-			  HAL_UART_Transmit(&huart3, (uint8_t *)&inchar, 1, 0xff);
-			  input[input_idx] = inchar;
-			  input_idx++;
-		  }
-	  }
-  }
-}
 
 /* USER CODE END 0 */
 
@@ -168,7 +128,7 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   door_control_init();
-  rx_loop();
+  interface_loop();
   /* USER CODE END 2 */
 
   /* Infinite loop */
