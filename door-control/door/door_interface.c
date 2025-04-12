@@ -136,72 +136,71 @@ static void rx_evaluate(const char *rx_msg)
 	}
 }
 
+void interface_init(void)
+{
+	phase_reset();
+}
+
 void interface_loop(void)
 {
+	vTaskDelay(1);
+
 	char input[16];
-	InterfacePhase_t current_phase;
+	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
+	phase_just_reset = false;
 
-	phase_queue_index = 0;
-	phase_queue[0] = IPHASE_TOP;
-
-	for(;;)
+	switch (current_phase)
 	{
-		current_phase = phase_queue[phase_queue_index];
-		phase_just_reset = false;
-
-		switch (current_phase)
+	case IPHASE_NONE:
+		phase_reset();
+		break;
+	case IPHASE_TOP:
+		serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+		serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
+		rx_evaluate(input);
+		break;
+	case IPHASE_CHECKPW:
+		if (auth_is_auth())
 		{
-		case IPHASE_NONE:
-			phase_reset();
-			break;
-		case IPHASE_TOP:
+			serial_print_line("Auth already granted, skipping password check.", 0);
+		}
+		else
+		{
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 			rx_evaluate(input);
-			break;
-		case IPHASE_CHECKPW:
-			if (auth_is_auth())
-			{
-				serial_print_line("Auth already granted, skipping password check.", 0);
-			}
-			else
-			{
-				serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-				serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
-				rx_evaluate(input);
-			}
-			break;
-		case IPHASE_SETPW:
-			if (auth_is_auth())
-			{
-				serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-				serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
-				rx_evaluate(input);
-			}
-			else
-			{
-				serial_print_line("Cannot change password without authentication.", 0);
-			}
-			break;
-		case IPHASE_OPEN:
-		case IPHASE_CLOSE:
-			if (door_is_closed() == (current_phase == IPHASE_CLOSE))
-			{
-				serial_print_line("Command Redundant.", 0);
-			}
-			else if (auth_is_auth())
-			{
-				serial_print_line(phase_prompts[current_phase], 0);
-				door_set_closed(current_phase == IPHASE_CLOSE);
-			}
-			else
-			{
-				serial_print_line("Cannot proceeed without authentication.", 0);
-			}
-			auth_reset_auth();
-			break;
 		}
-
-		if (!phase_just_reset) phase_increment();
+		break;
+	case IPHASE_SETPW:
+		if (auth_is_auth())
+		{
+			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
+			rx_evaluate(input);
+		}
+		else
+		{
+			serial_print_line("Cannot change password without authentication.", 0);
+		}
+		break;
+	case IPHASE_OPEN:
+	case IPHASE_CLOSE:
+		if (door_is_closed() == (current_phase == IPHASE_CLOSE))
+		{
+			serial_print_line("Command Redundant.", 0);
+		}
+		else if (auth_is_auth())
+		{
+			serial_print_line(phase_prompts[current_phase], 0);
+			door_set_closed(current_phase == IPHASE_CLOSE);
+		}
+		else
+		{
+			serial_print_line("Cannot proceeed without authentication.", 0);
+		}
+		auth_reset_auth();
+		break;
 	}
+
+	if (!phase_just_reset) phase_increment();
 }

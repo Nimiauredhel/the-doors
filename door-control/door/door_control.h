@@ -9,9 +9,13 @@
 #define DOOR_CONTROL_H_
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include "main.h"
 #include "serial_io.h"
@@ -26,6 +30,8 @@ typedef enum DoorFlags
 extern TIM_HandleTypeDef htim3;
 
 void door_control_init(void);
+void door_control_loop(void);
+void door_timer_callback(void);
 bool door_is_closed(void);
 bool door_set_closed(bool closed);
 

@@ -11,9 +11,16 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
+
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "cmsis_os2.h"
+
 #include "main.h"
 
 extern UART_HandleTypeDef huart3;
+extern osMutexId_t serial_input_mutexHandle;
+extern osMutexId_t serial_output_mutexHandle;
 
 void serial_print(const char *msg, uint16_t len);
 void serial_print_line(const char *msg, uint16_t len);

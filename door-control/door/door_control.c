@@ -13,6 +13,7 @@ static const int door_close_angle = 90;
 static bool initialized = false;
 static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
 static int16_t servo_last_angle;
+static volatile uint16_t door_open_duration_seconds = 0;
 
 static void servo_set_angle(int16_t angle)
 {
@@ -53,8 +54,58 @@ void door_control_init(void)
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 	door_set_closed(true);
 	initialized = true;
-	HAL_Delay(1000);
+	vTaskDelay(pdMS_TO_TICKS(500));
 	serial_print_line("Door Control Initialized.", 0);
+}
+
+void door_control_loop(void)
+{
+	vTaskDelay(1);
+
+	static uint16_t last_timer_notification = 0;
+
+	char msg_buff[64];
+
+	if (door_open_duration_seconds >= 15)
+	{
+		if (door_open_duration_seconds != last_timer_notification
+		&& door_open_duration_seconds % 10 == 5)
+		{
+			last_timer_notification = door_open_duration_seconds;
+			sprintf(msg_buff, "The door has been open for %u seconds.", door_open_duration_seconds);
+			serial_print_line(msg_buff, 0);
+			door_set_closed(true);
+		}
+	}
+	else
+	{
+		last_timer_notification = 0;
+	}
+}
+
+void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
+{
+	static uint8_t divisor = 0;
+
+	if (hlptim->Instance == LPTIM1)
+	{
+		divisor++;
+
+		if (divisor >= 10)
+		{
+			divisor = 0;
+			door_timer_callback();
+		}
+	}
+}
+
+void door_timer_callback(void)
+{
+	if (!(door_state_flags & DOOR_FLAG_CLOSED) || door_state_flags & DOOR_FLAG_TRANSITION)
+	{
+		door_open_duration_seconds++;
+	}
+	else door_open_duration_seconds = 0;
 }
 
 bool door_is_closed(void)

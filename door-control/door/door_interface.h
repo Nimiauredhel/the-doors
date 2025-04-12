@@ -11,6 +11,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "main.h"
 #include "serial_io.h"
 #include "door_control.h"
@@ -26,6 +29,7 @@ typedef enum InterfacePhase
 	IPHASE_CLOSE = 5,
 } InterfacePhase_t;
 
+void interface_init(void);
 void interface_loop(void);
 
 #endif /* DOOR_INTERFACE_H_ */
