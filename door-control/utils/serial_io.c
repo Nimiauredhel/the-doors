@@ -12,12 +12,14 @@ static void serial_backspace_destructive(uint16_t count)
 	for (uint16_t idx = 0; idx < count; idx++)
 	{
 		HAL_UART_Transmit(&huart3, (uint8_t *)"\b \b", 3, 0xff);
+		HAL_UART_Transmit(&huart2, (uint8_t *)"\b \b", 3, 0xff);
 	}
 }
 
 static void serial_newline(void)
 {
 	HAL_UART_Transmit(&huart3, (uint8_t *)"\n\r", 2, 0xff);
+	HAL_UART_Transmit(&huart2, (uint8_t *)"\n\r", 2, 0xff);
 }
 
 void serial_print(const char *msg, uint16_t len)
@@ -25,6 +27,7 @@ void serial_print(const char *msg, uint16_t len)
 	xSemaphoreTake(serial_output_mutexHandle, 0xff);
 	if (len == 0) len = strlen(msg);
 	HAL_UART_Transmit(&huart3, (uint8_t *)msg, len, 0xFF);
+	HAL_UART_Transmit(&huart2, (uint8_t *)msg, len, 0xFF);
 	xSemaphoreGive(serial_output_mutexHandle);
 }
 
@@ -33,6 +36,7 @@ void serial_print_line(const char *msg, uint16_t len)
 	xSemaphoreTake(serial_output_mutexHandle, 0xff);
 	if (len == 0) len = strlen(msg);
 	HAL_UART_Transmit(&huart3, (uint8_t *)msg, len, 0xFF);
+	HAL_UART_Transmit(&huart2, (uint8_t *)msg, len, 0xFF);
 	serial_newline();
 	xSemaphoreGive(serial_output_mutexHandle);
 }
@@ -41,6 +45,7 @@ void serial_print_char(const char c)
 {
 	xSemaphoreTake(serial_output_mutexHandle, 0xff);
 	HAL_UART_Transmit(&huart3, (uint8_t *)&c, 1, 0xFF);
+	HAL_UART_Transmit(&huart2, (uint8_t *)&c, 1, 0xFF);
 	xSemaphoreGive(serial_output_mutexHandle);
 }
 
@@ -53,7 +58,8 @@ uint8_t serial_scan(char *buffer, const uint8_t max_len)
 
 	for(;;)
 	{
-		if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x10))
+		if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x10)
+			|| HAL_OK == HAL_UART_Receive(&huart2, &inchar, 1, 0x10))
 		{
 			switch (inchar)
 			{
