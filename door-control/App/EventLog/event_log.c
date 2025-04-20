@@ -24,10 +24,15 @@ void event_log_append(DoorReport_t report)
 {
 	// TODO: add error code
 	if (event_log_length >= EVENT_LOG_CAPACITY) return;
-	DoorPacket_t new_packet = {0};
 	xSemaphoreTake(event_log_lock, 0xffff);
-	// TODO: populate new packet
-	// TODO: copy new packet to buffer
+
+	// TODO: populate new packet with real values
+	event_log_buffer[event_log_length].header.category = PACKET_CAT_REPORT;
+	event_log_buffer[event_log_length].header.version = 0;
+	event_log_buffer[event_log_length].header.timestamp = 0;
+	event_log_buffer[event_log_length].body.Report.source_id = 0;
+	event_log_buffer[event_log_length].body.Report.report_id = report;
+
 	event_log_length++;
 	xSemaphoreGive(event_log_lock);
 }

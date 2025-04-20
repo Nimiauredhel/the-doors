@@ -19,7 +19,8 @@
 
 #include "main.h"
 
-#include "../Utils/uart_io.h"
+#include "event_log.h"
+#include "uart_io.h"
 
 typedef enum DoorFlags
 {

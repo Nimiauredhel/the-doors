@@ -39,6 +39,7 @@ void auth_check_password(const char *rx_msg)
 {
 	uint16_t in_pass = str_to_pass(rx_msg);
 	if (in_pass == password) is_auth = true;
+	event_log_append(is_auth ? PACKET_REPORT_PASS_CORRECT : PACKET_REPORT_PASS_WRONG);
 	serial_print_line(is_auth ? "Password Accepted." : "Password Rejected.", 0);
 }
 
@@ -49,6 +50,7 @@ void auth_set_password(const char *rx_msg)
 		uint16_t in_pass = str_to_pass(rx_msg);
 		serial_print_line("Password Changed.", 0);
 		password = in_pass;
+		event_log_append(PACKET_REPORT_PASS_CHANGED);
 	}
 	else
 	{

@@ -134,14 +134,17 @@ bool door_set_closed(bool closed)
 	{
 		serial_print_line("Door Changing State...", 0);
 		door_state_flags |= DOOR_FLAG_TRANSITION;
+		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED);
 		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle, 1, 50);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
+		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED);
 		serial_print_line("Door State Changed.", 0);
 	}
 	else
 	{
 		serial_print_line("Initializing Door State.", 0);
 		servo_set_angle(closed ? door_close_angle : door_open_angle);
+		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED);
 		HAL_Delay(500);
 	}
 

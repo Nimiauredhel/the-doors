@@ -19,11 +19,12 @@ typedef enum DoorPacketCategory
 typedef enum DoorReport
 {
 	PACKET_REPORT_NONE = 0,
-	PACKET_REPORT_DOOR_OPEN = 1,
-	PACKET_REPORT_DOOR_CLOSE = 2,
+	PACKET_REPORT_DOOR_OPENED = 1,
+	PACKET_REPORT_DOOR_CLOSED = 2,
 	PACKET_REPORT_PASS_CORRECT = 3,
 	PACKET_REPORT_PASS_WRONG = 4,
-	PACKET_REPORT_DATA_READY = 5,
+	PACKET_REPORT_PASS_CHANGED = 5,
+	PACKET_REPORT_DATA_READY = 6,
 } DoorReport_t;
 
 typedef enum DoorRequest
@@ -57,17 +58,15 @@ typedef union DoorPacketBody
 	} Empty;
 	struct {
 		DoorReport_t report_id;
-		uint16_t source_id;
-		// TODO: find a use for the extra fields or clean up
-		uint16_t report_stub_0;
-		uint32_t report_stub_1;
+		uint8_t source_id;
+		uint8_t report_data_8;
+		uint32_t report_data_32;
 	} Report;
 	struct {
 		DoorRequest_t request_id;
-		uint16_t source_id;
-		uint16_t destination_id;
-		// TODO: find a use for the extra field or clean up
-		uint32_t request_stub_0;
+		uint8_t source_id;
+		uint8_t destination_id;
+		uint32_t request_data_32;
 	} Request;
 	struct {
 		DoorDataType_t data_type;
