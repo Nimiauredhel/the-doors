@@ -5,7 +5,7 @@
  *      Author: mickey
  */
 
-#include "../Utils/uart_io.h"
+#include "uart_io.h"
 
 static void serial_backspace_destructive(uint16_t count)
 {
