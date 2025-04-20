@@ -1,12 +1,12 @@
 /*
- * comms_packet.h
+ * packet_defs.h
  *
  *  Created on: Apr 20, 2025
  *      Author: mickey
  */
 
-#ifndef COMMS_PACKET_H_
-#define COMMS_PACKET_H_
+#ifndef PACKET_DEFS_H_
+#define PACKET_DEFS_H_
 
 typedef enum DoorPacketCategory
 {
@@ -16,7 +16,7 @@ typedef enum DoorPacketCategory
 	PACKET_CAT_DATA = 3,
 } DoorPacketCategory_t;
 
-typedef enum DoorPacketReport
+typedef enum DoorReport
 {
 	PACKET_REPORT_NONE = 0,
 	PACKET_REPORT_DOOR_OPEN = 1,
@@ -24,22 +24,22 @@ typedef enum DoorPacketReport
 	PACKET_REPORT_PASS_CORRECT = 3,
 	PACKET_REPORT_PASS_WRONG = 4,
 	PACKET_REPORT_DATA_READY = 5,
-} DoorPacketReport_t;
+} DoorReport_t;
 
-typedef enum DoorPacketRequest
+typedef enum DoorRequest
 {
 	PACKET_REQUEST_NONE = 0,
 	PACKET_REQUEST_DOOR_OPEN = 1,
 	PACKET_REQUEST_DOOR_CLOSE = 2,
 	PACKET_REQUEST_BELL = 3,
 	PACKET_REQUEST_PHOTO = 4,
-} DoorPacketRequest_t;
+} DoorRequest_t;
 
-typedef enum DoorPacketDataType
+typedef enum DoorDataType
 {
 	PACKET_DATA_NONE = 0,
 	PACKET_DATA_PHOTO = 1,
-} DoorPacketDataType_t;
+} DoorDataType_t;
 
 typedef struct DoorPacketHeader
 {
@@ -50,20 +50,27 @@ typedef struct DoorPacketHeader
 
 typedef union DoorPacketBody
 {
+	// the "stub" fields are here as a reminder that the first two packet types -
+	// - are already as big as the third, and can have extra fields at no cost later
 #pragma pack(push, 1)
 	struct {
 	} Empty;
 	struct {
-		DoorPacketReport_t report_id;
+		DoorReport_t report_id;
 		uint16_t source_id;
+		// TODO: find a use for the extra fields or clean up
+		uint16_t report_stub_0;
+		uint32_t report_stub_1;
 	} Report;
 	struct {
-		DoorPacketRequest_t request_id;
+		DoorRequest_t request_id;
 		uint16_t source_id;
 		uint16_t destination_id;
+		// TODO: find a use for the extra field or clean up
+		uint32_t request_stub_0;
 	} Request;
 	struct {
-		DoorPacketDataType_t data_type;
+		DoorDataType_t data_type;
 		uint16_t source_id;
 		uint16_t destination_id;
 		uint32_t data_length;
@@ -72,4 +79,10 @@ typedef union DoorPacketBody
 #pragma pack(pop)
 } DoorPacketBody_t;
 
-#endif /* COMMS_PACKET_H_ */
+typedef struct DoorPacket
+{
+	DoorPacketHeader_t header;
+	DoorPacketBody_t body;
+} DoorPacket_t;
+
+#endif /* PACKET_DEFS_H_ */

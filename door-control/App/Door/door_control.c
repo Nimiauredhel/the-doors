@@ -15,6 +15,12 @@ static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
 static int16_t servo_last_angle;
 static volatile uint16_t door_open_duration_seconds = 0;
 
+static void set_door_indicator_led(float open_percent)
+{
+		htim1.Instance->CCR3 = htim1.Instance->ARR * (1.0f - open_percent);
+		htim1.Instance->CCR2 = htim1.Instance->ARR * open_percent;
+}
+
 static void servo_set_angle(int16_t angle)
 {
 	static const int16_t min_angle = 0;
@@ -28,6 +34,8 @@ static void servo_set_angle(int16_t angle)
 	uint32_t pulse = ((angle * (max_pulse_width - min_pulse_width)) / max_angle) + min_pulse_width;
 	htim3.Instance->CCR1 = pulse;
 	servo_last_angle = angle;
+
+	set_door_indicator_led((float)(angle-door_open_angle)/(float)(door_close_angle-door_open_angle));
 }
 
 static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, uint16_t step_delay)
@@ -52,6 +60,9 @@ void door_control_init(void)
 	serial_print_line("Initializing Door Control.", 0);
 	htim3.Instance->ARR = 20000-1;
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+	htim1.Instance->ARR = 65535;
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 	door_set_closed(true);
 	initialized = true;
 	vTaskDelay(pdMS_TO_TICKS(500));

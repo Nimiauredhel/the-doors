@@ -28,6 +28,7 @@ typedef enum DoorFlags
 	DOOR_FLAG_TRANSITION = 0b00000010,
 } DoorFlags_t;
 
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 
 void door_control_init(void);
