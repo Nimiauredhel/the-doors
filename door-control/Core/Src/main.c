@@ -80,29 +80,41 @@ UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
-/* Definitions for ControlTask */
-osThreadId_t ControlTaskHandle;
-uint32_t ControlTaskBuffer[ 128 ];
-osStaticThreadDef_t ControlTaskControlBlock;
-const osThreadAttr_t ControlTask_attributes = {
-  .name = "ControlTask",
-  .cb_mem = &ControlTaskControlBlock,
-  .cb_size = sizeof(ControlTaskControlBlock),
-  .stack_mem = &ControlTaskBuffer[0],
-  .stack_size = sizeof(ControlTaskBuffer),
+/* Definitions for UserInterfaceTa */
+osThreadId_t UserInterfaceTaHandle;
+uint32_t UserInterfaceTaskBuffer[ 128 ];
+osStaticThreadDef_t UserInterfaceTaskControlBlock;
+const osThreadAttr_t UserInterfaceTa_attributes = {
+  .name = "UserInterfaceTa",
+  .cb_mem = &UserInterfaceTaskControlBlock,
+  .cb_size = sizeof(UserInterfaceTaskControlBlock),
+  .stack_mem = &UserInterfaceTaskBuffer[0],
+  .stack_size = sizeof(UserInterfaceTaskBuffer),
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for DoorTask */
-osThreadId_t DoorTaskHandle;
-uint32_t DoorTaskBuffer[ 128 ];
-osStaticThreadDef_t DoorTaskControlBlock;
-const osThreadAttr_t DoorTask_attributes = {
-  .name = "DoorTask",
-  .cb_mem = &DoorTaskControlBlock,
-  .cb_size = sizeof(DoorTaskControlBlock),
-  .stack_mem = &DoorTaskBuffer[0],
-  .stack_size = sizeof(DoorTaskBuffer),
+/* Definitions for DoorOpsTask */
+osThreadId_t DoorOpsTaskHandle;
+uint32_t DoorOpsTaskBuffer[ 128 ];
+osStaticThreadDef_t DoorOpsTaskControlBlock;
+const osThreadAttr_t DoorOpsTask_attributes = {
+  .name = "DoorOpsTask",
+  .cb_mem = &DoorOpsTaskControlBlock,
+  .cb_size = sizeof(DoorOpsTaskControlBlock),
+  .stack_mem = &DoorOpsTaskBuffer[0],
+  .stack_size = sizeof(DoorOpsTaskBuffer),
   .priority = (osPriority_t) osPriorityRealtime,
+};
+/* Definitions for CommsTask */
+osThreadId_t CommsTaskHandle;
+uint32_t CommsTaskBuffer[ 128 ];
+osStaticThreadDef_t CommsTaskControlBlock;
+const osThreadAttr_t CommsTask_attributes = {
+  .name = "CommsTask",
+  .cb_mem = &CommsTaskControlBlock,
+  .cb_size = sizeof(CommsTaskControlBlock),
+  .stack_mem = &CommsTaskBuffer[0],
+  .stack_size = sizeof(CommsTaskBuffer),
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for serial_input_mutex */
 osMutexId_t serial_input_mutexHandle;
@@ -135,8 +147,9 @@ static void MX_TIM3_Init(void);
 static void MX_RTC_Init(void);
 static void MX_LPTIM1_Init(void);
 static void MX_USART2_UART_Init(void);
-void StartControlTask(void *argument);
-void StartDoorTask(void *argument);
+void StartUserInterfaceTask(void *argument);
+void StartDoorOpsTask(void *argument);
+void StartCommsTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -213,11 +226,14 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of ControlTask */
-  ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
+  /* creation of UserInterfaceTa */
+  UserInterfaceTaHandle = osThreadNew(StartUserInterfaceTask, NULL, &UserInterfaceTa_attributes);
 
-  /* creation of DoorTask */
-  DoorTaskHandle = osThreadNew(StartDoorTask, NULL, &DoorTask_attributes);
+  /* creation of DoorOpsTask */
+  DoorOpsTaskHandle = osThreadNew(StartDoorOpsTask, NULL, &DoorOpsTask_attributes);
+
+  /* creation of CommsTask */
+  CommsTaskHandle = osThreadNew(StartCommsTask, NULL, &CommsTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -700,14 +716,14 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartControlTask */
+/* USER CODE BEGIN Header_StartUserInterfaceTask */
 /**
-  * @brief  Function implementing the ControlTask thread.
+  * @brief  Function implementing the UserInterfaceTa thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartControlTask */
-void StartControlTask(void *argument)
+/* USER CODE END Header_StartUserInterfaceTask */
+void StartUserInterfaceTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 	interface_init();
@@ -719,24 +735,42 @@ void StartControlTask(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartDoorTask */
+/* USER CODE BEGIN Header_StartDoorOpsTask */
 /**
-* @brief Function implementing the DoorTask thread.
+* @brief Function implementing the DoorOpsTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartDoorTask */
-void StartDoorTask(void *argument)
+/* USER CODE END Header_StartDoorOpsTask */
+void StartDoorOpsTask(void *argument)
 {
-  /* USER CODE BEGIN StartDoorTask */
-  door_control_init();
-  HAL_LPTIM_Counter_Start_IT(&hlptim1, 28125);
+  /* USER CODE BEGIN StartDoorOpsTask */
+	door_control_init();
+	HAL_LPTIM_Counter_Start(&hlptim1, 28125);
   /* Infinite loop */
   for(;;)
   {
 	  door_control_loop();
   }
-  /* USER CODE END StartDoorTask */
+  /* USER CODE END StartDoorOpsTask */
+}
+
+/* USER CODE BEGIN Header_StartCommsTask */
+/**
+* @brief Function implementing the CommsTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCommsTask */
+void StartCommsTask(void *argument)
+{
+  /* USER CODE BEGIN StartCommsTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCommsTask */
 }
 
 /**

@@ -1,12 +1,12 @@
 /*
- * door_packet.h
+ * comms_packet.h
  *
  *  Created on: Apr 20, 2025
  *      Author: mickey
  */
 
-#ifndef DOOR_PACKET_H_
-#define DOOR_PACKET_H_
+#ifndef COMMS_PACKET_H_
+#define COMMS_PACKET_H_
 
 typedef enum DoorPacketCategory
 {
@@ -72,4 +72,4 @@ typedef union DoorPacketBody
 #pragma pack(pop)
 } DoorPacketBody_t;
 
-#endif /* DOOR_PACKET_H_ */
+#endif /* COMMS_PACKET_H_ */

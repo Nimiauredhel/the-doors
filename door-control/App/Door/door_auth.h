@@ -13,7 +13,8 @@
 #include <stdint.h>
 
 #include "main.h"
-#include "serial_io.h"
+
+#include "../Utils/uart_io.h"
 
 void auth_reset_auth(void);
 bool auth_is_auth(void);

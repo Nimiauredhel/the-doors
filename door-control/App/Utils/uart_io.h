@@ -1,12 +1,12 @@
 /*
- * serial_io.h
+ * uart_io.h
  *
  *  Created on: Apr 11, 2025
  *      Author: mickey
  */
 
-#ifndef SERIAL_IO_H_
-#define SERIAL_IO_H_
+#ifndef UART_IO_H_
+#define UART_IO_H_
 
 #include <stdbool.h>
 #include <string.h>
@@ -28,4 +28,4 @@ void serial_print_line(const char *msg, uint16_t len);
 void serial_print_char(const char c);
 uint8_t serial_scan(char *buffer, const uint8_t max_len);
 
-#endif /* SERIAL_IO_H_ */
+#endif /* UART_IO_H_ */

@@ -18,7 +18,8 @@
 #include "task.h"
 
 #include "main.h"
-#include "serial_io.h"
+
+#include "../Utils/uart_io.h"
 
 typedef enum DoorFlags
 {
