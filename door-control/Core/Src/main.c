@@ -201,6 +201,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  event_log_initialize();
   /* USER CODE END 2 */
 
   /* Init scheduler */
