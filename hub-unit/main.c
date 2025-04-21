@@ -10,7 +10,7 @@
 
 static const char *device_path = "/dev/bone/i2c/2";
 static const uint16_t slave_addr = 0x0a;
-static const uint16_t polling_interval_sec = 5;
+static const uint16_t polling_interval_sec = 2;
 
 static int device_fd = 0;
 
@@ -54,11 +54,12 @@ static void poll_slave_event_queue(void)
 	while(idle_counter < timeout_sec)
 	{
 		sleep(polling_interval_sec);
+		bzero(rx_buff, sizeof(rx_buff));
 		idle_counter += polling_interval_sec;
 
         // read event queue length, a uint16_t value
 		i2c_master_read(I2C_REG_EVENT_COUNT, 2);
-        uint16_t queue_length = ((uint16_t *)rx_buff)[0];
+		uint16_t queue_length = ((uint16_t *)rx_buff)[0];
 
 		if (queue_length > 0)
 		{

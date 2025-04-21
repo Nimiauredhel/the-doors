@@ -1,25 +1,29 @@
 SOURCE=*.c
-PROGRAM=stftpu
-EXE_NAME=$(PROGRAM)
+PROGRAM=doors_hub
+EXE_NAME=$(PROGRAM).out
 ARGS=
 BUILD_DIR=build/
 EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
+LIBS= -li2c
 DEFAULT_FLAGS=
 STRICT_FLAGS= $(DEFAULT_FLAGS) -std=c99 -Wall -pedantic -Wextra
 DEBUG_FLAGS= $(STRICT_FLAGS) -g -o0
 
 default:
-	gcc $(SOURCE) $(DEFAULT_FLAGS) -o $(EXE_PATH)
+	mkdir $(BUILD_DIR)
+	gcc $(SOURCE) $(DEFAULT_FLAGS) $(LIBS) -o $(EXE_PATH)
 	make post-build
 	make setcap
                                      
 strict:                              
-	bear -- gcc $(SOURCE) $(STRICT_FLAGS) -o $(EXE_PATH)
+	mkdir $(BUILD_DIR)
+	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(LIBS) -o $(EXE_PATH)
 	make post-build
 	make setcap
                     
 debug:              
-	gcc $(SOURCE) $(DEBUG_FLAGS) -o $(EXE_PATH)
+	mkdir $(BUILD_DIR)
+	gcc $(SOURCE) $(DEBUG_FLAGS) $(LIBS) -o $(EXE_PATH)
 	make post-build
 
 .ONESHELL:
@@ -49,7 +53,6 @@ setcap:
 	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
 
 post-build:
-	mkdir $(BUILD_DIR)
-	cp bash_tui/* $(BUILD_DIR)
-	echo exe_name=$(EXE_NAME) > $(BUILD_DIR)exe_name.sh
+	#cp bash_scripts/* $(BUILD_DIR)
+	#echo exe_name=$(EXE_NAME) > $(BUILD_DIR)exe_name.sh
 
