@@ -76,6 +76,7 @@ LPTIM_HandleTypeDef hlptim1;
 RTC_HandleTypeDef hrtc;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
@@ -85,7 +86,7 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* Definitions for UserInterfaceTa */
 osThreadId_t UserInterfaceTaHandle;
-uint32_t UserInterfaceTaskBuffer[ 128 ];
+uint32_t UserInterfaceTaskBuffer[ 256 ];
 osStaticThreadDef_t UserInterfaceTaskControlBlock;
 const osThreadAttr_t UserInterfaceTa_attributes = {
   .name = "UserInterfaceTa",
@@ -97,7 +98,7 @@ const osThreadAttr_t UserInterfaceTa_attributes = {
 };
 /* Definitions for DoorOpsTask */
 osThreadId_t DoorOpsTaskHandle;
-uint32_t DoorOpsTaskBuffer[ 128 ];
+uint32_t DoorOpsTaskBuffer[ 256 ];
 osStaticThreadDef_t DoorOpsTaskControlBlock;
 const osThreadAttr_t DoorOpsTask_attributes = {
   .name = "DoorOpsTask",
@@ -109,7 +110,7 @@ const osThreadAttr_t DoorOpsTask_attributes = {
 };
 /* Definitions for CommsTask */
 osThreadId_t CommsTaskHandle;
-uint32_t CommsTaskBuffer[ 128 ];
+uint32_t CommsTaskBuffer[ 256 ];
 osStaticThreadDef_t CommsTaskControlBlock;
 const osThreadAttr_t CommsTask_attributes = {
   .name = "CommsTask",
@@ -152,6 +153,7 @@ static void MX_RTC_Init(void);
 static void MX_LPTIM1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
 void StartUserInterfaceTask(void *argument);
 void StartDoorOpsTask(void *argument);
 void StartCommsTask(void *argument);
@@ -204,6 +206,7 @@ int main(void)
   MX_LPTIM1_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   event_log_initialize();
   /* USER CODE END 2 */
@@ -584,6 +587,54 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_IC_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -778,7 +829,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD1_Pin|DOOR_SENSOR_TRIG_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
@@ -789,8 +840,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD1_Pin LD3_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|LD2_Pin;
+  /*Configure GPIO pins : LD1_Pin DOOR_SENSOR_TRIG_Pin LD3_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = LD1_Pin|DOOR_SENSOR_TRIG_Pin|LD3_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -877,7 +928,7 @@ void StartCommsTask(void *argument)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM2 interrupt took place, inside
+  * @note   This function is called  when TIM4 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -888,7 +939,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM2)
+  if (htim->Instance == TIM4)
   {
     HAL_IncTick();
   }

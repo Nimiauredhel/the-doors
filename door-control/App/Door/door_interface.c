@@ -138,6 +138,7 @@ static void rx_evaluate(const char *rx_msg)
 
 void interface_init(void)
 {
+	while(!door_control_is_init()) vTaskDelay(pdMS_TO_TICKS(1));
 	phase_reset();
 }
 

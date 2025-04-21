@@ -19,6 +19,7 @@
 
 #include "main.h"
 
+#include "door_sensor.h"
 #include "event_log.h"
 #include "uart_io.h"
 
@@ -32,6 +33,7 @@ typedef enum DoorFlags
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 
+bool door_control_is_init(void);
 void door_control_init(void);
 void door_control_loop(void);
 void door_timer_callback(void);
