@@ -11,6 +11,8 @@ volatile uint8_t i2c_direction = 0;
 
 uint16_t i2c_rx_count = 0;
 uint16_t i2c_tx_count = 0;
+
+I2CRegisterDefinition_t i2c_tx_register;
 uint8_t *i2c_tx_position;
 
 uint8_t i2c_tx_buff[I2C_TX_BUFF_SIZE] = {0};
@@ -18,6 +20,23 @@ uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
 
 DoorPacket_t i2c_hub_command_register = {0};
 DoorPacket_t i2c_query_result_register = {0};
+
+static uint16_t register_definition_to_packet_size(I2CRegisterDefinition_t reg_def)
+{
+	switch (reg_def)
+	{
+	case I2C_REG_EVENT_COUNT:
+		return 2;
+	case I2C_REG_DATA:
+		// TODO: implement actual data size
+		return sizeof(DoorPacket_t);
+	case I2C_REG_EVENT_HEAD:
+	case I2C_REG_QUERY_RESULT:
+	case I2C_REG_HUB_COMMAND:
+	default:
+		return sizeof(DoorPacket_t);
+	}
+}
 
 static uint8_t* register_definition_to_pointer(I2CRegisterDefinition_t reg_def)
 {
@@ -80,17 +99,19 @@ static void process_i2c_tx(I2C_HandleTypeDef *hi2c)
 
 void HAL_I2C_SlaveTxCpltCallback (I2C_HandleTypeDef * hi2c)
 {
+	uint16_t packet_size = register_definition_to_packet_size(i2c_tx_register);
+
 	i2c_tx_count++;
 
 	if (i2c_tx_count < I2C_TX_BUFF_SIZE)
 	{
 		if (i2c_tx_count == I2C_TX_BUFF_SIZE - 1)
 		{
-			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+i2c_tx_count, 1, I2C_LAST_FRAME);
+			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+(i2c_tx_count*packet_size), packet_size, I2C_LAST_FRAME);
 		}
 		else
 		{
-			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+i2c_tx_count, 1, I2C_NEXT_FRAME);
+			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+(i2c_tx_count*packet_size), packet_size, I2C_NEXT_FRAME);
 		}
 	}
 	else if (i2c_tx_count == I2C_TX_BUFF_SIZE)
@@ -137,10 +158,14 @@ extern void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirect
 	}
 	else
 	{
-		i2c_tx_position = register_definition_to_pointer(i2c_rx_buff[0]);
+		i2c_tx_register = i2c_rx_buff[0];
+		i2c_tx_position = register_definition_to_pointer(i2c_tx_register);
+
+		uint16_t packet_size = register_definition_to_packet_size(i2c_tx_register);
+		HAL_I2C_Slave_Sequential_Transmit_DMA(hi2c, i2c_tx_position, packet_size, I2C_FIRST_FRAME);
+
 		i2c_rx_buff[0] = 0;
 		i2c_tx_count = 0;
-		HAL_I2C_Slave_Sequential_Transmit_DMA(hi2c, i2c_tx_position, 1, I2C_FIRST_FRAME);
 	}
 }
 

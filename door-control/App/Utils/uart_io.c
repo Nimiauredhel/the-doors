@@ -24,20 +24,22 @@ static void serial_newline(void)
 
 void serial_print(const char *msg, uint16_t len)
 {
-	xSemaphoreTake(serial_output_mutexHandle, 0xff);
+	xSemaphoreTake(serial_output_mutexHandle, portMAX_DELAY);
 	if (len == 0) len = strlen(msg);
 	HAL_UART_Transmit(&huart3, (uint8_t *)msg, len, 0xFF);
 	HAL_UART_Transmit(&huart2, (uint8_t *)msg, len, 0xFF);
+	vTaskDelay(pdMS_TO_TICKS(2));
 	xSemaphoreGive(serial_output_mutexHandle);
 }
 
 void serial_print_line(const char *msg, uint16_t len)
 {
-	xSemaphoreTake(serial_output_mutexHandle, 0xff);
+	xSemaphoreTake(serial_output_mutexHandle, portMAX_DELAY);
 	if (len == 0) len = strlen(msg);
 	HAL_UART_Transmit(&huart3, (uint8_t *)msg, len, 0xFF);
 	HAL_UART_Transmit(&huart2, (uint8_t *)msg, len, 0xFF);
 	serial_newline();
+	vTaskDelay(pdMS_TO_TICKS(2));
 	xSemaphoreGive(serial_output_mutexHandle);
 }
 
@@ -46,6 +48,7 @@ void serial_print_char(const char c)
 	xSemaphoreTake(serial_output_mutexHandle, 0xff);
 	HAL_UART_Transmit(&huart3, (uint8_t *)&c, 1, 0xFF);
 	HAL_UART_Transmit(&huart2, (uint8_t *)&c, 1, 0xFF);
+	vTaskDelay(pdMS_TO_TICKS(2));
 	xSemaphoreGive(serial_output_mutexHandle);
 }
 
@@ -67,7 +70,7 @@ uint8_t serial_scan(char *buffer, const uint8_t max_len)
 				if (input_idx > 0)
 				{
 					buffer[input_idx] = '\0';
-					xSemaphoreTake(serial_output_mutexHandle, 0xff);
+					xSemaphoreTake(serial_output_mutexHandle, portMAX_DELAY);
 					serial_backspace_destructive(1);
 					xSemaphoreGive(serial_output_mutexHandle);
 					input_idx--;
@@ -76,7 +79,7 @@ uint8_t serial_scan(char *buffer, const uint8_t max_len)
 			case '\n':
 			case '\r':
 				buffer[input_idx] = '\0';
-				xSemaphoreTake(serial_output_mutexHandle, 0xff);
+				xSemaphoreTake(serial_output_mutexHandle, portMAX_DELAY);
 				serial_newline();
 				xSemaphoreGive(serial_output_mutexHandle);
 				return input_idx+1;
