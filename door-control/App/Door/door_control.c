@@ -54,6 +54,8 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 
 	if (step_delay < step_size) step_delay = step_size;
 
+	bool blocked = false;
+
 	while(abs(target_angle - servo_last_angle) > step_size)
 	{
 		vTaskDelay(pdMS_TO_TICKS(step_delay));
@@ -62,7 +64,17 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 		if (min_dist > 0.0f)
 		{
 			door_sensor_read();
-			if (door_sensor_get_last_read_cm() <= min_dist) continue;
+			if (door_sensor_get_last_read_cm() <= min_dist)
+			{
+				if (!blocked)
+				{
+					blocked = true;
+					event_log_append(PACKET_REPORT_DOOR_BLOCKED);
+				}
+
+				continue;
+			}
+			else blocked = false;
 		}
 		servo_set_angle(servo_last_angle + step);
 	}
