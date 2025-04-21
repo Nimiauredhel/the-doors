@@ -54,7 +54,7 @@ static void door_sensor_process(int64_t result)
 
 void door_sensor_read(void)
 {
-	static const uint8_t sample_count = 8;
+	static const uint8_t sample_count = 3;
 	int64_t resultsum = 0;
 
 	for (int i = 0; i < sample_count; i++)

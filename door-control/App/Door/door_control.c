@@ -52,7 +52,8 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 
 	uint16_t step = (0 > target_angle - servo_last_angle) ? -step_size : step_size;
 
-	if (step_delay < step_size) step_delay = step_size;
+	if (step_size < 1) step_size = 1;
+	//if (step_delay < step_size) step_delay = step_size;
 
 	bool blocked = false;
 
@@ -69,7 +70,7 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 				if (!blocked)
 				{
 					blocked = true;
-					event_log_append(PACKET_REPORT_DOOR_BLOCKED);
+					event_log_append(PACKET_REPORT_DOOR_BLOCKED, 0);
 				}
 
 				continue;
@@ -170,18 +171,18 @@ bool door_set_closed(bool closed)
 	{
 		serial_print_line("Door Changing State...", 0);
 		door_state_flags |= DOOR_FLAG_TRANSITION;
-		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED);
+		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED, 0);
 		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle,
-		1, closed ? 1 : 50, closed ? 4.5f : 0.0f);
+		1, closed ? 1 : 30, closed ? 4.5f : 0.0f);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
-		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED);
+		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		serial_print_line("Door State Changed.", 0);
 	}
 	else
 	{
 		serial_print_line("Initializing Door State.", 0);
 		servo_set_angle(closed ? door_close_angle : door_open_angle);
-		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED);
+		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 

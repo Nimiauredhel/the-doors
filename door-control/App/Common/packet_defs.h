@@ -25,7 +25,9 @@ typedef enum DoorReport
 	PACKET_REPORT_PASS_CORRECT = 3,
 	PACKET_REPORT_PASS_WRONG = 4,
 	PACKET_REPORT_PASS_CHANGED = 5,
-	PACKET_REPORT_DATA_READY = 6,
+	PACKET_REPORT_QUERY_RESULT = 6,
+	PACKET_REPORT_DATA_READY = 7,
+	PACKET_REPORT_ERROR = 8,
 } DoorReport_t;
 
 typedef enum DoorRequest
@@ -42,6 +44,13 @@ typedef enum DoorDataType
 	PACKET_DATA_NONE = 0,
 	PACKET_DATA_PHOTO = 1,
 } DoorDataType_t;
+
+typedef enum DoorErrorType
+{
+	PACKET_ERROR_NONE = 0,
+	PACKET_ERROR_WRONG_REGISTER = 1,
+	PACKET_ERROR_INVALID_PACKET = 2,
+} DoorErrorType_t;
 
 typedef struct DoorPacketHeader
 {
