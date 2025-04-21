@@ -13,7 +13,8 @@ static const uint16_t slave_addr = 0x0a;
 static const uint16_t polling_interval_sec = 5;
 
 static int device_fd = 0;
-static uint8_t rx_buff[256] = {0};
+
+static uint8_t rx_buff[200000] = {0};
 
 static void i2c_init(void)
 {
@@ -28,7 +29,7 @@ static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, con
 	// prepare the outgoing message
 	uint8_t tx_buff[256] = {0};
 	tx_buff[0] = reg_addr;
-	strncpy(tx_buff+1, message, sizeof(tx_buff)-1);
+	memcpy(tx_buff+1, message, sizeof(tx_buff)-1);
 	// write to device and close
 	write(device_fd, tx_buff, len+1);
 }
@@ -44,7 +45,7 @@ static void i2c_master_read(const uint8_t reg_addr, const uint8_t len)
 static void poll_slave_event_queue(void)
 {
 	static const uint32_t timeout_sec = 30;
-	static const uint9_t zero = 0;
+	static const uint8_t zero = 0;
 
 	uint32_t idle_counter = 0;
 
@@ -55,24 +56,58 @@ static void poll_slave_event_queue(void)
 		sleep(polling_interval_sec);
 		idle_counter += polling_interval_sec;
 
-		i2c_master_read(0, 1);
+        // read event queue length, a uint16_t value
+		i2c_master_read(I2C_REG_EVENT_COUNT, 2);
+        uint16_t queue_length = ((uint16_t *)rx_buff)[0];
 
-		if (rx_buff[0] > 0)
+		if (queue_length > 0)
 		{
-			uint8_t queue_length = rx_buff[0];
 			printf("Reported %u new events in slave queue! Reading...\n", queue_length);
-			i2c_master_read(1, queue_length);
+
+            for (int i = 0; i < queue_length; i++)
+            {
+                bzero(rx_buff, sizeof(rx_buff));
+                i2c_master_read(I2C_REG_EVENT_HEAD, sizeof(DoorPacket_t));
+                DoorReport_t report_type = ((DoorPacket_t *)rx_buff)->body.Report.report_id;
+                printf("Retrieved event type: ");
+                switch(report_type)
+                {
+                case PACKET_REPORT_NONE:
+                    printf("NONE.\n");
+                    break;
+                case PACKET_REPORT_DOOR_OPENED:
+                    printf("Door Opened.\n");
+                    break;
+                case PACKET_REPORT_DOOR_CLOSED:
+                    printf("Door Closed.\n");
+                    break;
+                case PACKET_REPORT_DOOR_BLOCKED:
+                    printf("Door Blocked.\n");
+                    break;
+                case PACKET_REPORT_PASS_CORRECT:
+                    printf("Correct Password Entered.\n");
+                    break;
+                case PACKET_REPORT_PASS_WRONG:
+                    printf("Wrong Password Entered.\n");
+                    break;
+                case PACKET_REPORT_PASS_CHANGED:
+                    printf("Password Changed.\n");
+                    break;
+                case PACKET_REPORT_QUERY_RESULT:
+                    printf("Query Result [%u]", ((DoorPacket_t *)rx_buff)->body.Report.report_data_8);
+                    break;
+                case PACKET_REPORT_DATA_READY:
+                    printf("Data Ready.\n");
+                    break;
+                case PACKET_REPORT_ERROR:
+                    printf("Error Code [%u]", ((DoorPacket_t *)rx_buff)->body.Report.report_data_8);
+                    break;
+                  break;
+                }
+            }
 
 			printf("Events retrieved. Ordering slave device to reset its local queue...\n");
-			i2c_master_write(0, &zero, 1);
-
-			printf("The following events have been newly reported:\n");
-
-			for (int i = 0; i < queue_length; i++)
-			{
-				printf("Report: button pressed %u times.\n", rx_buff[i]);
-			}
-
+			i2c_master_write(0, &zero, 2);
 			printf("Report concluded, polling resumed.\n");
 
 			idle_counter = 0;
