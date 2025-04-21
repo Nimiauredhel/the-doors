@@ -16,9 +16,9 @@
 
 #include "main.h"
 
-#include "../Door/door_auth.h"
-#include "../Door/door_control.h"
-#include "../Utils/uart_io.h"
+#include "door_auth.h"
+#include "door_control.h"
+#include "uart_io.h"
 
 typedef enum InterfacePhase
 {
