@@ -22,7 +22,7 @@ static const uint8_t phase_char_limits[6] =
 static const char *phase_prompts[6] =
 {
 		"Unknown Phase",
-		"Welcome to DOOR. You may 'open', 'close', or 'setpw'.",
+		"Welcome to DOOR. Valid commands: open, close, setpw, debug_comms.",
 		"Please Enter Password.",
 		"Please Enter NEW Password.",
 		"Opening Door!",
@@ -114,6 +114,10 @@ static void rx_evaluate(const char *rx_msg)
 			phase_push(IPHASE_CHECKPW);
 			phase_push(IPHASE_SETPW);
 		}
+		else if (strcmp(rx_msg, "debug_comms") == 0)
+		{
+			comms_toggle_debug();
+		}
 		else
 		{
 			serial_print_line("Unknown Command.", 0);
@@ -132,7 +136,6 @@ static void rx_evaluate(const char *rx_msg)
 	case IPHASE_NONE:
 		phase_reset();
 		break;
-
 	}
 }
 

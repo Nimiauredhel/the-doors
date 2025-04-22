@@ -7,11 +7,19 @@
 
 #include "event_log.h"
 
+#define TAKE_EVENT_LOG_MUTEX \
+	if (is_isr()) xSemaphoreTakeFromISR(event_log_lock, 0); \
+	else xSemaphoreTake(event_log_lock, 0xffff)
+
+#define GIVE_EVENT_LOG_MUTEX \
+	if (is_isr()) xSemaphoreGiveFromISR(event_log_lock, 0); \
+	else xSemaphoreGive(event_log_lock)
+
 static SemaphoreHandle_t event_log_lock = NULL;
 static StaticSemaphore_t event_log_lock_buffer;
 
-static uint16_t event_log_length = 0;
-static uint16_t event_log_length_copy = 0;
+static uint8_t event_log_length = 0;
+static uint8_t event_log_length_copy = 0;
 static DoorPacket_t event_log_buffer[EVENT_LOG_CAPACITY];
 
 void event_log_initialize(void)
@@ -24,16 +32,17 @@ void event_log_initialize(void)
 void event_log_clear(void)
 {
 	if (event_log_length == 0) return;
-	xSemaphoreTake(event_log_lock, 0xffff);
+	TAKE_EVENT_LOG_MUTEX;
 	event_log_length = 0;
-	xSemaphoreGive(event_log_lock);
+	GIVE_EVENT_LOG_MUTEX;
 }
 
 void event_log_append(DoorReport_t report, uint8_t extra_code)
 {
 	// TODO: add error code
 	if (event_log_length >= EVENT_LOG_CAPACITY) return;
-	xSemaphoreTake(event_log_lock, 0xffff);
+
+	TAKE_EVENT_LOG_MUTEX;
 
 	// TODO: populate new packet with real values
 	event_log_buffer[event_log_length].header.category = PACKET_CAT_REPORT;
@@ -44,30 +53,30 @@ void event_log_append(DoorReport_t report, uint8_t extra_code)
 	event_log_buffer[event_log_length].body.Report.report_data_8 = extra_code;
 
 	event_log_length++;
-	xSemaphoreGive(event_log_lock);
+	GIVE_EVENT_LOG_MUTEX;
 }
 
 uint16_t event_log_get_length(void)
 {
-	xSemaphoreTake(event_log_lock, 0xffff);
-	uint16_t length = event_log_length;
-	xSemaphoreGive(event_log_lock);
+	TAKE_EVENT_LOG_MUTEX;
+	uint8_t length = event_log_length;
+	GIVE_EVENT_LOG_MUTEX;
 	return length;
 }
 
-uint16_t* event_log_get_length_ptr(void)
+uint8_t* event_log_get_length_ptr(void)
 {
-	xSemaphoreTake(event_log_lock, 0xffff);
+	TAKE_EVENT_LOG_MUTEX;
 	event_log_length_copy = event_log_length;
-	xSemaphoreGive(event_log_lock);
+	GIVE_EVENT_LOG_MUTEX;
 	return &event_log_length_copy;
 }
 
 DoorPacket_t* event_log_get_entry(uint16_t index)
 {
-	xSemaphoreTake(event_log_lock, 0xffff);
+	TAKE_EVENT_LOG_MUTEX;
 	if (index >= EVENT_LOG_CAPACITY) return NULL;
 	DoorPacket_t *ptr = &event_log_buffer[index];
-	xSemaphoreGive(event_log_lock);
+	GIVE_EVENT_LOG_MUTEX;
 	return ptr;
 }

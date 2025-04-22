@@ -7,8 +7,8 @@
 
 #include "door_control.h"
 
-static const int door_open_angle = 5;
-static const int door_close_angle = 95;
+static const int door_open_angle = 0;
+static const int door_close_angle = 90;
 
 static bool initialized = false;
 static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
@@ -29,7 +29,7 @@ static void set_door_indicator_led(float open_percent)
 	}
 }
 
-static void servo_set_angle(int16_t angle)
+static void servo_set_angle(int16_t angle, uint16_t time_limit_ms)
 {
 	static const int16_t min_angle = 0;
 	static const int16_t max_angle = 180;
@@ -41,7 +41,16 @@ static void servo_set_angle(int16_t angle)
 
 	uint32_t pulse = ((angle * (max_pulse_width - min_pulse_width)) / max_angle) + min_pulse_width;
 	htim3.Instance->CCR1 = pulse;
-	servo_last_angle = angle;
+
+	if (time_limit_ms > 0)
+	{
+		vTaskDelay(pdMS_TO_TICKS(time_limit_ms));
+		htim3.Instance->CCR1 = 0;
+	}
+	else
+	{
+		servo_last_angle = angle;
+	}
 
 }
 
@@ -77,10 +86,10 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 			}
 			else blocked = false;
 		}
-		servo_set_angle(servo_last_angle + step);
+		servo_set_angle(servo_last_angle + step, 0);
 	}
 
-	servo_set_angle(target_angle);
+	servo_set_angle(target_angle, 0);
 }
 
 bool door_control_is_init(void)
@@ -181,7 +190,14 @@ bool door_set_closed(bool closed)
 	else
 	{
 		serial_print_line("Initializing Door State.", 0);
-		servo_set_angle(closed ? door_close_angle : door_open_angle);
+
+		for (int i = 0; i < 10; i++)
+		{
+			servo_set_angle(closed ? door_close_angle : door_open_angle, 10);
+			vTaskDelay(pdMS_TO_TICKS(90));
+		}
+
+		servo_set_angle(closed ? door_close_angle : door_open_angle, 0);
 		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}

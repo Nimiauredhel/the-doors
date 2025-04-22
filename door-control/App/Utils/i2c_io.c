@@ -38,14 +38,14 @@ static uint16_t register_definition_to_packet_size(I2CRegisterDefinition_t reg_d
 	}
 }
 
-static uint8_t* register_definition_to_pointer(I2CRegisterDefinition_t reg_def)
+static uint8_t* register_definition_to_pointer(I2CRegisterDefinition_t reg_def, uint8_t offset)
 {
 	switch (reg_def)
 	{
 	case I2C_REG_EVENT_COUNT:
 		return (uint8_t *)event_log_get_length_ptr();
 	case I2C_REG_EVENT_HEAD:
-		return (uint8_t *)event_log_get_entry(0);
+		return (uint8_t *)event_log_get_entry(offset);
 		// TODO: implement missing regs
 	case I2C_REG_QUERY_RESULT:
 		return NULL;
@@ -65,12 +65,16 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 	switch(reg_def)
 	{
 	case I2C_REG_EVENT_COUNT:
+		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_EVENT_COUNT);
 		event_log_clear();
 		return;
 	case I2C_REG_HUB_COMMAND:
+		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_HUB_COMMAND);
 		break;
 	default:
+		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_UNKNOWN);
 		event_log_append(PACKET_REPORT_ERROR, PACKET_ERROR_WRONG_REGISTER);
+		return;
 	}
 
 	// TODO: read and process hub command
@@ -90,28 +94,29 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 
 	bzero(i2c_rx_buff+i2c_rx_count, I2C_RX_BUFF_SIZE-i2c_rx_count);
 	i2c_rx_count = 0;
+
+	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 static void process_i2c_tx(I2C_HandleTypeDef *hi2c)
 {
 	i2c_tx_count = 0;
+	comms_report_internal(COMMS_EVENT_SENT, i2c_tx_register);
 }
 
 void HAL_I2C_SlaveTxCpltCallback (I2C_HandleTypeDef * hi2c)
 {
-	uint16_t packet_size = register_definition_to_packet_size(i2c_tx_register);
-
 	i2c_tx_count++;
 
 	if (i2c_tx_count < I2C_TX_BUFF_SIZE)
 	{
 		if (i2c_tx_count == I2C_TX_BUFF_SIZE - 1)
 		{
-			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+(i2c_tx_count*packet_size), packet_size, I2C_LAST_FRAME);
+			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+i2c_tx_count, 1, I2C_LAST_FRAME);
 		}
 		else
 		{
-			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+(i2c_tx_count*packet_size), packet_size, I2C_NEXT_FRAME);
+			HAL_I2C_Slave_Seq_Transmit_DMA(hi2c, i2c_tx_position+i2c_tx_count, 1, I2C_NEXT_FRAME);
 		}
 	}
 	else if (i2c_tx_count == I2C_TX_BUFF_SIZE)
@@ -159,10 +164,18 @@ extern void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirect
 	else
 	{
 		i2c_tx_register = i2c_rx_buff[0];
-		i2c_tx_position = register_definition_to_pointer(i2c_tx_register);
+		uint8_t reg_offset = 0;
 
-		uint16_t packet_size = register_definition_to_packet_size(i2c_tx_register);
-		HAL_I2C_Slave_Sequential_Transmit_DMA(hi2c, i2c_tx_position, packet_size, I2C_FIRST_FRAME);
+		// detect event log read and decode offset
+		if (i2c_tx_register & I2C_REG_EVENT_HEAD)
+		{
+			reg_offset = i2c_tx_register >> 1;
+			i2c_tx_register = I2C_REG_EVENT_HEAD;
+		}
+
+		i2c_tx_position = register_definition_to_pointer(i2c_tx_register, reg_offset);
+
+		HAL_I2C_Slave_Sequential_Transmit_DMA(hi2c, i2c_tx_position, 1, I2C_FIRST_FRAME);
 
 		i2c_rx_buff[0] = 0;
 		i2c_tx_count = 0;
@@ -202,6 +215,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c)
 {
+	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 void i2c_io_init(void)

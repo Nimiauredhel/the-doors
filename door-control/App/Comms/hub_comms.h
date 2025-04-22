@@ -25,7 +25,22 @@
 #include "packet_defs.h"
 #include "i2c_register_defs.h"
 
+typedef enum CommsEventType
+{
+	COMMS_EVENT_NONE = 0,
+	COMMS_EVENT_SENT = 1,
+	COMMS_EVENT_RECEIVED = 2,
+} CommsEventType_t;
+
+typedef struct CommsEvent
+{
+	CommsEventType_t action;
+	I2CRegisterDefinition_t subject;
+} CommsEvent_t;
+
 void comms_init(void);
 void comms_loop(void);
+void comms_report_internal(CommsEventType_t action, I2CRegisterDefinition_t subject);
+void comms_toggle_debug(void);
 
 #endif /* HUB_COMMS_H_ */

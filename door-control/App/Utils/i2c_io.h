@@ -20,6 +20,7 @@
 
 #include "event_log.h"
 #include "packet_defs.h"
+#include "hub_comms.h"
 #include "i2c_register_defs.h"
 
 #define I2C_TX_BUFF_SIZE 256

@@ -68,8 +68,8 @@ ETH_TxPacketConfig TxConfig;
 ETH_HandleTypeDef heth;
 
 I2C_HandleTypeDef hi2c1;
-DMA_HandleTypeDef hdma_i2c1_rx;
 DMA_HandleTypeDef hdma_i2c1_tx;
+DMA_HandleTypeDef hdma_i2c1_rx;
 
 LPTIM_HandleTypeDef hlptim1;
 
