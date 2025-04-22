@@ -27,5 +27,6 @@ extern TIM_HandleTypeDef htim2;
 void door_sensor_init(void);
 void door_sensor_read(void);
 float door_sensor_get_last_read_cm(void);
+void door_sensor_toggle_debug(void);
 
 #endif /* DOOR_SENSOR_H_ */

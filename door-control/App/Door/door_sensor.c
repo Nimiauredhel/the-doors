@@ -19,6 +19,8 @@ static volatile uint32_t sensor_counter = 0;
 static int64_t last_read_us = 0;
 static float last_read_float_cm = 0;
 
+static bool debug_enabled = false;
+
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
     if (htim == &htim2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
@@ -48,8 +50,16 @@ static void door_sensor_process(int64_t result)
 
 	last_read_float_cm = result / TIMER_MHZ / cm_to_us;
 
-	sprintf(result_buff, result_format, last_read_float_cm, result);
-	serial_print_line(result_buff, 0);
+	if (debug_enabled)
+	{
+		sprintf(result_buff, result_format, last_read_float_cm, result);
+		serial_print_line(result_buff, 0);
+	}
+}
+
+void door_sensor_toggle_debug(void)
+{
+	debug_enabled = !debug_enabled;
 }
 
 void door_sensor_read(void)

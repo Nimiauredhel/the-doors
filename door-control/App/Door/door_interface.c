@@ -24,7 +24,7 @@ static const uint8_t phase_char_limits[6] =
 static const char *phase_prompts[6] =
 {
 		"Unknown Phase",
-		"Welcome to DOOR. Valid commands: open, close, setpw, debug_comms.",
+		"Welcome to DOOR. Valid commands: open, close, setpw, debug_comms, debug_sensor.",
 		"Please Enter Password.",
 		"Please Enter NEW Password.",
 		"Opening Door!",
@@ -119,6 +119,10 @@ static void rx_evaluate(const char *rx_msg)
 		else if (strcmp(rx_msg, "debug_comms") == 0)
 		{
 			comms_toggle_debug();
+		}
+		else if (strcmp(rx_msg, "debug_sensor") == 0)
+		{
+			door_sensor_toggle_debug();
 		}
 		else
 		{
