@@ -7,16 +7,18 @@
 
 #include "door_interface.h"
 
+#define MAX_CHARS_FREE_INPUT 16
+#define MAX_CHARS_PASS_INPUT 4
 #define PHASE_QUEUE_SIZE 8
 
 static const uint8_t phase_char_limits[6] =
 {
-		5, // phase NONE
-		5, // phase TOP
-		4, // phase CHECKPW
-		4, // phase SETPW
-		4, // phase OPEN
-		4, // phase CLOSE
+		MAX_CHARS_FREE_INPUT, // phase NONE
+		MAX_CHARS_FREE_INPUT, // phase TOP
+		MAX_CHARS_PASS_INPUT, // phase CHECKPW
+		MAX_CHARS_PASS_INPUT, // phase SETPW
+		MAX_CHARS_PASS_INPUT, // phase OPEN
+		MAX_CHARS_PASS_INPUT, // phase CLOSE
 };
 
 static const char *phase_prompts[6] =
@@ -149,7 +151,7 @@ void interface_loop(void)
 {
 	vTaskDelay(1);
 
-	char input[16];
+	char input[MAX_CHARS_FREE_INPUT];
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
 	phase_just_reset = false;
 

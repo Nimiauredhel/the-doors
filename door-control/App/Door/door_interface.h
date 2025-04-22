@@ -19,6 +19,7 @@
 #include "door_auth.h"
 #include "door_control.h"
 #include "uart_io.h"
+#include "hub_comms.h"
 
 typedef enum InterfacePhase
 {
