@@ -15,17 +15,17 @@ static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
 static int16_t servo_last_angle;
 static volatile uint16_t door_open_duration_seconds = 0;
 
-static void set_door_indicator_led(float open_percent)
+static void set_door_indicator_led(float red_percent, float green_percent)
 {
-	if (open_percent < 0.0f)
+	if (red_percent < 0.0f || green_percent < 0.0f)
 	{
 		htim1.Instance->CCR3 = 0;
 		htim1.Instance->CCR2 = 0;
 	}
 	else
 	{
-		htim1.Instance->CCR3 = htim1.Instance->ARR * (1.0f - open_percent);
-		htim1.Instance->CCR2 = htim1.Instance->ARR * open_percent;
+		htim1.Instance->CCR3 = htim1.Instance->ARR * red_percent;
+		htim1.Instance->CCR2 = htim1.Instance->ARR * green_percent;
 	}
 }
 
@@ -59,10 +59,10 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 	if (step_size == 0) return;
 	bool light_on = false;
 
-	uint16_t step = (0 > target_angle - servo_last_angle) ? -step_size : step_size;
-
 	if (step_size < 1) step_size = 1;
 	//if (step_delay < step_size) step_delay = step_size;
+
+	int16_t step = (0 > target_angle - servo_last_angle) ? -step_size : step_size;
 
 	bool blocked = false;
 
@@ -70,11 +70,13 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 	{
 		vTaskDelay(pdMS_TO_TICKS(step_delay));
 		light_on = !light_on;
-		set_door_indicator_led(light_on ? (float)(servo_last_angle-door_open_angle)/(float)(door_close_angle-door_open_angle) : -1.0f);
+		float red = light_on ? blocked ? 1.0f : 0.05f : -1.0f;
+		float green = light_on ? blocked ? 0.0f : 1.0f : -1.0f;
+		set_door_indicator_led(red, green);
+
 		if (min_dist > 0.0f)
 		{
-			door_sensor_read();
-			if (door_sensor_get_last_read_cm() <= min_dist)
+			if (door_sensor_leq_cm(min_dist))
 			{
 				if (!blocked)
 				{
@@ -138,6 +140,8 @@ void door_control_loop(void)
 	{
 		last_timer_notification = 0;
 	}
+
+	door_sensor_loop();
 }
 
 void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
@@ -182,7 +186,7 @@ bool door_set_closed(bool closed)
 		door_state_flags |= DOOR_FLAG_TRANSITION;
 		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED, 0);
 		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle,
-		1, closed ? 1 : 30, closed ? 4.5f : 0.0f);
+		1, closed ? 30 : 20, closed ? 4.5f : 0.0f);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
 		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		serial_print_line("Door State Changed.", 0);
@@ -202,7 +206,7 @@ bool door_set_closed(bool closed)
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 
-	set_door_indicator_led(closed ? 1.0f : 0.0f);
+	set_door_indicator_led(0.0f, 0.5f);
 
 	return true;
 }

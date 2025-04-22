@@ -23,10 +23,11 @@
 #include "uart_io.h"
 
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim5;
 
 void door_sensor_init(void);
-void door_sensor_read(void);
-float door_sensor_get_last_read_cm(void);
+void door_sensor_loop(void);
 void door_sensor_toggle_debug(void);
+bool door_sensor_leq_cm(float min_cm);
 
 #endif /* DOOR_SENSOR_H_ */
