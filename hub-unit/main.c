@@ -14,7 +14,8 @@ static const uint16_t polling_interval_sec = 2;
 
 static int device_fd = 0;
 
-static uint8_t rx_buff[200000] = {0};
+static uint8_t rx_buff[255] = {0};
+static DoorPacket_t packet_buff = {0};
 
 static void i2c_init(void)
 {
@@ -36,10 +37,7 @@ static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, con
 
 static void i2c_master_read(const uint8_t reg_addr, const uint8_t len)
 {
-	for (int i = 0; i < len; i++)
-	{
-		rx_buff[i] = i2c_smbus_read_byte_data(device_fd, reg_addr+i);
-	}
+		i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, rx_buff);
 }
 
 static void poll_slave_event_queue(void)
@@ -58,8 +56,8 @@ static void poll_slave_event_queue(void)
 		idle_counter += polling_interval_sec;
 
         // read event queue length, a uint16_t value
-		i2c_master_read(I2C_REG_EVENT_COUNT, 2);
-		uint16_t queue_length = ((uint16_t *)rx_buff)[0];
+		i2c_master_read(I2C_REG_EVENT_COUNT, 1);
+		uint8_t queue_length = rx_buff[0];
 
 		if (queue_length > 0)
 		{
@@ -68,9 +66,16 @@ static void poll_slave_event_queue(void)
             for (int i = 0; i < queue_length; i++)
             {
                 bzero(rx_buff, sizeof(rx_buff));
-                i2c_master_read(I2C_REG_EVENT_HEAD, sizeof(DoorPacket_t));
-                DoorReport_t report_type = ((DoorPacket_t *)rx_buff)->body.Report.report_id;
-                printf("Retrieved event type: ");
+                i2c_master_read(I2C_REG_EVENT_HEAD | (i << 1), sizeof(DoorPacket_t));
+
+                printf("Retrieved event %d,", i);
+		fflush(stdout);
+
+		memcpy(&packet_buff, rx_buff, sizeof(DoorPacket_t));
+                DoorReport_t report_type = packet_buff.body.Report.report_id;
+                printf(" event type: ");
+		fflush(stdout);
+
                 switch(report_type)
                 {
                 case PACKET_REPORT_NONE:
@@ -95,15 +100,14 @@ static void poll_slave_event_queue(void)
                     printf("Password Changed.\n");
                     break;
                 case PACKET_REPORT_QUERY_RESULT:
-                    printf("Query Result [%u]", ((DoorPacket_t *)rx_buff)->body.Report.report_data_8);
+                    printf("Query Result [%u]", packet_buff.body.Report.report_data_8);
                     break;
                 case PACKET_REPORT_DATA_READY:
                     printf("Data Ready.\n");
                     break;
                 case PACKET_REPORT_ERROR:
-                    printf("Error Code [%u]", ((DoorPacket_t *)rx_buff)->body.Report.report_data_8);
+                    printf("Error Code [%u]", packet_buff.body.Report.report_data_8);
                     break;
-                  break;
                 }
             }
 

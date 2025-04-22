@@ -45,8 +45,7 @@ valgrind:
 	cd $(BUILD_DIR); valgrind -s --leak-check=yes --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(EXE_NAME) $(ARGS)
 
 clean:
-	rm -f $(EXE_PATH)
-	rm -f $(BUILD_DIR)*.sh
+	rm -rf $(BUILD_DIR)
 	rm -f compile_commands.json
 
 setcap:
