@@ -54,41 +54,69 @@ static void servo_set_angle(int16_t angle, uint16_t time_limit_ms)
 
 }
 
+static void door_force_open(void)
+{
+	uint16_t threshold = door_open_angle + ((servo_last_angle-door_open_angle)/8);
+	while(servo_last_angle > threshold)
+	{
+		servo_set_angle(door_open_angle + ((servo_last_angle - door_open_angle)/16), 0);
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+
+	servo_set_angle(door_open_angle, 0);
+}
+
+
 static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, uint16_t step_delay, float min_dist)
 {
 	if (step_size == 0) return;
+
+	int16_t idx = 0;
 	bool light_on = false;
+	uint16_t steps[128] = {0};
 
 	if (step_size < 1) step_size = 1;
 	//if (step_delay < step_size) step_delay = step_size;
 
+	uint16_t step_count = abs(target_angle - servo_last_angle) / step_size;
 	int16_t step = (0 > target_angle - servo_last_angle) ? -step_size : step_size;
+
+	if (step_count > 128) step_count = 128;
+	steps[0] = servo_last_angle;
+
+	for (idx = 1; idx < step_count; idx++)
+	{
+		steps[idx] = steps[idx-1] + step;
+	}
 
 	bool blocked = false;
 
-	while(abs(target_angle - servo_last_angle) > step_size)
+	for (idx = 1; idx < step_count; idx++)
 	{
-		vTaskDelay(pdMS_TO_TICKS(step_delay));
 		light_on = !light_on;
 		float red = light_on ? blocked ? 1.0f : 0.05f : -1.0f;
 		float green = light_on ? blocked ? 0.0f : 1.0f : -1.0f;
 		set_door_indicator_led(red, green);
 
-		if (min_dist > 0.0f)
+		if (min_dist > 0.0f && door_sensor_leq_cm(min_dist))
 		{
-			if (door_sensor_leq_cm(min_dist))
-			{
-				if (!blocked)
-				{
-					blocked = true;
-					event_log_append(PACKET_REPORT_DOOR_BLOCKED, 0);
-				}
 
-				continue;
+			if (!blocked)
+			{
+				blocked = true;
+				event_log_append(PACKET_REPORT_DOOR_BLOCKED, 0);
 			}
-			else blocked = false;
+
+			if (idx > 1) idx -= 2;
+			vTaskDelay(pdMS_TO_TICKS(step_delay/2));
 		}
-		servo_set_angle(servo_last_angle + step, 0);
+		else
+		{
+			blocked = false;
+			vTaskDelay(pdMS_TO_TICKS(step_delay));
+		}
+
+		servo_set_angle(steps[idx], 0);
 	}
 
 	servo_set_angle(target_angle, 0);
@@ -112,8 +140,8 @@ void door_control_init(void)
 
 	door_set_closed(true);
 	initialized = true;
-	vTaskDelay(pdMS_TO_TICKS(500));
 	serial_print_line("Door Control Initialized.", 0);
+	vTaskDelay(pdMS_TO_TICKS(50));
 
 }
 
@@ -186,7 +214,7 @@ bool door_set_closed(bool closed)
 		door_state_flags |= DOOR_FLAG_TRANSITION;
 		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED, 0);
 		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle,
-		1, closed ? 30 : 20, closed ? 5.0f : 0.0f);
+		1, closed ? 20 : 10, closed ? 5.0f : 0.0f);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
 		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		serial_print_line("Door State Changed.", 0);
@@ -195,15 +223,15 @@ bool door_set_closed(bool closed)
 	{
 		serial_print_line("Initializing Door State.", 0);
 
-		for (int i = 0; i < 10; i++)
+		for (int i = 0; i < 20; i++)
 		{
-			servo_set_angle(closed ? door_close_angle : door_open_angle, 10);
-			vTaskDelay(pdMS_TO_TICKS(90));
+			servo_set_angle(closed ? door_close_angle : door_open_angle, 5);
+			vTaskDelay(pdMS_TO_TICKS(45));
 		}
 
 		servo_set_angle(closed ? door_close_angle : door_open_angle, 0);
 		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
-		vTaskDelay(pdMS_TO_TICKS(500));
+		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 
 	set_door_indicator_led(0.0f, 0.5f);

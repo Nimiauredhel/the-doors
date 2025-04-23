@@ -9,17 +9,23 @@
 
 static void serial_backspace_destructive(uint16_t count)
 {
+	static const uint8_t* backspace = (uint8_t *)"\b \b";
+	static const uint8_t len = 3;
+
 	for (uint16_t idx = 0; idx < count; idx++)
 	{
-		HAL_UART_Transmit(&huart3, (uint8_t *)"\b \b", 3, 0xff);
-		HAL_UART_Transmit(&huart2, (uint8_t *)"\b \b", 3, 0xff);
+		HAL_UART_Transmit(&huart3, backspace, len, 0xff);
+		HAL_UART_Transmit(&huart2, backspace, len, 0xff);
 	}
 }
 
 static void serial_newline(void)
 {
-	HAL_UART_Transmit(&huart3, (uint8_t *)"\n\r", 2, 0xff);
-	HAL_UART_Transmit(&huart2, (uint8_t *)"\n\r", 2, 0xff);
+	static const uint8_t* newline = (uint8_t *)"\n\r";
+	static const uint8_t len = 2;
+
+	HAL_UART_Transmit(&huart3, newline, len, 0xff);
+	HAL_UART_Transmit(&huart2, newline, len, 0xff);
 }
 
 void serial_print(const char *msg, uint16_t len)
@@ -61,8 +67,10 @@ uint8_t serial_scan(char *buffer, const uint8_t max_len)
 
 	for(;;)
 	{
-		if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x10)
-			|| HAL_OK == HAL_UART_Receive(&huart2, &inchar, 1, 0x10))
+		vTaskDelay(pdMS_TO_TICKS(1));
+
+		if (HAL_OK == HAL_UART_Receive(&huart3, &inchar, 1, 0x0)
+			|| HAL_OK == HAL_UART_Receive(&huart2, &inchar, 1, 0x0))
 		{
 			switch (inchar)
 			{

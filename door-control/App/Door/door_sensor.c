@@ -17,20 +17,28 @@ static const float cm_to_us = 58.31f;
 static const char *result_format = "[%02u] %.2fcm.(%luus)";
 
 static volatile uint8_t sensor_buffer_idx = 0;
-static volatile uint16_t sensor_buffer[SENSOR_BUFFER_LENGTH] = {0};
+static volatile uint32_t sensor_buffer[SENSOR_BUFFER_LENGTH] = {0};
 
+static volatile uint32_t capture_start_us = 0;
+
+static volatile uint8_t capturing = 0;
 static bool debug_enabled = false;
 
 static void door_sensor_trigger(void)
 {
+	static const uint32_t trigger_end_us = 4000;
+
+	if (capturing > 0) return;
+
 	HAL_GPIO_WritePin(DOOR_SENSOR_TRIG_GPIO_Port, DOOR_SENSOR_TRIG_Pin, GPIO_PIN_SET);
-	HAL_TIM_Base_Start_IT(&htim6);
+	htim2.Instance->CNT = 0;
+	while (htim2.Instance->CNT < trigger_end_us);
+	HAL_GPIO_WritePin(DOOR_SENSOR_TRIG_GPIO_Port, DOOR_SENSOR_TRIG_Pin, GPIO_PIN_RESET);
 }
 
-static void door_sensor_record(uint16_t period_us)
+static void door_sensor_record(uint32_t period_us)
 {
 	// capping this at uint16 value since we don't care about long distance, only short
-	if (period_us > UINT16_MAX) period_us = UINT16_MAX;
 	sensor_buffer[sensor_buffer_idx] = period_us;
 	sensor_buffer_idx++;
 	if (sensor_buffer_idx >= SENSOR_BUFFER_LENGTH) sensor_buffer_idx = 0;
@@ -38,22 +46,21 @@ static void door_sensor_record(uint16_t period_us)
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
+    if (htim->Instance == TIM2)
     {
-		volatile GPIO_PinState state = HAL_GPIO_ReadPin(DOOR_SENSOR_ECHO_GPIO_Port, DOOR_SENSOR_ECHO_Pin);
-
-		if (state == GPIO_PIN_SET)
+		// rising edge
+		if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
 		{
-			// start timer
-			htim->Instance->CNT &= 0x0;
-			HAL_TIM_Base_Start(htim);
+			// record echo start
+			capturing++;
+			capture_start_us = htim->Instance->CNT;
 		}
-		else
+		// falling edge
+		else if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
 		{
-			// stop timer
-			HAL_TIM_Base_Stop(htim);
-			door_sensor_record(htim->Instance->CNT);
-			htim->Instance->CNT = 0x0;
+			// record echo width
+			if (capturing > 0) capturing--;
+			door_sensor_record(htim->Instance->CNT - capture_start_us);
 			door_sensor_trigger();
 		}
     }
@@ -66,6 +73,8 @@ void door_sensor_toggle_debug(void)
 
 void door_sensor_init(void)
 {
+	HAL_TIM_Base_Start(&htim2);
+	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_4);
 	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
 	door_sensor_trigger();
 }
