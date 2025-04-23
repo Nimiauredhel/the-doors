@@ -23,7 +23,7 @@
 #include "uart_io.h"
 
 extern TIM_HandleTypeDef htim2;
-extern TIM_HandleTypeDef htim5;
+extern TIM_HandleTypeDef htim6;
 
 void door_sensor_init(void);
 void door_sensor_loop(void);

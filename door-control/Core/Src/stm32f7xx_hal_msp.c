@@ -520,19 +520,19 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
   */
 void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
 {
-  if(htim_base->Instance==TIM5)
+  if(htim_base->Instance==TIM6)
   {
-    /* USER CODE BEGIN TIM5_MspInit 0 */
+    /* USER CODE BEGIN TIM6_MspInit 0 */
 
-    /* USER CODE END TIM5_MspInit 0 */
+    /* USER CODE END TIM6_MspInit 0 */
     /* Peripheral clock enable */
-    __HAL_RCC_TIM5_CLK_ENABLE();
-    /* TIM5 interrupt Init */
-    HAL_NVIC_SetPriority(TIM5_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(TIM5_IRQn);
-    /* USER CODE BEGIN TIM5_MspInit 1 */
+    __HAL_RCC_TIM6_CLK_ENABLE();
+    /* TIM6 interrupt Init */
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+    /* USER CODE BEGIN TIM6_MspInit 1 */
 
-    /* USER CODE END TIM5_MspInit 1 */
+    /* USER CODE END TIM6_MspInit 1 */
 
   }
 
@@ -656,19 +656,19 @@ void HAL_TIM_IC_MspDeInit(TIM_HandleTypeDef* htim_ic)
   */
 void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 {
-  if(htim_base->Instance==TIM5)
+  if(htim_base->Instance==TIM6)
   {
-    /* USER CODE BEGIN TIM5_MspDeInit 0 */
+    /* USER CODE BEGIN TIM6_MspDeInit 0 */
 
-    /* USER CODE END TIM5_MspDeInit 0 */
+    /* USER CODE END TIM6_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_TIM5_CLK_DISABLE();
+    __HAL_RCC_TIM6_CLK_DISABLE();
 
-    /* TIM5 interrupt DeInit */
-    HAL_NVIC_DisableIRQ(TIM5_IRQn);
-    /* USER CODE BEGIN TIM5_MspDeInit 1 */
+    /* TIM6 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(TIM6_DAC_IRQn);
+    /* USER CODE BEGIN TIM6_MspDeInit 1 */
 
-    /* USER CODE END TIM5_MspDeInit 1 */
+    /* USER CODE END TIM6_MspDeInit 1 */
   }
 
 }

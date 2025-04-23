@@ -186,7 +186,7 @@ bool door_set_closed(bool closed)
 		door_state_flags |= DOOR_FLAG_TRANSITION;
 		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED, 0);
 		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle,
-		1, closed ? 30 : 20, closed ? 4.5f : 0.0f);
+		1, closed ? 30 : 20, closed ? 5.0f : 0.0f);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
 		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		serial_print_line("Door State Changed.", 0);

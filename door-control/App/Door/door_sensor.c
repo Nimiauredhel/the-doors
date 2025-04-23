@@ -8,13 +8,13 @@
 #include "door_sensor.h"
 
 #define TIMER_MHZ 1
-#define SENSOR_BUFFER_LENGTH 8
+#define SENSOR_BUFFER_LENGTH 32
 
 #define PERIOD_TO_DIST_CM_FLOAT(period) (period / TIMER_MHZ / cm_to_us)
 #define DIST_CM_FLOAT_TO_PERIOD(dist_cm_float) (dist_cm_float * TIMER_MHZ * cm_to_us)
 
 static const float cm_to_us = 58.31f;
-static const char *result_format = "%.2fcm.  (%luus)";
+static const char *result_format = "[%02u] %.2fcm.(%luus)";
 
 static volatile uint8_t sensor_buffer_idx = 0;
 static volatile uint16_t sensor_buffer[SENSOR_BUFFER_LENGTH] = {0};
@@ -24,10 +24,10 @@ static bool debug_enabled = false;
 static void door_sensor_trigger(void)
 {
 	HAL_GPIO_WritePin(DOOR_SENSOR_TRIG_GPIO_Port, DOOR_SENSOR_TRIG_Pin, GPIO_PIN_SET);
-	HAL_TIM_Base_Start_IT(&htim5);
+	HAL_TIM_Base_Start_IT(&htim6);
 }
 
-static void door_sensor_record(uint32_t period_us)
+static void door_sensor_record(uint16_t period_us)
 {
 	// capping this at uint16 value since we don't care about long distance, only short
 	if (period_us > UINT16_MAX) period_us = UINT16_MAX;
@@ -38,7 +38,7 @@ static void door_sensor_record(uint32_t period_us)
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim == &htim2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
+    if (htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
     {
 		volatile GPIO_PinState state = HAL_GPIO_ReadPin(DOOR_SENSOR_ECHO_GPIO_Port, DOOR_SENSOR_ECHO_Pin);
 
@@ -46,14 +46,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 		{
 			// start timer
 			htim->Instance->CNT &= 0x0;
-			HAL_TIM_Base_Start(&htim2);
+			HAL_TIM_Base_Start(htim);
 		}
 		else
 		{
 			// stop timer
-			HAL_TIM_Base_Stop(&htim2);
+			HAL_TIM_Base_Stop(htim);
 			door_sensor_record(htim->Instance->CNT);
-			htim->Instance->CNT &= 0x0;
+			htim->Instance->CNT = 0x0;
 			door_sensor_trigger();
 		}
     }
@@ -72,14 +72,20 @@ void door_sensor_init(void)
 
 void door_sensor_loop(void)
 {
+	static int8_t sample_idx = -1;
+	static uint16_t sample_value;
+
 	char result_buff[64] = {0};
-	uint32_t result;
 
 	if (debug_enabled)
 	{
-		result = sensor_buffer[sensor_buffer_idx];
-		sprintf(result_buff, result_format, PERIOD_TO_DIST_CM_FLOAT(result), result);
-		serial_print_line(result_buff, 0);
+		if (sample_idx != sensor_buffer_idx)
+		{
+			sample_idx = sensor_buffer_idx;
+			sample_value = sensor_buffer[sample_idx];
+			sprintf(result_buff, result_format, sample_idx, PERIOD_TO_DIST_CM_FLOAT(sample_value), sample_value);
+			serial_print_line(result_buff, 0);
+		}
 	}
 }
 
