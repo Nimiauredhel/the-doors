@@ -21,6 +21,7 @@ uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
 DoorPacket_t i2c_hub_command_register = {0};
 DoorPacket_t i2c_query_result_register = {0};
 
+/*
 static uint16_t register_definition_to_packet_size(I2CRegisterDefinition_t reg_def)
 {
 	switch (reg_def)
@@ -37,6 +38,7 @@ static uint16_t register_definition_to_packet_size(I2CRegisterDefinition_t reg_d
 		return sizeof(DoorPacket_t);
 	}
 }
+*/
 
 static uint8_t* register_definition_to_pointer(I2CRegisterDefinition_t reg_def, uint8_t offset)
 {
