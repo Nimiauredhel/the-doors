@@ -5,8 +5,8 @@
  *      Author: mickey
  */
 
-#ifndef DOOR_AUTH_H_
-#define DOOR_AUTH_H_
+#ifndef USER_AUTH_H_
+#define USER_AUTH_H_
 
 #include <stdbool.h>
 #include <string.h>
@@ -22,4 +22,4 @@ bool auth_is_auth(void);
 void auth_check_password(const char *rx_msg);
 void auth_set_password(const char *rx_msg);
 
-#endif /* DOOR_AUTH_H_ */
+#endif /* USER_AUTH_H_ */

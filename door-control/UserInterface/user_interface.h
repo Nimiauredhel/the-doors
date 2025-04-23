@@ -5,18 +5,18 @@
  *      Author: mickey
  */
 
-#ifndef DOOR_INTERFACE_H_
-#define DOOR_INTERFACE_H_
+#ifndef USER_INTERFACE_H_
+#define USER_INTERFACE_H_
 
 #include <string.h>
 #include <stdbool.h>
+#include <user_auth.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
 
 #include "main.h"
 
-#include "door_auth.h"
 #include "door_control.h"
 #include "uart_io.h"
 #include "hub_comms.h"
@@ -34,4 +34,4 @@ typedef enum InterfacePhase
 void interface_init(void);
 void interface_loop(void);
 
-#endif /* DOOR_INTERFACE_H_ */
+#endif /* USER_INTERFACE_H_ */

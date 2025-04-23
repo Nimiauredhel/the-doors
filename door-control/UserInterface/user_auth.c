@@ -5,7 +5,7 @@
  *      Author: mickey
  */
 
-#include "door_auth.h"
+#include <user_auth.h>
 
 // since a password is 4 digits it can fit in a 16-bit int (digit=nibble)
 static uint16_t password = 0x0000;

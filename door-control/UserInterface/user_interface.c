@@ -5,7 +5,7 @@
  *      Author: mickey
  */
 
-#include "door_interface.h"
+#include <user_interface.h>
 
 #define MAX_CHARS_FREE_INPUT 16
 #define MAX_CHARS_PASS_INPUT 4

@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <user_interface.h>
 #include "main.h"
 #include "string.h"
 #include "cmsis_os.h"
@@ -24,7 +25,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "door_control.h"
-#include "door_interface.h"
 
 /* USER CODE END Includes */
 

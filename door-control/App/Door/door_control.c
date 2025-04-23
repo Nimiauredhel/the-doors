@@ -54,19 +54,6 @@ static void servo_set_angle(int16_t angle, uint16_t time_limit_ms)
 
 }
 
-static void door_force_open(void)
-{
-	uint16_t threshold = door_open_angle + ((servo_last_angle-door_open_angle)/8);
-	while(servo_last_angle > threshold)
-	{
-		servo_set_angle(door_open_angle + ((servo_last_angle - door_open_angle)/16), 0);
-		vTaskDelay(pdMS_TO_TICKS(100));
-	}
-
-	servo_set_angle(door_open_angle, 0);
-}
-
-
 static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, uint16_t step_delay, float min_dist)
 {
 	if (step_size == 0) return;
