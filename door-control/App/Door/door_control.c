@@ -95,6 +95,7 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 			}
 
 			if (idx > 1) idx -= 2;
+			else idx = 0;
 			vTaskDelay(pdMS_TO_TICKS(step_delay/2));
 		}
 		else
