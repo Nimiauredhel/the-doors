@@ -206,6 +206,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  serial_uart_initialize();
   event_log_initialize();
   /* USER CODE END 2 */
 
@@ -978,9 +979,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
   else if (htim->Instance == TIM2)
   {
-	  // max echo surpassed, restart sensor
-	  door_sensor_disable();
-	  door_sensor_enable();
+	if (door_sensor_get_state() == SENSOR_STATE_REBOOTING)
+	{
+	  // safety period over, start sensor again
+	  door_sensor_enable(true);
+	}
+	else
+	{
+		// max echo surpassed, restart sensor after safety period
+		door_sensor_reboot();
+	}
   }
   /* USER CODE END Callback 1 */
 }

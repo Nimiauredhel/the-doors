@@ -29,16 +29,21 @@ typedef enum DoorSensorState
 	SENSOR_STATE_IDLE = 2,
 	SENSOR_STATE_TRIGGER = 3,
 	SENSOR_STATE_CAPTURE = 4,
+	SENSOR_STATE_REBOOTING = 5,
 } DoorSensorState_t;
+
+extern const uint16_t sensor_max_echo_us;
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim6;
 
-void door_sensor_enable(void);
+void door_sensor_enable(bool from_reboot);
 void door_sensor_disable(void);
+void door_sensor_reboot(void);
 void door_sensor_loop(void);
 void door_sensor_trigger(void);
 bool door_sensor_leq_cm(float min_cm);
 void door_sensor_toggle_debug(void);
+DoorSensorState_t door_sensor_get_state(void);
 
 #endif /* DOOR_SENSOR_H_ */

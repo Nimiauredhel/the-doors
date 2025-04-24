@@ -78,7 +78,10 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 
 	bool blocked = false;
 
-	if (min_dist > 0.0f) door_sensor_enable();
+	if (min_dist > 0.0f)
+	{
+		door_sensor_enable(false);
+	}
 
 	for (idx = 1; idx < step_count; idx++)
 	{
@@ -131,7 +134,7 @@ void door_control_init(void)
 	initialized = true;
 	serial_print_line("Door Control Initialized.", 0);
 	vTaskDelay(pdMS_TO_TICKS(500));
-	door_sensor_enable();
+	door_sensor_enable(false);
 
 }
 
@@ -201,8 +204,9 @@ bool door_set_closed(bool closed)
 		serial_print_line("Door Changing State...", 0);
 		door_state_flags |= DOOR_FLAG_TRANSITION;
 		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED, 0);
-		servo_set_angle_gradual(closed ? door_close_angle : door_open_angle,
+		servo_set_angle_gradual(closed ? door_close_angle + 10 : door_open_angle,
 		1, closed ? 20 : 10, closed ? 5.0f : 0.0f);
+		if (closed) servo_set_angle(door_close_angle, 0);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
 		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
 		serial_print_line("Door State Changed.", 0);
