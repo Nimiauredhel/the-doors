@@ -22,12 +22,23 @@
 #include "event_log.h"
 #include "uart_io.h"
 
+typedef enum DoorSensorState
+{
+	SENSOR_STATE_NONE = 0,
+	SENSOR_STATE_OFF = 1,
+	SENSOR_STATE_IDLE = 2,
+	SENSOR_STATE_TRIGGER = 3,
+	SENSOR_STATE_CAPTURE = 4,
+} DoorSensorState_t;
+
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim6;
 
-void door_sensor_init(void);
+void door_sensor_enable(void);
+void door_sensor_disable(void);
 void door_sensor_loop(void);
-void door_sensor_toggle_debug(void);
+void door_sensor_trigger(void);
 bool door_sensor_leq_cm(float min_cm);
+void door_sensor_toggle_debug(void);
 
 #endif /* DOOR_SENSOR_H_ */

@@ -78,6 +78,8 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 
 	bool blocked = false;
 
+	if (min_dist > 0.0f) door_sensor_enable();
+
 	for (idx = 1; idx < step_count; idx++)
 	{
 		light_on = !light_on;
@@ -108,6 +110,7 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 	}
 
 	servo_set_angle(target_angle, 0);
+	door_sensor_disable();
 }
 
 bool door_control_is_init(void)
@@ -124,12 +127,11 @@ void door_control_init(void)
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
-	door_sensor_init();
-
 	door_set_closed(true);
 	initialized = true;
 	serial_print_line("Door Control Initialized.", 0);
-	vTaskDelay(pdMS_TO_TICKS(50));
+	vTaskDelay(pdMS_TO_TICKS(500));
+	door_sensor_enable();
 
 }
 
@@ -156,8 +158,6 @@ void door_control_loop(void)
 	{
 		last_timer_notification = 0;
 	}
-
-	door_sensor_loop();
 }
 
 void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)

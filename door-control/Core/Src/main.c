@@ -17,7 +17,6 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <user_interface.h>
 #include "main.h"
 #include "string.h"
 #include "cmsis_os.h"
@@ -25,12 +24,14 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "door_control.h"
+#include "door_sensor.h"
+#include "user_interface.h"
+#include "hub_comms.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 typedef StaticTask_t osStaticThreadDef_t;
-typedef StaticSemaphore_t osStaticMutexDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -120,21 +121,17 @@ const osThreadAttr_t CommsTask_attributes = {
   .stack_size = sizeof(CommsTaskBuffer),
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
-/* Definitions for serial_input_mutex */
-osMutexId_t serial_input_mutexHandle;
-osStaticMutexDef_t serial_input_mutex_ControlBlock;
-const osMutexAttr_t serial_input_mutex_attributes = {
-  .name = "serial_input_mutex",
-  .cb_mem = &serial_input_mutex_ControlBlock,
-  .cb_size = sizeof(serial_input_mutex_ControlBlock),
-};
-/* Definitions for serial_output_mutex */
-osMutexId_t serial_output_mutexHandle;
-osStaticMutexDef_t serial_output_mutex_ControlBlock;
-const osMutexAttr_t serial_output_mutex_attributes = {
-  .name = "serial_output_mutex",
-  .cb_mem = &serial_output_mutex_ControlBlock,
-  .cb_size = sizeof(serial_output_mutex_ControlBlock),
+/* Definitions for DoorSensorTask */
+osThreadId_t DoorSensorTaskHandle;
+uint32_t DoorSensorTaskBuffer[ 256 ];
+osStaticThreadDef_t DoorSensorTaskControlBlock;
+const osThreadAttr_t DoorSensorTask_attributes = {
+  .name = "DoorSensorTask",
+  .cb_mem = &DoorSensorTaskControlBlock,
+  .cb_size = sizeof(DoorSensorTaskControlBlock),
+  .stack_mem = &DoorSensorTaskBuffer[0],
+  .stack_size = sizeof(DoorSensorTaskBuffer),
+  .priority = (osPriority_t) osPriorityRealtime1,
 };
 /* USER CODE BEGIN PV */
 
@@ -157,6 +154,7 @@ static void MX_TIM2_Init(void);
 void StartUserInterfaceTask(void *argument);
 void StartDoorOpsTask(void *argument);
 void StartCommsTask(void *argument);
+void StartDoorSensorTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -213,12 +211,6 @@ int main(void)
 
   /* Init scheduler */
   osKernelInitialize();
-  /* Create the mutex(es) */
-  /* creation of serial_input_mutex */
-  serial_input_mutexHandle = osMutexNew(&serial_input_mutex_attributes);
-
-  /* creation of serial_output_mutex */
-  serial_output_mutexHandle = osMutexNew(&serial_output_mutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -245,6 +237,9 @@ int main(void)
 
   /* creation of CommsTask */
   CommsTaskHandle = osThreadNew(StartCommsTask, NULL, &CommsTask_attributes);
+
+  /* creation of DoorSensorTask */
+  DoorSensorTaskHandle = osThreadNew(StartDoorSensorTask, NULL, &DoorSensorTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -607,7 +602,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 72-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
+  htim2.Init.Period = 65535;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_IC_Init(&htim2) != HAL_OK)
@@ -856,8 +851,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : DOOR_SENSOR_TRIG_Pin */
   GPIO_InitStruct.Pin = DOOR_SENSOR_TRIG_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(DOOR_SENSOR_TRIG_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_PowerSwitchOn_Pin */
@@ -915,6 +910,7 @@ void StartUserInterfaceTask(void *argument)
 void StartDoorOpsTask(void *argument)
 {
   /* USER CODE BEGIN StartDoorOpsTask */
+	vTaskDelay(pdMS_TO_TICKS(500));
 	door_control_init();
 	HAL_LPTIM_Counter_Start_IT(&hlptim1, 28125);
   /* Infinite loop */
@@ -944,6 +940,24 @@ void StartCommsTask(void *argument)
   /* USER CODE END StartCommsTask */
 }
 
+/* USER CODE BEGIN Header_StartDoorSensorTask */
+/**
+* @brief Function implementing the DoorSensorTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDoorSensorTask */
+void StartDoorSensorTask(void *argument)
+{
+  /* USER CODE BEGIN StartDoorSensorTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	  door_sensor_loop();
+  }
+  /* USER CODE END StartDoorSensorTask */
+}
+
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM4 interrupt took place, inside
@@ -962,6 +976,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  else if (htim->Instance == TIM2)
+  {
+	  // max echo surpassed, restart sensor
+	  door_sensor_disable();
+	  door_sensor_enable();
+  }
   /* USER CODE END Callback 1 */
 }
 

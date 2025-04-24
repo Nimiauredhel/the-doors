@@ -17,12 +17,14 @@
 #include "cmsis_os2.h"
 
 #include "main.h"
+#include "isr_utils.h"
 
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 extern osMutexId_t serial_input_mutexHandle;
 extern osMutexId_t serial_output_mutexHandle;
 
+void serial_uart_initialize();
 void serial_print(const char *msg, uint16_t len);
 void serial_print_line(const char *msg, uint16_t len);
 void serial_print_char(const char c);

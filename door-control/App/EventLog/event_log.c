@@ -9,7 +9,7 @@
 
 #define TAKE_EVENT_LOG_MUTEX \
 	if (is_isr()) xSemaphoreTakeFromISR(event_log_lock, 0); \
-	else xSemaphoreTake(event_log_lock, 0xffff)
+	else xSemaphoreTake(event_log_lock, portMAX_DELAY)
 
 #define GIVE_EVENT_LOG_MUTEX \
 	if (is_isr()) xSemaphoreGiveFromISR(event_log_lock, 0); \
