@@ -1,7 +1,7 @@
 /*
- * date_time.h
+ * door_date_time.h
  *
- *  Created on: Nov 22, 2024
+ *  Created on: Apr 26, 2025
  *      Author: mickey
  */
 
@@ -9,8 +9,8 @@
   * @{
   */
 
-#ifndef DATE_TIME_H_
-#define DATE_TIME_H_
+#ifndef DOOR_DATE_TIME_H_
+#define DOOR_DATE_TIME_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@ void date_time_alarm_reset();
 void date_time_print();
 void date_time_set();
 
-#endif /* DATE_TIME_H_ */
+#endif /* DOOR_DATE_TIME_H_ */
 
 /** 
   * @}

@@ -8,6 +8,7 @@
 #ifndef USER_INTERFACE_H_
 #define USER_INTERFACE_H_
 
+#include <door_date_time.h>
 #include <string.h>
 #include <stdbool.h>
 #include <user_auth.h>
@@ -18,7 +19,6 @@
 #include "main.h"
 
 #include "uart_io.h"
-#include "date_time.h"
 #include "door_control.h"
 #include "hub_comms.h"
 

@@ -14,8 +14,10 @@
 #include "task.h"
 #include "semphr.h"
 
+#include "door_date_time.h"
 #include "isr_utils.h"
 #include "packet_defs.h"
+#include "packet_utils.h"
 
 #define EVENT_LOG_CAPACITY 127
 
