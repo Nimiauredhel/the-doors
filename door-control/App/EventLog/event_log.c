@@ -15,6 +15,8 @@
 	if (is_isr()) xSemaphoreGiveFromISR(event_log_lock, 0); \
 	else xSemaphoreGive(event_log_lock)
 
+#define CURRENT_EVENT_LOG_SLOT event_log_buffer[event_log_length]
+
 static SemaphoreHandle_t event_log_lock = NULL;
 static StaticSemaphore_t event_log_lock_buffer;
 
@@ -44,13 +46,19 @@ void event_log_append(DoorReport_t report, uint8_t extra_code)
 
 	TAKE_EVENT_LOG_MUTEX;
 
+	RTC_TimeTypeDef now_time = time_get();
+	RTC_DateTypeDef now_date = date_get();
+
 	// TODO: populate new packet with real values
-	event_log_buffer[event_log_length].header.category = PACKET_CAT_REPORT;
-	event_log_buffer[event_log_length].header.version = 0;
-	event_log_buffer[event_log_length].header.timestamp = 0;
-	event_log_buffer[event_log_length].body.Report.source_id = 0;
-	event_log_buffer[event_log_length].body.Report.report_id = report;
-	event_log_buffer[event_log_length].body.Report.report_data_8 = extra_code;
+	CURRENT_EVENT_LOG_SLOT.header.category = PACKET_CAT_REPORT;
+	CURRENT_EVENT_LOG_SLOT.header.version = 0;
+	CURRENT_EVENT_LOG_SLOT.header.priority = 0;
+	CURRENT_EVENT_LOG_SLOT.header.time = packet_encode_time(now_time.Hours, now_time.Minutes, now_time.Seconds);
+	CURRENT_EVENT_LOG_SLOT.header.date = packet_encode_date(now_date.Year, now_date.Month, now_date.Date);
+
+	CURRENT_EVENT_LOG_SLOT.body.Report.source_id = 0;
+	CURRENT_EVENT_LOG_SLOT.body.Report.report_id = report;
+	CURRENT_EVENT_LOG_SLOT.body.Report.report_data_8 = extra_code;
 
 	event_log_length++;
 	GIVE_EVENT_LOG_MUTEX;

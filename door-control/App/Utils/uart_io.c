@@ -26,16 +26,16 @@ static void serial_backspace_destructive(uint16_t count)
 
 	for (uint16_t idx = 0; idx < count; idx++)
 	{
-		HAL_UART_Transmit(&UART_PEER, backspace, len, 0xff);
+		HAL_UART_Transmit(&UART_PEER, backspace, len, HAL_MAX_DELAY);
 	}
 }
 
 static void serial_newline(void)
 {
-	static const uint8_t* newline = (uint8_t *)"\n\r";
+	static const uint8_t newline[2] = {'\r', '\n'};
 	static const uint8_t len = 2;
 
-	HAL_UART_Transmit(&UART_PEER, newline, len, 0xff);
+	HAL_UART_Transmit(&UART_PEER, newline, len, HAL_MAX_DELAY);
 }
 
 void serial_uart_initialize()
@@ -47,26 +47,32 @@ void serial_print(const char *msg, uint16_t len)
 {
 	TAKE_UART_TX_MUTEX;
 	if (len == 0) len = strlen(msg);
-	HAL_UART_Transmit(&UART_PEER, (uint8_t *)msg, len, 0xFF);
-	vTaskDelay(pdMS_TO_TICKS(2));
+	HAL_UART_Transmit(&UART_PEER, (uint8_t *)msg, len, HAL_MAX_DELAY);
+	vTaskDelay(pdMS_TO_TICKS(1));
 	GIVE_UART_TX_MUTEX;
 }
 
 void serial_print_line(const char *msg, uint16_t len)
 {
 	TAKE_UART_TX_MUTEX;
-	if (len == 0) len = strlen(msg);
-	HAL_UART_Transmit(&UART_PEER, (uint8_t *)msg, len, 0xFF);
+
+	// a NULL message is valid as a request to just print a newline
+	if (msg != NULL)
+	{
+		if (len == 0) len = strlen(msg);
+		HAL_UART_Transmit(&UART_PEER, (uint8_t *)msg, len, HAL_MAX_DELAY);
+	}
+
 	serial_newline();
-	vTaskDelay(pdMS_TO_TICKS(2));
+	vTaskDelay(pdMS_TO_TICKS(1));
 	GIVE_UART_TX_MUTEX;
 }
 
 void serial_print_char(const char c)
 {
 	TAKE_UART_TX_MUTEX;
-	HAL_UART_Transmit(&UART_PEER, (uint8_t *)&c, 1, 0xFF);
-	vTaskDelay(pdMS_TO_TICKS(2));
+	HAL_UART_Transmit(&UART_PEER, (uint8_t *)&c, 1, HAL_MAX_DELAY);
+	vTaskDelay(pdMS_TO_TICKS(1));
 	GIVE_UART_TX_MUTEX;
 }
 

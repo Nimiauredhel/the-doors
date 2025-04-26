@@ -42,7 +42,7 @@ static uint8_t *__sbrk_heap_end = NULL;
  * @endverbatim
  *
  * This implementation starts allocating at the '_end' linker symbol
- * The '_Min_Stack_Size' linker symbol reserves a memory for the MSP stack
+ * The '_Min_Stack_Size' liargumentsnker symbol reserves a memory for the MSP stack
  * The implementation considers '_estack' linker symbol to be RAM end
  * NOTE: If the MSP stack, at any point during execution, grows larger than the
  * reserved size, please increase the '_Min_Stack_Size'.

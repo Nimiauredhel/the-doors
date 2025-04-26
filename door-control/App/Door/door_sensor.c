@@ -8,12 +8,14 @@
 #include "door_sensor.h"
 
 #define TIMER_MHZ 1
-#define SENSOR_BUFFER_LENGTH 16
+#define SENSOR_BUFFER_LENGTH 32
 
 #define PERIOD_TO_DIST_CM_FLOAT(period) (period / TIMER_MHZ / cm_to_us)
 #define DIST_CM_FLOAT_TO_PERIOD(dist_cm_float) (dist_cm_float * TIMER_MHZ * cm_to_us)
 
-static const uint16_t sensor_max_echo_us = UINT16_MAX;
+const uint16_t sensor_max_echo_us = 10000;
+const uint16_t sensor_reboot_delay_us = UINT16_MAX;
+
 static const float cm_to_us = 58.31f;
 static const char *result_format = "[%02u] %.2fcm.(%luus)";
 
@@ -22,11 +24,13 @@ static volatile uint8_t sensor_buffer_idx = 0;
 static volatile uint16_t sensor_buffer[SENSOR_BUFFER_LENGTH] = {0};
 static volatile uint16_t capture_start_us = 0;
 
-static bool debug_enabled = true;
+static bool debug_enabled = false;
 
-static void door_sensor_record(uint16_t period_us)
+static void door_sensor_record(uint32_t period_us)
 {
-	// capping this at uint16 value since we don't care about long distance, only short
+	// capping this at max value since we don't care about long distance, only short
+	// reading it as zero since it's often an erroneous value under min distance
+	if (period_us > sensor_max_echo_us) period_us = 0;
 	sensor_buffer[sensor_buffer_idx] = period_us;
 	sensor_buffer_idx++;
 	if (sensor_buffer_idx >= SENSOR_BUFFER_LENGTH) sensor_buffer_idx = 0;
@@ -58,8 +62,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 			// record echo start
 			if (sensor_state == SENSOR_STATE_TRIGGER)
 			{
+				HAL_GPIO_WritePin(DOOR_SENSOR_TRIG_GPIO_Port, DOOR_SENSOR_TRIG_Pin, GPIO_PIN_RESET);
 				sensor_state = SENSOR_STATE_CAPTURE;
-				capture_start_us = htim->Instance->CNT;
+				capture_start_us = __HAL_TIM_GET_COUNTER(htim);
 			}
 		}
 		// falling edge
@@ -68,7 +73,15 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 			// record echo width
 			if (sensor_state == SENSOR_STATE_CAPTURE)
 			{
-				door_sensor_record(htim->Instance->CNT - capture_start_us);
+				if(__HAL_TIM_GET_COUNTER(htim) <= capture_start_us)
+				{
+					door_sensor_record(0);
+				}
+				else
+				{
+					door_sensor_record(__HAL_TIM_GET_COUNTER(htim) - capture_start_us);
+				}
+
 				sensor_state = SENSOR_STATE_IDLE;
 			}
 		}
@@ -80,9 +93,11 @@ void door_sensor_toggle_debug(void)
 	debug_enabled = !debug_enabled;
 }
 
-void door_sensor_enable(void)
+void door_sensor_enable(bool from_reboot)
 {
-	if (sensor_state != SENSOR_STATE_OFF) return;
+	if (sensor_state != SENSOR_STATE_OFF
+		&& !(from_reboot && sensor_state == SENSOR_STATE_REBOOTING))
+		return;
 
 	__HAL_TIM_SET_AUTORELOAD(&htim2, sensor_max_echo_us);
 	__HAL_TIM_SET_COUNTER(&htim2, 0);
@@ -90,7 +105,6 @@ void door_sensor_enable(void)
 	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_4);
 	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
 	sensor_state = SENSOR_STATE_IDLE;
-	vTaskDelay(pdMS_TO_TICKS(1));
 }
 
 void door_sensor_disable(void)
@@ -101,6 +115,19 @@ void door_sensor_disable(void)
 	HAL_TIM_IC_Stop_IT(&htim2, TIM_CHANNEL_4);
 	HAL_TIM_IC_Stop_IT(&htim2, TIM_CHANNEL_3);
 	sensor_state = SENSOR_STATE_OFF;
+}
+
+void door_sensor_reboot(void)
+{
+	if (sensor_state == SENSOR_STATE_REBOOTING) return;
+
+	HAL_TIM_Base_Stop_IT(&htim2);
+	HAL_TIM_IC_Stop_IT(&htim2, TIM_CHANNEL_4);
+	HAL_TIM_IC_Stop_IT(&htim2, TIM_CHANNEL_3);
+	__HAL_TIM_SET_AUTORELOAD(&htim2, sensor_reboot_delay_us);
+	__HAL_TIM_SET_COUNTER(&htim2, 0);
+	sensor_state = SENSOR_STATE_REBOOTING;
+	HAL_TIM_Base_Start_IT(&htim2);
 }
 
 void door_sensor_loop(void)
@@ -121,7 +148,7 @@ void door_sensor_loop(void)
 void door_sensor_trigger(void)
 {
 	static const uint16_t trig_length_us = 10;
-	static const uint16_t trig_cooldown_us = 30000;
+	static const uint16_t trig_cooldown_us = sensor_max_echo_us;
 
 	if (__HAL_TIM_GET_COUNTER(&htim2) < trig_cooldown_us) return;
 
@@ -146,4 +173,9 @@ bool door_sensor_leq_cm(float min_cm)
 	}
 
 	return false;
+}
+
+DoorSensorState_t door_sensor_get_state(void)
+{
+	return sensor_state;
 }

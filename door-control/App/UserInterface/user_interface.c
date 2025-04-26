@@ -24,7 +24,7 @@ static const uint8_t phase_char_limits[6] =
 static const char *phase_prompts[6] =
 {
 		"Unknown Phase",
-		"Welcome to DOOR. Valid commands: open, close, setpw, debug_comms, debug_sensor.",
+		"Welcome to DOOR. Valid commands: open, close, setpw, settime, debug_comms, debug_sensor.",
 		"Please Enter Password.",
 		"Please Enter NEW Password.",
 		"Opening Door!",
@@ -116,6 +116,11 @@ static void rx_evaluate(const char *rx_msg)
 			phase_push(IPHASE_CHECKPW);
 			phase_push(IPHASE_SETPW);
 		}
+		else if (strcmp(rx_msg, "settime") == 0)
+		{
+			phase_push(IPHASE_CHECKPW);
+			phase_push(IPHASE_SETTIME);
+		}
 		else if (strcmp(rx_msg, "debug_comms") == 0)
 		{
 			comms_toggle_debug();
@@ -137,27 +142,36 @@ static void rx_evaluate(const char *rx_msg)
 		auth_set_password(rx_msg);
 		auth_reset_auth();
 		break;
+		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:
 	case IPHASE_NONE:
 		phase_reset();
+		break;
+	case IPHASE_SETTIME:
+		// handled externally, shouldn't get here
 		break;
 	}
 }
 
 void interface_init(void)
 {
-	serial_uart_initialize();
 	while(!door_control_is_init()) vTaskDelay(pdMS_TO_TICKS(1));
 	phase_reset();
+	vTaskDelay(1);
 }
 
 void interface_loop(void)
 {
-	vTaskDelay(1);
-
-	char input[MAX_CHARS_FREE_INPUT];
+	char input[MAX_CHARS_FREE_INPUT] = {0};
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
+
+	if (phase_just_reset)
+	{
+		date_time_print();
+	}
+
+	vTaskDelay(1);
 	phase_just_reset = false;
 
 	switch (current_phase)
@@ -193,6 +207,18 @@ void interface_loop(void)
 		{
 			serial_print_line("Cannot change password without authentication.", 0);
 		}
+		break;
+	case IPHASE_SETTIME:
+		if (auth_is_auth())
+		{
+			date_time_set();
+			auth_reset_auth();
+		}
+		else
+		{
+			serial_print_line("Cannot set time/date without authentication.", 0);
+		}
+		phase_reset();
 		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:

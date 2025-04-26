@@ -54,9 +54,11 @@ typedef enum DoorErrorType
 
 typedef struct DoorPacketHeader
 {
-	uint16_t version;
-	uint32_t timestamp;
-	uint8_t category;
+	uint32_t version;
+	uint32_t time;
+	uint16_t date;
+	uint8_t priority;
+	DoorPacketCategory_t category;
 } DoorPacketHeader_t;
 
 typedef union DoorPacketBody
