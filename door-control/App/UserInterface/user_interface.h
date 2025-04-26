@@ -17,8 +17,9 @@
 
 #include "main.h"
 
-#include "door_control.h"
 #include "uart_io.h"
+#include "date_time.h"
+#include "door_control.h"
 #include "hub_comms.h"
 
 typedef enum InterfacePhase
@@ -29,6 +30,7 @@ typedef enum InterfacePhase
 	IPHASE_SETPW = 3,
 	IPHASE_OPEN = 4,
 	IPHASE_CLOSE = 5,
+	IPHASE_SETTIME = 6,
 } InterfacePhase_t;
 
 void interface_init(void);
