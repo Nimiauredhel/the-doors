@@ -52,13 +52,13 @@ typedef enum DoorErrorType
 	PACKET_ERROR_INVALID_PACKET = 2,
 } DoorErrorType_t;
 
-#pragma pack(push, 1)
+#pragma pack(push, 4)
 typedef struct DoorPacketHeader
 {
 	uint32_t version;
 	uint32_t time;
 	uint16_t date;
-	uint8_t priority;
+	uint16_t priority;
 	DoorPacketCategory_t category;
 } DoorPacketHeader_t;
 
