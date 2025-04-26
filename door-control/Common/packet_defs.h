@@ -52,6 +52,7 @@ typedef enum DoorErrorType
 	PACKET_ERROR_INVALID_PACKET = 2,
 } DoorErrorType_t;
 
+#pragma pack(push, 1)
 typedef struct DoorPacketHeader
 {
 	uint32_t version;
@@ -65,7 +66,6 @@ typedef union DoorPacketBody
 {
 	// the "stub" fields are here as a reminder that the first two packet types -
 	// - are already as big as the third, and can have extra fields at no cost later
-#pragma pack(push, 1)
 	struct {
 	} Empty;
 	struct {
@@ -87,7 +87,6 @@ typedef union DoorPacketBody
 		uint32_t data_length;
 		uint8_t data[];
 	} Data;
-#pragma pack(pop)
 } DoorPacketBody_t;
 
 typedef struct DoorPacket
@@ -95,5 +94,6 @@ typedef struct DoorPacket
 	DoorPacketHeader_t header;
 	DoorPacketBody_t body;
 } DoorPacket_t;
+#pragma pack(pop)
 
 #endif /* PACKET_DEFS_H_ */

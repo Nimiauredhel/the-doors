@@ -24,8 +24,8 @@
 void event_log_initialize(void);
 void event_log_clear(void);
 void event_log_append(DoorReport_t report, uint8_t extra_code);
-uint16_t event_log_get_length(void);
-uint8_t* event_log_get_length_ptr(void);
+volatile uint16_t event_log_get_length(void);
+volatile uint8_t* event_log_get_length_ptr(void);
 DoorPacket_t* event_log_get_entry(uint16_t index);
 
 #endif /* EVENT_LOG_H_ */

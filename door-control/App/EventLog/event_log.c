@@ -20,8 +20,8 @@
 static SemaphoreHandle_t event_log_lock = NULL;
 static StaticSemaphore_t event_log_lock_buffer;
 
-static uint8_t event_log_length = 0;
-static uint8_t event_log_length_copy = 0;
+static volatile uint8_t event_log_length = 0;
+static volatile uint8_t event_log_length_copy = 0;
 static DoorPacket_t event_log_buffer[EVENT_LOG_CAPACITY];
 
 void event_log_initialize(void)
@@ -64,15 +64,15 @@ void event_log_append(DoorReport_t report, uint8_t extra_code)
 	GIVE_EVENT_LOG_MUTEX;
 }
 
-uint16_t event_log_get_length(void)
+volatile uint16_t event_log_get_length(void)
 {
 	TAKE_EVENT_LOG_MUTEX;
-	uint8_t length = event_log_length;
+	volatile uint8_t length = event_log_length;
 	GIVE_EVENT_LOG_MUTEX;
 	return length;
 }
 
-uint8_t* event_log_get_length_ptr(void)
+volatile uint8_t* event_log_get_length_ptr(void)
 {
 	TAKE_EVENT_LOG_MUTEX;
 	event_log_length_copy = event_log_length;
