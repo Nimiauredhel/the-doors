@@ -66,7 +66,7 @@ static void comms_debug_output(void)
 			{
 				sprintf(buff, "I2C reports: %s event on %s.",
 						comms_debug_log[i].action == COMMS_EVENT_SENT ? "TX" : "RX",
-						i2c_register_names[comms_debug_log[i].subject]);
+						i2c_register_names[comms_debug_log[i].subject/2]);
 				serial_print_line(buff, 0);
 			}
 		}
@@ -78,12 +78,15 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 	switch (cmd_ptr->body.Request.request_id)
 	{
 	case PACKET_REQUEST_NONE:
+		serial_print_line("Received NULL command from hub.", 0);
 		break;
 	case PACKET_REQUEST_DOOR_CLOSE:
+		serial_print_line("Received CLOSE DOOR command from hub.", 0);
 		door_set_closed(true);
 		break;
 	case PACKET_REQUEST_DOOR_OPEN:
-		door_set_closed(true);
+		serial_print_line("Received OPEN DOOR command from hub.", 0);
+		door_set_closed(false);
 		break;
 	case PACKET_REQUEST_BELL:
 		serial_print_line("Received bell command, this is unusual.", 0);
@@ -93,6 +96,7 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		serial_print_line("Received photo request, yet unimplemented.", 0);
 		break;
 	case PACKET_REQUEST_SYNC_TIME:
+		serial_print_line("Received SYNC TIME command from hub.", 0);
 		date_time_set_from_packet(cmd_ptr->header.date, cmd_ptr->header.time);
 		break;
 	}
@@ -108,7 +112,7 @@ static void comms_check_command_queue(void)
 	// process entire priority queue before proceeding
 	while (priority_command_queue_len > 0)
 	{
-		cmd_idx = priority_command_queue_head + priority_command_queue_len;
+		cmd_idx = priority_command_queue_head + (priority_command_queue_len - 1);
 		if (cmd_idx > PRIORITY_COMMAND_QUEUE_CAPACITY) cmd_idx -= PRIORITY_COMMAND_QUEUE_CAPACITY;
 		cmd_ptr = priority_command_queue+cmd_idx;
 		priority_command_queue_head++;
@@ -121,7 +125,7 @@ static void comms_check_command_queue(void)
 	if (general_command_queue_len > 0)
 	{
 		vTaskDelay(pdMS_TO_TICKS(10));
-		cmd_idx = general_command_queue_head + general_command_queue_len;
+		cmd_idx = general_command_queue_head + (general_command_queue_len - 1);
 		if (cmd_idx > GENERAL_COMMAND_QUEUE_CAPACITY) cmd_idx -= GENERAL_COMMAND_QUEUE_CAPACITY;
 		cmd_ptr = general_command_queue+cmd_idx;
 		general_command_queue_head++; if (general_command_queue_head > GENERAL_COMMAND_QUEUE_CAPACITY) general_command_queue_head -= GENERAL_COMMAND_QUEUE_CAPACITY;

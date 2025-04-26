@@ -8,12 +8,12 @@
 #include "door_sensor.h"
 
 #define TIMER_MHZ 1
-#define SENSOR_BUFFER_LENGTH 32
+#define SENSOR_BUFFER_LENGTH 16
 
 #define PERIOD_TO_DIST_CM_FLOAT(period) (period / TIMER_MHZ / cm_to_us)
 #define DIST_CM_FLOAT_TO_PERIOD(dist_cm_float) (dist_cm_float * TIMER_MHZ * cm_to_us)
 
-const uint16_t sensor_max_echo_us = 10000;
+const uint16_t sensor_max_echo_us = 32768;
 const uint16_t sensor_reboot_delay_us = UINT16_MAX;
 
 static const float cm_to_us = 58.31f;

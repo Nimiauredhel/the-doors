@@ -12,7 +12,11 @@ const char i2c_register_names[I2C_REGISTER_DEF_COUNT][16] =
 		"Event Count",
 		"Event Head",
 		"Query Result",
+		"Unknown",
 		"Hub Command",
+		"Unknown",
+		"Unknown",
+		"Unknown",
 		"Data",
 		"Unknown",
 };
