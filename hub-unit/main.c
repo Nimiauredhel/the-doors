@@ -6,11 +6,12 @@
 #include <i2c/smbus.h>
 
 #include "../door-control/Common/packet_defs.h"
+#include "../door-control/Common/packet_utils.h"
 #include "../door-control/Common/i2c_register_defs.h"
 
 static const char *device_path = "/dev/bone/i2c/2";
 static const uint16_t slave_addr = 0x0a;
-static const uint16_t polling_interval_sec = 2;
+static const uint16_t polling_interval_sec = 1;
 
 static int device_fd = 0;
 
@@ -27,22 +28,19 @@ static void i2c_init(void)
 
 static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, const uint8_t len)
 {
-	// prepare the outgoing message
-	uint8_t tx_buff[256] = {0};
-	tx_buff[0] = reg_addr;
-	memcpy(tx_buff+1, message, sizeof(tx_buff)-1);
-	// write to device and close
-	write(device_fd, tx_buff, len+1);
+	int32_t bytes_sent = i2c_smbus_write_i2c_block_data(device_fd, reg_addr, len, message);
+	//printf("Sent %d bytes.\n", bytes_sent);
 }
 
 static void i2c_master_read(const uint8_t reg_addr, const uint8_t len)
 {
-		i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, rx_buff);
+	int32_t bytes_read = i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, rx_buff);
+	//printf("Read %d bytes.\n", bytes_read);
 }
 
 static void poll_slave_event_queue(void)
 {
-	static const uint32_t timeout_sec = 30;
+	static const uint32_t timeout_sec = 60;
 	static const uint8_t zero = 0;
 
 	uint32_t idle_counter = 0;
@@ -68,13 +66,11 @@ static void poll_slave_event_queue(void)
                 bzero(rx_buff, sizeof(rx_buff));
                 i2c_master_read(I2C_REG_EVENT_HEAD | (i << 1), sizeof(DoorPacket_t));
 
-                printf("Retrieved event %d,", i);
-		fflush(stdout);
-
 		memcpy(&packet_buff, rx_buff, sizeof(DoorPacket_t));
+
+                printf("[%02u:%02u:%02u]: ", packet_decode_hour(packet_buff.header.time), packet_decode_minutes(packet_buff.header.time), packet_decode_seconds(packet_buff.header.time));
+
                 DoorReport_t report_type = packet_buff.body.Report.report_id;
-                printf(" event type: ");
-		fflush(stdout);
 
                 switch(report_type)
                 {
@@ -124,6 +120,9 @@ static void poll_slave_event_queue(void)
 
 int main(void)
 {
+	printf("Size of header: %d\n", sizeof(DoorPacketHeader_t));
+	printf("Size of body: %d\n", sizeof(DoorPacketBody_t));
+	printf("Size of packet: %d\n", sizeof(DoorPacket_t));
 	i2c_init();
 	poll_slave_event_queue();
 	close(device_fd);

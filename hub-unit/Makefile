@@ -1,9 +1,10 @@
-SOURCE=*.c
+SOURCE=*.c ../door-control/Common/*.c
 PROGRAM=doors_hub
 EXE_NAME=$(PROGRAM).out
 ARGS=
 BUILD_DIR=build/
 EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
+INC= -I ../door-control/Common
 LIBS= -li2c
 DEFAULT_FLAGS=
 STRICT_FLAGS= $(DEFAULT_FLAGS) -std=c99 -Wall -pedantic -Wextra
@@ -11,19 +12,19 @@ DEBUG_FLAGS= $(STRICT_FLAGS) -g -o0
 
 default:
 	mkdir $(BUILD_DIR)
-	gcc $(SOURCE) $(DEFAULT_FLAGS) $(LIBS) -o $(EXE_PATH)
+	gcc $(SOURCE) $(DEFAULT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make post-build
 	make setcap
                                      
 strict:                              
 	mkdir $(BUILD_DIR)
-	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(LIBS) -o $(EXE_PATH)
+	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make post-build
 	make setcap
                     
 debug:              
 	mkdir $(BUILD_DIR)
-	gcc $(SOURCE) $(DEBUG_FLAGS) $(LIBS) -o $(EXE_PATH)
+	gcc $(SOURCE) $(DEBUG_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make post-build
 
 .ONESHELL:

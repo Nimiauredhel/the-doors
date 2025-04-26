@@ -8,7 +8,7 @@
 #ifndef PACKET_UTILS_H_
 #define PACKET_UTILS_H_
 
-#include "main.h"
+#include <stdint.h>
 #include "packet_defs.h"
 
 uint16_t packet_encode_date(uint8_t year, uint8_t month, uint8_t day);

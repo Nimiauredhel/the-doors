@@ -8,6 +8,8 @@
 #ifndef PACKET_DEFS_H_
 #define PACKET_DEFS_H_
 
+#include <stdint.h>
+
 typedef enum DoorPacketCategory
 {
 	PACKET_CAT_NONE = 0,
