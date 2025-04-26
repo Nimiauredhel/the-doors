@@ -18,6 +18,15 @@ static int device_fd = 0;
 static uint8_t rx_buff[255] = {0};
 static DoorPacket_t packet_buff = {0};
 
+static struct tm get_datetime(void)
+{
+    time_t rawtime;
+    struct tm *timeinfo;
+    time (&rawtime);
+    timeinfo = localtime (&rawtime);
+    return *timeinfo;
+}
+
 static void i2c_init(void)
 {
 	// open the i2c device file
@@ -28,14 +37,33 @@ static void i2c_init(void)
 
 static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, const uint8_t len)
 {
-	int32_t bytes_sent = i2c_smbus_write_i2c_block_data(device_fd, reg_addr, len, message);
-	//printf("Sent %d bytes.\n", bytes_sent);
+	int32_t result = i2c_smbus_write_i2c_block_data(device_fd, reg_addr, len, message);
+	if (result != 0) perror("I2C send error");
+	else printf("Sent %ld bytes.\n", len);
 }
 
 static void i2c_master_read(const uint8_t reg_addr, const uint8_t len)
 {
 	int32_t bytes_read = i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, rx_buff);
-	//printf("Read %d bytes.\n", bytes_read);
+	//printf("Read %ld bytes.\n", bytes_read);
+}
+
+static void send_request(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
+{
+	DoorPacket_t request_buffer;
+	struct tm dt = get_datetime();
+
+	request_buffer.header.category = PACKET_CAT_REQUEST;
+	request_buffer.header.priority = priority;
+	request_buffer.header.date =
+		packet_encode_date(dt.tm_year-100, dt.tm_mon+1, dt.tm_mday);
+	request_buffer.header.time =
+		packet_encode_time(dt.tm_hour, dt.tm_min, dt.tm_sec);
+
+	request_buffer.body.Request.request_id = request;
+	request_buffer.body.Request.request_data_32 = extra_data;
+
+	i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)&request_buffer, sizeof(DoorPacket_t));
 }
 
 static void poll_slave_event_queue(void)
@@ -108,7 +136,7 @@ static void poll_slave_event_queue(void)
             }
 
 			printf("Events retrieved. Ordering slave device to reset its local queue...\n");
-			i2c_master_write(0, &zero, 2);
+			i2c_master_write(I2C_REG_EVENT_COUNT, &zero, 1);
 			printf("Report concluded, polling resumed.\n");
 
 			idle_counter = 0;
@@ -124,6 +152,12 @@ int main(void)
 	printf("Size of body: %d\n", sizeof(DoorPacketBody_t));
 	printf("Size of packet: %d\n", sizeof(DoorPacket_t));
 	i2c_init();
+	send_request(PACKET_REQUEST_SYNC_TIME, 0, 1);
+	sleep(1);
+	send_request(PACKET_REQUEST_DOOR_OPEN, 0, 0);
+	sleep(1);
+	send_request(PACKET_REQUEST_DOOR_CLOSE, 0, 0);
+	sleep(1);
 	poll_slave_event_queue();
 	close(device_fd);
 }
