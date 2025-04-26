@@ -89,7 +89,7 @@ void date_time_print()
     serial_print_line(output_buffer, 0);
 }
 
-void date_time_set()
+void date_time_set_interactive()
 {
 	RTC_DateTypeDef sDate = {0};
 	RTC_TimeTypeDef sTime = {0};
@@ -199,6 +199,39 @@ void date_time_set()
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	date_time_print();
 	vTaskDelay(pdMS_TO_TICKS(100));
+	event_log_append(PACKET_REPORT_TIME_SET, 1);
+}
+
+void date_time_set_from_packet(uint16_t date, uint32_t time)
+{
+	RTC_DateTypeDef sDate = {0};
+	RTC_TimeTypeDef sTime = {0};
+
+	sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+	sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+	sDate.Year = packet_decode_year(date);
+	sDate.Month = packet_decode_month(date);
+	sDate.Date = packet_decode_day(date);
+	sTime.Hours = packet_decode_hour(time);
+	sTime.Minutes = packet_decode_minutes(time);
+	sTime.Seconds = packet_decode_seconds(time);
+
+	if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
+	{
+		serial_print_line("Error setting the date.", 0);
+		//Error_Handler();
+	}
+
+	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
+	{
+		serial_print_line("Error setting the time.", 0);
+		//Error_Handler();
+	}
+
+	date_time_alarm_reset();
+	date_time_print();
+	event_log_append(PACKET_REPORT_TIME_SET, 0);
 }
 
 /**

@@ -7,13 +7,31 @@
 
 #include "hub_comms.h"
 
+#define GENERAL_COMMAND_QUEUE_CAPACITY 24
+#define PRIORITY_COMMAND_QUEUE_CAPACITY 8
 #define COMMS_DEBUG_LOG_CAPACITY 32
+
+#define TAKE_COMMAND_QUEUE_MUTEX \
+	if (is_isr()) xSemaphoreTakeFromISR(command_queues_lock, 0); \
+	else xSemaphoreTake(command_queues_lock, portMAX_DELAY)
+#define GIVE_COMMAND_QUEUE_MUTEX \
+	if (is_isr()) xSemaphoreGiveFromISR(command_queues_lock, 0); \
+	else xSemaphoreGive(command_queues_lock)
 
 static bool comms_debug_enabled = false;
 static CommsEvent_t comms_debug_log[COMMS_DEBUG_LOG_CAPACITY];
 static uint16_t comms_debug_pending_count = 0;
 
 static uint16_t outbox_event_count = 0;
+
+static SemaphoreHandle_t command_queues_lock = NULL;
+static StaticSemaphore_t command_queues_lock_buffer;
+static uint8_t general_command_queue_head = 0;
+static uint8_t priority_command_queue_head = 0;
+static uint8_t general_command_queue_len = 0;
+static uint8_t priority_command_queue_len = 0;
+static DoorPacket_t general_command_queue[GENERAL_COMMAND_QUEUE_CAPACITY] = {0};
+static DoorPacket_t priority_command_queue[PRIORITY_COMMAND_QUEUE_CAPACITY] = {0};
 
 static void comms_debug_output(void)
 {
@@ -55,17 +73,104 @@ static void comms_debug_output(void)
 	}
 }
 
+static void comms_process_command(DoorPacket_t *cmd_ptr)
+{
+	switch (cmd_ptr->body.Request.request_id)
+	{
+	case PACKET_REQUEST_NONE:
+		break;
+	case PACKET_REQUEST_DOOR_CLOSE:
+		door_set_closed(true);
+		break;
+	case PACKET_REQUEST_DOOR_OPEN:
+		door_set_closed(true);
+		break;
+	case PACKET_REQUEST_BELL:
+		serial_print_line("Received bell command, this is unusual.", 0);
+		break;
+	case PACKET_REQUEST_PHOTO:
+		// TODO: implement the photo request
+		serial_print_line("Received photo request, yet unimplemented.", 0);
+		break;
+	case PACKET_REQUEST_SYNC_TIME:
+		date_time_set_from_packet(cmd_ptr->header.date, cmd_ptr->header.time);
+		break;
+	}
+}
+
+static void comms_check_command_queue(void)
+{
+	uint8_t cmd_idx = 0;
+	DoorPacket_t *cmd_ptr = NULL;
+
+	TAKE_COMMAND_QUEUE_MUTEX;
+
+	// process entire priority queue before proceeding
+	while (priority_command_queue_len > 0)
+	{
+		cmd_idx = priority_command_queue_head + priority_command_queue_len;
+		if (cmd_idx > PRIORITY_COMMAND_QUEUE_CAPACITY) cmd_idx -= PRIORITY_COMMAND_QUEUE_CAPACITY;
+		cmd_ptr = priority_command_queue+cmd_idx;
+		priority_command_queue_head++;
+		if (priority_command_queue_head > PRIORITY_COMMAND_QUEUE_CAPACITY) priority_command_queue_head -= PRIORITY_COMMAND_QUEUE_CAPACITY;
+		priority_command_queue_len--;
+		comms_process_command(cmd_ptr);
+	}
+
+	// process one item at a time from the general queue to avoid blocking
+	if (general_command_queue_len > 0)
+	{
+		vTaskDelay(pdMS_TO_TICKS(10));
+		cmd_idx = general_command_queue_head + general_command_queue_len;
+		if (cmd_idx > GENERAL_COMMAND_QUEUE_CAPACITY) cmd_idx -= GENERAL_COMMAND_QUEUE_CAPACITY;
+		cmd_ptr = general_command_queue+cmd_idx;
+		general_command_queue_head++; if (general_command_queue_head > GENERAL_COMMAND_QUEUE_CAPACITY) general_command_queue_head -= GENERAL_COMMAND_QUEUE_CAPACITY;
+		general_command_queue_len--;
+		comms_process_command(cmd_ptr);
+	}
+
+	GIVE_COMMAND_QUEUE_MUTEX;
+}
+
 void comms_init(void)
 {
+	command_queues_lock = xSemaphoreCreateMutexStatic(&command_queues_lock_buffer);
 	i2c_io_init();
-	vTaskDelay(pdMS_TO_TICKS(10));
-	serial_print_line("I2C listening initialized.", 0);
+	serial_print_line("Initialized I2C listening to hub unit.", 0);
 }
 
 void comms_loop(void)
 {
-	vTaskDelay(pdMS_TO_TICKS(100));
+	vTaskDelay(pdMS_TO_TICKS(50));
+	comms_check_command_queue();
 	comms_debug_output();
+}
+
+void comms_enqueue_command(DoorPacket_t *cmd_ptr)
+{
+	uint8_t tail_idx;
+
+	TAKE_COMMAND_QUEUE_MUTEX;
+
+	// TODO: this code is begging for a reusable packet queue implementation
+	if (cmd_ptr->header.priority > 0)
+	{
+		if (priority_command_queue_len >= PRIORITY_COMMAND_QUEUE_CAPACITY) return;
+		tail_idx = priority_command_queue_head + priority_command_queue_len;
+		if (tail_idx >= PRIORITY_COMMAND_QUEUE_CAPACITY) tail_idx -= PRIORITY_COMMAND_QUEUE_CAPACITY;
+		memcpy(priority_command_queue+tail_idx, cmd_ptr, sizeof(DoorPacket_t));
+		priority_command_queue_len++;
+	}
+	else
+	{
+		if (general_command_queue_len >= GENERAL_COMMAND_QUEUE_CAPACITY) return;
+		tail_idx = general_command_queue_head + general_command_queue_len;
+		if (tail_idx >= GENERAL_COMMAND_QUEUE_CAPACITY) tail_idx -= GENERAL_COMMAND_QUEUE_CAPACITY;
+		memcpy(general_command_queue+tail_idx, cmd_ptr, sizeof(DoorPacket_t));
+		general_command_queue_len++;
+	}
+
+	GIVE_COMMAND_QUEUE_MUTEX;
 }
 
 void comms_report_internal(CommsEventType_t action, I2CRegisterDefinition_t subject)

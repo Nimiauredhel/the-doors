@@ -30,6 +30,7 @@ typedef enum DoorReport
 	PACKET_REPORT_QUERY_RESULT = 7,
 	PACKET_REPORT_DATA_READY = 8,
 	PACKET_REPORT_ERROR = 9,
+	PACKET_REPORT_TIME_SET = 10,
 } DoorReport_t;
 
 typedef enum DoorRequest
@@ -39,6 +40,7 @@ typedef enum DoorRequest
 	PACKET_REQUEST_DOOR_CLOSE = 2,
 	PACKET_REQUEST_BELL = 3,
 	PACKET_REQUEST_PHOTO = 4,
+	PACKET_REQUEST_SYNC_TIME = 5,
 } DoorRequest_t;
 
 typedef enum DoorDataType
@@ -69,8 +71,6 @@ typedef union DoorPacketBody
 	// the "stub" fields are here as a reminder that the first two packet types -
 	// - are already as big as the third, and can have extra fields at no cost later
 	struct {
-	} Empty;
-	struct {
 		DoorReport_t report_id;
 		uint8_t source_id;
 		uint8_t report_data_8;
@@ -87,6 +87,7 @@ typedef union DoorPacketBody
 		uint16_t source_id;
 		uint16_t destination_id;
 		uint32_t data_length;
+		// TODO: formalize data sizes, whether fixed or variable
 		uint8_t data[];
 	} Data;
 } DoorPacketBody_t;

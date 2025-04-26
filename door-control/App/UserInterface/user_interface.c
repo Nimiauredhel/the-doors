@@ -211,7 +211,7 @@ void interface_loop(void)
 	case IPHASE_SETTIME:
 		if (auth_is_auth())
 		{
-			date_time_set();
+			date_time_set_interactive();
 			auth_reset_auth();
 		}
 		else

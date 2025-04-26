@@ -18,7 +18,6 @@ uint8_t *i2c_tx_position;
 uint8_t i2c_tx_buff[I2C_TX_BUFF_SIZE] = {0};
 uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
 
-DoorPacket_t i2c_hub_command_register = {0};
 DoorPacket_t i2c_query_result_register = {0};
 
 /*
@@ -69,18 +68,18 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 	case I2C_REG_EVENT_COUNT:
 		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_EVENT_COUNT);
 		event_log_clear();
-		return;
+		break;
 	case I2C_REG_HUB_COMMAND:
 		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_HUB_COMMAND);
+		comms_enqueue_command((DoorPacket_t *)(i2c_rx_buff+1));
 		break;
 	default:
 		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_UNKNOWN);
 		event_log_append(PACKET_REPORT_ERROR, PACKET_ERROR_WRONG_REGISTER);
-		return;
+		break;
 	}
 
-	// TODO: read and process hub command
-
+	/*
 	int num_regs = i2c_rx_count - 1;
 	int end_reg = num_regs - 1;
 
@@ -93,8 +92,9 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 	{
 		*((uint8_t*)(&i2c_hub_command_register)+idx) = i2c_rx_buff[idx+1];
 	}
+	*/
 
-	bzero(i2c_rx_buff+i2c_rx_count, I2C_RX_BUFF_SIZE-i2c_rx_count);
+	bzero(i2c_rx_buff, I2C_RX_BUFF_SIZE);
 	i2c_rx_count = 0;
 
 	HAL_I2C_EnableListen_IT(hi2c);

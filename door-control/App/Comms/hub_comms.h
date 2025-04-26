@@ -19,6 +19,7 @@
 
 #include "main.h"
 
+#include "door_control.h"
 #include "i2c_io.h"
 #include "uart_io.h"
 #include "event_log.h"
@@ -40,6 +41,7 @@ typedef struct CommsEvent
 
 void comms_init(void);
 void comms_loop(void);
+void comms_enqueue_command(DoorPacket_t *cmd_ptr);
 void comms_report_internal(CommsEventType_t action, I2CRegisterDefinition_t subject);
 void comms_toggle_debug(void);
 
