@@ -71,6 +71,7 @@ static void poll_slave_event_queue(void)
 	static const uint32_t timeout_sec = 60;
 	static const uint8_t zero = 0;
 
+	char debug_buff[32] = {0};
 	uint32_t idle_counter = 0;
 
 	printf("Starting polling.\n");
@@ -96,7 +97,14 @@ static void poll_slave_event_queue(void)
 
 		memcpy(&packet_buff, rx_buff, sizeof(DoorPacket_t));
 
-                printf("[%02u:%02u:%02u]: ", packet_decode_hour(packet_buff.header.time), packet_decode_minutes(packet_buff.header.time), packet_decode_seconds(packet_buff.header.time));
+                printf("[%u|%u][%02u/%02u/%02u][%02u:%02u:%02u]: ",
+				packet_buff.header.date, packet_buff.header.time,
+				packet_decode_day(packet_buff.header.date),
+				packet_decode_month(packet_buff.header.date),
+				packet_decode_year(packet_buff.header.date),
+				packet_decode_hour(packet_buff.header.time),
+				packet_decode_minutes(packet_buff.header.time),
+				packet_decode_seconds(packet_buff.header.time));
 
                 DoorReport_t report_type = packet_buff.body.Report.report_id;
 
@@ -112,7 +120,8 @@ static void poll_slave_event_queue(void)
                     printf("Door Closed.\n");
                     break;
                 case PACKET_REPORT_DOOR_BLOCKED:
-                    printf("Door Blocked.\n");
+                    printf("Door Blocked for %lu seconds.\n",
+			packet_buff.body.Report.report_data_32);
                     break;
                 case PACKET_REPORT_PASS_CORRECT:
                     printf("Correct Password Entered.\n");
@@ -121,19 +130,32 @@ static void poll_slave_event_queue(void)
                     printf("Wrong Password Entered.\n");
                     break;
                 case PACKET_REPORT_PASS_CHANGED:
-                    printf("Password Changed.\n");
+		    bzero(debug_buff, sizeof(debug_buff));
+		    door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
+		    debug_buff[4] = '-';
+		    debug_buff[5] = '>';
+		    door_pw_to_str(packet_buff.body.Report.report_data_32, debug_buff+6);
+                    printf("Password Changed. %s\n", debug_buff);
                     break;
                 case PACKET_REPORT_QUERY_RESULT:
-                    printf("Query Result [%u]", packet_buff.body.Report.report_data_8);
+                    printf("Query Result [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
                     break;
                 case PACKET_REPORT_DATA_READY:
                     printf("Data Ready.\n");
                     break;
                 case PACKET_REPORT_ERROR:
-                    printf("Error Code [%u]", packet_buff.body.Report.report_data_8);
+                    printf("Error Code [%u]", packet_buff.body.Report.report_data_16);
                     break;
                 case PACKET_REPORT_TIME_SET:
-                    printf("Time Set.\n");
+                    printf("Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.\n",
+			packet_buff.body.Report.report_data_16,
+			packet_buff.body.Report.report_data_32,
+			packet_decode_day(packet_buff.body.Report.report_data_16),
+			packet_decode_month(packet_buff.body.Report.report_data_16),
+			packet_decode_year(packet_buff.body.Report.report_data_16),
+			packet_decode_hour(packet_buff.body.Report.report_data_32),
+			packet_decode_minutes(packet_buff.body.Report.report_data_32),
+			packet_decode_seconds(packet_buff.body.Report.report_data_32));
                     break;
                 case PACKET_REPORT_FRESH_BOOT:
                     printf("Fresh Boot. Sending time sync!\n");

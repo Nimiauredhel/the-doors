@@ -22,4 +22,6 @@ uint8_t packet_decode_hour(uint32_t time);
 uint8_t packet_decode_minutes(uint32_t time);
 uint8_t packet_decode_seconds(uint32_t time);
 
+void door_pw_to_str(uint16_t door_pw, char *str_buff);
+
 #endif /* PACKET_UTILS_H_ */

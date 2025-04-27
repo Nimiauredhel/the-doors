@@ -50,3 +50,11 @@ uint8_t packet_decode_seconds(uint32_t time)
 	return time & 63;
 }
 
+void door_pw_to_str(uint16_t door_pw, char *str_buff)
+{
+	str_buff[0] = '0' + (door_pw & 15);
+	str_buff[1] = '0' + ((door_pw >> 4) & 15);
+	str_buff[2] = '0' + ((door_pw >> 8) & 15);
+	str_buff[3] = '0' + ((door_pw >> 12) & 15);
+}
+
