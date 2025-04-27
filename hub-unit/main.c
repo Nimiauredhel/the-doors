@@ -124,10 +124,14 @@ static void poll_slave_event_queue(void)
 			packet_buff.body.Report.report_data_32);
                     break;
                 case PACKET_REPORT_PASS_CORRECT:
-                    printf("Correct Password Entered.\n");
+		    bzero(debug_buff, sizeof(debug_buff));
+		    door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
+                    printf("Correct Password Entered: %s.\n", debug_buff);
                     break;
                 case PACKET_REPORT_PASS_WRONG:
-                    printf("Wrong Password Entered.\n");
+		    bzero(debug_buff, sizeof(debug_buff));
+		    door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
+                    printf("Wrong Password Entered: %s.\n", debug_buff);
                     break;
                 case PACKET_REPORT_PASS_CHANGED:
 		    bzero(debug_buff, sizeof(debug_buff));
