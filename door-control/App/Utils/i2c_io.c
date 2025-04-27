@@ -75,7 +75,7 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 		break;
 	default:
 		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_UNKNOWN);
-		event_log_append(PACKET_REPORT_ERROR, PACKET_ERROR_WRONG_REGISTER);
+		event_log_append(PACKET_REPORT_ERROR, PACKET_ERROR_WRONG_REGISTER, 0);
 		break;
 	}
 

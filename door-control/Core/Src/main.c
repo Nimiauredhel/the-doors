@@ -209,7 +209,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   serial_uart_initialize();
   event_log_initialize();
-  event_log_append(PACKET_REPORT_FRESH_BOOT, 0);
+  event_log_append_minimal(PACKET_REPORT_FRESH_BOOT);
   /* USER CODE END 2 */
 
   /* Init scheduler */

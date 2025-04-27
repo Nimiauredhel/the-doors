@@ -73,14 +73,14 @@ typedef union DoorPacketBody
 	// - are already as big as the third, and can have extra fields at no cost later
 	struct {
 		DoorReport_t report_id;
-		uint8_t source_id;
-		uint8_t report_data_8;
+		uint16_t source_id;
+		uint16_t report_data_16;
 		uint32_t report_data_32;
 	} Report;
 	struct {
 		DoorRequest_t request_id;
-		uint8_t source_id;
-		uint8_t destination_id;
+		uint16_t source_id;
+		uint16_t destination_id;
 		uint32_t request_data_32;
 	} Request;
 	struct {

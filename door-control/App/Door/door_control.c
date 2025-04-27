@@ -13,7 +13,7 @@ static const int door_close_angle = 90;
 static bool initialized = false;
 static DoorFlags_t door_state_flags = DOOR_FLAG_NONE;
 static int16_t servo_last_angle;
-static volatile uint16_t door_open_duration_seconds = 0;
+static volatile uint32_t door_open_duration_seconds = 0;
 
 static void set_door_indicator_led(float red_percent, float green_percent)
 {
@@ -96,7 +96,7 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 			if (!blocked)
 			{
 				blocked = true;
-				event_log_append(PACKET_REPORT_DOOR_BLOCKED, 0);
+				event_log_append(PACKET_REPORT_DOOR_BLOCKED, 0, door_open_duration_seconds);
 			}
 
 			if (idx > 1) idx -= 2;
@@ -152,7 +152,7 @@ void door_control_loop(void)
 		&& door_open_duration_seconds % 10 == 5)
 		{
 			last_timer_notification = door_open_duration_seconds;
-			sprintf(msg_buff, "The door has been open for %u seconds.", door_open_duration_seconds);
+			sprintf(msg_buff, "The door has been open for %lu seconds.", door_open_duration_seconds);
 			serial_print_line(msg_buff, 0);
 			door_set_closed(true);
 		}
@@ -203,12 +203,12 @@ bool door_set_closed(bool closed)
 	{
 		serial_print_line("Door Changing State...", 0);
 		door_state_flags |= DOOR_FLAG_TRANSITION;
-		if (!closed) event_log_append(PACKET_REPORT_DOOR_OPENED, 0);
+		if (!closed) event_log_append_minimal(PACKET_REPORT_DOOR_OPENED);
 		servo_set_angle_gradual(closed ? door_close_angle + 10 : door_open_angle,
 		1, closed ? 20 : 10, closed ? 5.0f : 0.0f);
 		if (closed) servo_set_angle(door_close_angle, 0);
 		door_state_flags &= ~DOOR_FLAG_TRANSITION;
-		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
+		if (closed) event_log_append_minimal(PACKET_REPORT_DOOR_CLOSED);
 		serial_print_line("Door State Changed.", 0);
 	}
 	else
@@ -222,7 +222,7 @@ bool door_set_closed(bool closed)
 		}
 
 		servo_set_angle(closed ? door_close_angle : door_open_angle, 0);
-		if (closed) event_log_append(PACKET_REPORT_DOOR_CLOSED, 0);
+		if (closed) event_log_append_minimal(PACKET_REPORT_DOOR_CLOSED);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 

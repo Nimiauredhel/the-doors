@@ -39,7 +39,12 @@ void event_log_clear(void)
 	GIVE_EVENT_LOG_MUTEX;
 }
 
-void event_log_append(DoorReport_t report, uint8_t extra_code)
+void event_log_append_minimal(DoorReport_t report)
+{
+	event_log_append(report, 0, 0);
+}
+
+void event_log_append(DoorReport_t report, uint16_t data_16, uint32_t data_32)
 {
 	// TODO: add error code
 	if (event_log_length >= EVENT_LOG_CAPACITY) return;
@@ -58,7 +63,8 @@ void event_log_append(DoorReport_t report, uint8_t extra_code)
 
 	CURRENT_EVENT_LOG_SLOT.body.Report.source_id = 0;
 	CURRENT_EVENT_LOG_SLOT.body.Report.report_id = report;
-	CURRENT_EVENT_LOG_SLOT.body.Report.report_data_8 = extra_code;
+	CURRENT_EVENT_LOG_SLOT.body.Report.report_data_16 = data_16;
+	CURRENT_EVENT_LOG_SLOT.body.Report.report_data_32 = data_32;
 
 	event_log_length++;
 	GIVE_EVENT_LOG_MUTEX;
