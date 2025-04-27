@@ -1,10 +1,10 @@
-SOURCE=*.c ../door-control/Common/*.c
+SOURCE=*.c ../common/*.c
 PROGRAM=doors_hub
 EXE_NAME=$(PROGRAM).out
 ARGS=
 BUILD_DIR=build/
 EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
-INC= -I ../door-control/Common
+INC= -I ../common
 LIBS= -li2c
 DEFAULT_FLAGS=
 STRICT_FLAGS= $(DEFAULT_FLAGS) -std=c99 -Wall -pedantic -Wextra

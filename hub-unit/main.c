@@ -5,9 +5,9 @@
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
 
-#include "../door-control/Common/packet_defs.h"
-#include "../door-control/Common/packet_utils.h"
-#include "../door-control/Common/i2c_register_defs.h"
+#include "../common/packet_defs.h"
+#include "../common/packet_utils.h"
+#include "../common/i2c_register_defs.h"
 
 static const char *device_path = "/dev/bone/i2c/2";
 static const uint16_t slave_addr = 0x0a;
