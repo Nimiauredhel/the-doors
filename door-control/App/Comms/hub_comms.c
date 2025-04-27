@@ -89,7 +89,7 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		door_set_closed(false);
 		break;
 	case PACKET_REQUEST_BELL:
-		serial_print_line("Received bell command, this is unusual.", 0);
+		serial_print_line("\aReceived bell command, this is unusual.", 0);
 		break;
 	case PACKET_REQUEST_PHOTO:
 		// TODO: implement the photo request
@@ -98,6 +98,9 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 	case PACKET_REQUEST_SYNC_TIME:
 		serial_print_line("Received SYNC TIME command from hub.", 0);
 		date_time_set_from_packet(cmd_ptr->header.date, cmd_ptr->header.time);
+		break;
+	case PACKET_REQUEST_MAX:
+		serial_print_line("Received MAX command from hub, this makes no sense.", 0);
 		break;
 	}
 }

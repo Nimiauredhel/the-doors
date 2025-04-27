@@ -18,6 +18,7 @@
 #include "isr_utils.h"
 #include "packet_defs.h"
 #include "packet_utils.h"
+#include "i2c_io.h"
 
 #define EVENT_LOG_CAPACITY 127
 

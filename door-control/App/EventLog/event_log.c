@@ -15,8 +15,6 @@
 	if (is_isr()) xSemaphoreGiveFromISR(event_log_lock, 0); \
 	else xSemaphoreGive(event_log_lock)
 
-#define CURRENT_EVENT_LOG_SLOT event_log_buffer[event_log_length]
-
 static SemaphoreHandle_t event_log_lock = NULL;
 static StaticSemaphore_t event_log_lock_buffer;
 
@@ -54,17 +52,18 @@ void event_log_append(DoorReport_t report, uint16_t data_16, uint32_t data_32)
 	RTC_TimeTypeDef now_time = time_get();
 	RTC_DateTypeDef now_date = date_get();
 
-	// TODO: populate new packet with real values
-	CURRENT_EVENT_LOG_SLOT.header.category = PACKET_CAT_REPORT;
-	CURRENT_EVENT_LOG_SLOT.header.version = 0;
-	CURRENT_EVENT_LOG_SLOT.header.priority = 0;
-	CURRENT_EVENT_LOG_SLOT.header.time = packet_encode_time(now_time.Hours, now_time.Minutes, now_time.Seconds);
-	CURRENT_EVENT_LOG_SLOT.header.date = packet_encode_date(now_date.Year, now_date.Month, now_date.Date);
+	DoorPacket_t *packet_ptr = event_log_buffer + event_log_length;
 
-	CURRENT_EVENT_LOG_SLOT.body.Report.source_id = 0;
-	CURRENT_EVENT_LOG_SLOT.body.Report.report_id = report;
-	CURRENT_EVENT_LOG_SLOT.body.Report.report_data_16 = data_16;
-	CURRENT_EVENT_LOG_SLOT.body.Report.report_data_32 = data_32;
+	packet_ptr->header.category = PACKET_CAT_REPORT;
+	packet_ptr->header.version = 0;
+	packet_ptr->header.priority = 0;
+	packet_ptr->header.time = packet_encode_time(now_time.Hours, now_time.Minutes, now_time.Seconds);
+	packet_ptr->header.date = packet_encode_date(now_date.Year, now_date.Month, now_date.Date);
+
+	packet_ptr->body.Report.source_id = i2c_io_get_device_id();
+	packet_ptr->body.Report.report_id = report;
+	packet_ptr->body.Report.report_data_16 = data_16;
+	packet_ptr->body.Report.report_data_32 = data_32;
 
 	event_log_length++;
 	GIVE_EVENT_LOG_MUTEX;

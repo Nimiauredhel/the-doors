@@ -224,3 +224,8 @@ void i2c_io_init(void)
 {
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
+
+uint16_t i2c_io_get_device_id(void)
+{
+	return hi2c1.Init.OwnAddress1;
+}

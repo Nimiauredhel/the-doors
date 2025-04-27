@@ -13,13 +13,19 @@ static bool is_auth = false;
 
 static uint16_t str_to_pass(const char *rx_msg)
 {
+	char debug_buff[8] = {0};
 	uint16_t idx = 0;
 	uint16_t in_pass = 0x00;
 
 	for (idx = 0; idx < 4; idx++)
 	{
-		in_pass |= (rx_msg[idx] - '0') << idx;
+		uint16_t input = (rx_msg[idx] - '0') << (idx * 4);
+		in_pass |= input;
+		sprintf(debug_buff, "%u ", input);
+		serial_print(debug_buff, 0);
 	}
+
+	serial_print_line(NULL, 0);
 
 	return in_pass;
 }
@@ -49,8 +55,8 @@ void auth_set_password(const char *rx_msg)
 	{
 		uint16_t in_pass = str_to_pass(rx_msg);
 		serial_print_line("Password Changed.", 0);
+		event_log_append(PACKET_REPORT_PASS_CHANGED, password, in_pass);
 		password = in_pass;
-		event_log_append_minimal(PACKET_REPORT_PASS_CHANGED);
 	}
 	else
 	{

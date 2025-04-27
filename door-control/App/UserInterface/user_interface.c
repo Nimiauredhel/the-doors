@@ -158,6 +158,17 @@ void interface_init(void)
 {
 	while(!door_control_is_init()) vTaskDelay(pdMS_TO_TICKS(1));
 	phase_reset();
+
+	vTaskDelay(1);
+
+	char debug_buff[32];
+	sprintf(debug_buff, "Size of header: %d", sizeof(DoorPacketHeader_t));
+	serial_print_line(debug_buff, 0);
+	sprintf(debug_buff, "Size of body: %d", sizeof(DoorPacketBody_t));
+	serial_print_line(debug_buff, 0);
+	sprintf(debug_buff, "Size of packet: %d", sizeof(DoorPacket_t));
+	serial_print_line(debug_buff, 0);
+
 	vTaskDelay(1);
 }
 

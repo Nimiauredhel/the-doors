@@ -195,13 +195,13 @@ void date_time_set_interactive()
 	}
 
 	date_time_alarm_reset();
+	event_log_append(PACKET_REPORT_TIME_SET,
+			packet_encode_date(sDate.Year, sDate.Month, sDate.Date),
+			packet_encode_time(sTime.Hours, sTime.Minutes, sTime.Seconds));
 	serial_print_line("Let's wait a second...", 0);
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	date_time_print();
 	vTaskDelay(pdMS_TO_TICKS(100));
-	event_log_append(PACKET_REPORT_TIME_SET,
-			packet_encode_date(sDate.Year, sDate.Month, sDate.Date),
-			packet_encode_time(sTime.Hours, sTime.Minutes, sTime.Seconds));
 }
 
 void date_time_set_from_packet(uint16_t date, uint32_t time)
@@ -232,10 +232,10 @@ void date_time_set_from_packet(uint16_t date, uint32_t time)
 	}
 
 	date_time_alarm_reset();
-	date_time_print();
 	event_log_append(PACKET_REPORT_TIME_SET,
 			packet_encode_date(sDate.Year, sDate.Month, sDate.Date),
 			packet_encode_time(sTime.Hours, sTime.Minutes, sTime.Seconds));
+	date_time_print();
 }
 
 /**

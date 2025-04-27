@@ -16,6 +16,7 @@ typedef enum DoorPacketCategory
 	PACKET_CAT_REPORT = 1,
 	PACKET_CAT_REQUEST = 2,
 	PACKET_CAT_DATA = 3,
+	PACKET_CAT_MAX = UINT32_MAX,
 } DoorPacketCategory_t;
 
 typedef enum DoorReport
@@ -32,6 +33,7 @@ typedef enum DoorReport
 	PACKET_REPORT_ERROR = 9,
 	PACKET_REPORT_TIME_SET = 10,
 	PACKET_REPORT_FRESH_BOOT = 11,
+	PACKET_REPORT_MAX = UINT32_MAX,
 } DoorReport_t;
 
 typedef enum DoorRequest
@@ -42,12 +44,14 @@ typedef enum DoorRequest
 	PACKET_REQUEST_BELL = 3,
 	PACKET_REQUEST_PHOTO = 4,
 	PACKET_REQUEST_SYNC_TIME = 5,
+	PACKET_REQUEST_MAX = UINT32_MAX,
 } DoorRequest_t;
 
 typedef enum DoorDataType
 {
 	PACKET_DATA_NONE = 0,
 	PACKET_DATA_PHOTO = 1,
+	PACKET_DATA_MAX = UINT32_MAX,
 } DoorDataType_t;
 
 typedef enum DoorErrorType
@@ -55,6 +59,7 @@ typedef enum DoorErrorType
 	PACKET_ERROR_NONE = 0,
 	PACKET_ERROR_WRONG_REGISTER = 1,
 	PACKET_ERROR_INVALID_PACKET = 2,
+	PACKET_ERROR_MAX = UINT32_MAX,
 } DoorErrorType_t;
 
 #pragma pack(push, 4)
@@ -69,27 +74,23 @@ typedef struct DoorPacketHeader
 
 typedef union DoorPacketBody
 {
-	// the "stub" fields are here as a reminder that the first two packet types -
-	// - are already as big as the third, and can have extra fields at no cost later
-	struct {
+	struct ReportBody {
 		DoorReport_t report_id;
 		uint16_t source_id;
 		uint16_t report_data_16;
 		uint32_t report_data_32;
 	} Report;
-	struct {
+	struct RequestBody {
 		DoorRequest_t request_id;
 		uint16_t source_id;
 		uint16_t destination_id;
 		uint32_t request_data_32;
 	} Request;
-	struct {
+	struct DataInfo {
 		DoorDataType_t data_type;
 		uint16_t source_id;
 		uint16_t destination_id;
 		uint32_t data_length;
-		// TODO: formalize data sizes, whether fixed or variable
-		uint8_t data[];
 	} Data;
 } DoorPacketBody_t;
 
