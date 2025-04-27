@@ -31,6 +31,7 @@ typedef enum DoorReport
 	PACKET_REPORT_DATA_READY = 8,
 	PACKET_REPORT_ERROR = 9,
 	PACKET_REPORT_TIME_SET = 10,
+	PACKET_REPORT_FRESH_BOOT = 11,
 } DoorReport_t;
 
 typedef enum DoorRequest

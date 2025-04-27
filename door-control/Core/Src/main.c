@@ -209,6 +209,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   serial_uart_initialize();
   event_log_initialize();
+  event_log_append(PACKET_REPORT_FRESH_BOOT, 0);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -912,6 +913,7 @@ static void MX_GPIO_Init(void)
 void StartUserInterfaceTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+	vTaskDelay(pdMS_TO_TICKS(500));
 	interface_init();
   /* Infinite loop */
 	for(;;)
@@ -931,7 +933,6 @@ void StartUserInterfaceTask(void *argument)
 void StartDoorOpsTask(void *argument)
 {
   /* USER CODE BEGIN StartDoorOpsTask */
-	vTaskDelay(pdMS_TO_TICKS(500));
 	door_control_init();
 	HAL_LPTIM_Counter_Start_IT(&hlptim1, 28125);
   /* Infinite loop */
