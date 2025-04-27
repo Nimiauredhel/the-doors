@@ -45,7 +45,7 @@ void auth_check_password(const char *rx_msg)
 {
 	uint16_t in_pass = str_to_pass(rx_msg);
 	if (in_pass == password) is_auth = true;
-	event_log_append(is_auth ? PACKET_REPORT_PASS_CORRECT : PACKET_REPORT_PASS_WRONG, 0, 0);
+	event_log_append(is_auth ? PACKET_REPORT_PASS_CORRECT : PACKET_REPORT_PASS_WRONG, in_pass, 0);
 	serial_print_line(is_auth ? "Password Accepted." : "Password Rejected.", 0);
 }
 
