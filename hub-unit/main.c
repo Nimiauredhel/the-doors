@@ -39,7 +39,7 @@ static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, con
 {
 	int32_t result = i2c_smbus_write_i2c_block_data(device_fd, reg_addr, len, message);
 	if (result != 0) perror("I2C send error");
-	else printf("Sent %ld bytes.\n", len);
+	//else printf("Sent %ld bytes.\n", len);
 }
 
 static void i2c_master_read(const uint8_t reg_addr, const uint8_t len)
@@ -88,7 +88,7 @@ static void poll_slave_event_queue(void)
 
 		if (queue_length > 0)
 		{
-			printf("Reported %u new events in slave queue! Reading...\n", queue_length);
+	//		printf("Reported %u new events in slave queue! Reading...\n", queue_length);
 
             for (int i = 0; i < queue_length; i++)
             {
@@ -97,8 +97,7 @@ static void poll_slave_event_queue(void)
 
 		memcpy(&packet_buff, rx_buff, sizeof(DoorPacket_t));
 
-                printf("[%u|%u][%02u/%02u/%02u][%02u:%02u:%02u]: ",
-				packet_buff.header.date, packet_buff.header.time,
+                printf("[%02u/%02u/%02u][%02u:%02u:%02u]: ",
 				packet_decode_day(packet_buff.header.date),
 				packet_decode_month(packet_buff.header.date),
 				packet_decode_year(packet_buff.header.date),
@@ -168,9 +167,9 @@ static void poll_slave_event_queue(void)
                 }
             }
 
-			printf("Events retrieved. Ordering slave device to reset its local queue...\n");
+		//	printf("Events retrieved. Ordering slave device to reset its local queue...\n");
 			i2c_master_write(I2C_REG_EVENT_COUNT, &zero, 1);
-			printf("Report concluded, polling resumed.\n");
+			//printf("Report concluded, polling resumed.\n");
 
 			idle_counter = 0;
 		}
