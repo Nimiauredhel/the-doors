@@ -132,6 +132,13 @@ static void poll_slave_event_queue(void)
                 case PACKET_REPORT_ERROR:
                     printf("Error Code [%u]", packet_buff.body.Report.report_data_8);
                     break;
+                case PACKET_REPORT_TIME_SET:
+                    printf("Time Set.\n");
+                    break;
+                case PACKET_REPORT_FRESH_BOOT:
+                    printf("Fresh Boot. Sending time sync!\n");
+			send_request(PACKET_REQUEST_SYNC_TIME, 0, 1);
+                    break;
                 }
             }
 
@@ -152,11 +159,6 @@ int main(void)
 	printf("Size of body: %d\n", sizeof(DoorPacketBody_t));
 	printf("Size of packet: %d\n", sizeof(DoorPacket_t));
 	i2c_init();
-	send_request(PACKET_REQUEST_SYNC_TIME, 0, 1);
-	sleep(1);
-	send_request(PACKET_REQUEST_DOOR_OPEN, 0, 0);
-	sleep(1);
-	send_request(PACKET_REQUEST_DOOR_CLOSE, 0, 0);
 	sleep(1);
 	poll_slave_event_queue();
 	close(device_fd);
