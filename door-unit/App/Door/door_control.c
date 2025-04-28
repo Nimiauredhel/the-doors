@@ -56,8 +56,11 @@ static void servo_set_angle(int16_t angle, uint16_t time_limit_ms)
 
 static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, uint16_t step_delay, float min_dist)
 {
+	static const int16_t blocked_report_gap_ms = 10000;
+
 	if (step_size == 0) return;
 
+	int16_t blocked_report_timer_ms = 0;
 	int16_t idx = 0;
 	bool light_on = false;
 	uint16_t steps[128] = {0};
@@ -76,36 +79,42 @@ static void servo_set_angle_gradual(int16_t target_angle, uint16_t step_size, ui
 		steps[idx] = steps[idx-1] + step;
 	}
 
-	bool blocked = false;
-
 	if (min_dist > 0.0f)
 	{
 		door_sensor_enable(false);
 	}
 
-	for (idx = 1; idx < step_count; idx++)
+	for (idx = 1; idx < step_count;)
 	{
 		light_on = !light_on;
-		float red = light_on ? blocked ? 1.0f : 0.05f : -1.0f;
-		float green = light_on ? blocked ? 0.0f : 1.0f : -1.0f;
+		float red = light_on ? blocked_report_timer_ms > 0 ? 1.0f : 0.05f : -1.0f;
+		float green = light_on ? blocked_report_timer_ms > 0 ? 0.0f : 1.0f : -1.0f;
 		set_door_indicator_led(red, green);
 
 		if (min_dist > 0.0f && door_sensor_leq_cm(min_dist))
 		{
 
-			if (!blocked)
+			if (blocked_report_timer_ms <= 0)
 			{
-				blocked = true;
 				event_log_append(PACKET_REPORT_DOOR_BLOCKED, 0, door_open_duration_seconds);
+				blocked_report_timer_ms = blocked_report_gap_ms;
+			}
+			else
+			{
+				blocked_report_timer_ms -= step_delay/2;
 			}
 
-			if (idx > 1) idx -= 2;
-			else idx = 0;
+			if (idx > 0)
+			{
+				idx--;
+			}
+
 			vTaskDelay(pdMS_TO_TICKS(step_delay/2));
 		}
 		else
 		{
-			blocked = false;
+			idx++;
+			blocked_report_timer_ms = 0;
 			vTaskDelay(pdMS_TO_TICKS(step_delay));
 		}
 
