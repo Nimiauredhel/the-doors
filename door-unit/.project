@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>door-control</name>
+	<name>door-unit</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -33,7 +33,13 @@
 		<link>
 			<name>common</name>
 			<type>2</type>
-			<locationURI>PARENT-1-PROJECT_LOC/common</locationURI>
+			<locationURI>copy_PARENT/common</locationURI>
 		</link>
 	</linkedResources>
+	<variableList>
+		<variable>
+			<name>copy_PARENT</name>
+			<value>$%7BPARENT-3-PROJECT_LOC%7D/Repos/the-doors</value>
+		</variable>
+	</variableList>
 </projectDescription>
