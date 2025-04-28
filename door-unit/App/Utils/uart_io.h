@@ -19,7 +19,6 @@
 #include "main.h"
 #include "isr_utils.h"
 
-extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 extern osMutexId_t serial_input_mutexHandle;
 extern osMutexId_t serial_output_mutexHandle;
