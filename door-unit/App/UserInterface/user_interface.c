@@ -5,7 +5,7 @@
  *      Author: mickey
  */
 
-#include <user_interface.h>
+#include "user_interface.h"
 
 #define MAX_CHARS_FREE_INPUT 16
 #define MAX_CHARS_PASS_INPUT 4
@@ -36,6 +36,7 @@ static InterfacePhase_t phase_queue[PHASE_QUEUE_SIZE] = {0};
 static bool phase_just_reset = false;
 static uint8_t phase_queue_index = 0;
 static uint8_t phase_queue_tail = 0;
+static GfxWindow_t *ui_window = NULL;
 
 static void phase_reset()
 {
@@ -157,6 +158,9 @@ static void rx_evaluate(const char *rx_msg)
 void interface_init(void)
 {
 	while(!door_control_is_init()) vTaskDelay(pdMS_TO_TICKS(1));
+	ui_window = gfx_create_window(0, 0, screen_get_x_size(), screen_get_y_size());
+	gfx_select_window(ui_window);
+	gfx_show_window(ui_window);
 	phase_reset();
 
 	vTaskDelay(1);
@@ -174,6 +178,7 @@ void interface_init(void)
 
 void interface_loop(void)
 {
+	static const uint8_t text_scale = 2;
 	char input[MAX_CHARS_FREE_INPUT] = {0};
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
 
@@ -191,6 +196,12 @@ void interface_loop(void)
 		phase_reset();
 		break;
 	case IPHASE_TOP:
+		while (ui_window->state != GFXWIN_CLEAN)
+		vTaskDelay(pdMS_TO_TICKS(1));
+		ui_window->state = GFXWIN_WRITING;
+		gfx_fill_screen(color_black);
+		gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 0, color_white, text_scale);
+		ui_window->state = GFXWIN_DIRTY;
 		serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 		serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 		rx_evaluate(input);
@@ -198,10 +209,22 @@ void interface_loop(void)
 	case IPHASE_CHECKPW:
 		if (auth_is_auth())
 		{
+			while (ui_window->state != GFXWIN_CLEAN)
+			vTaskDelay(pdMS_TO_TICKS(1));
+			ui_window->state = GFXWIN_WRITING;
+			gfx_fill_screen(color_black);
+			gfx_print_string("Auth already granted, skipping password check.", 0, 0, color_white, text_scale);
+			ui_window->state = GFXWIN_DIRTY;
 			serial_print_line("Auth already granted, skipping password check.", 0);
 		}
 		else
 		{
+			while (ui_window->state != GFXWIN_CLEAN)
+			vTaskDelay(pdMS_TO_TICKS(1));
+			ui_window->state = GFXWIN_WRITING;
+			gfx_fill_screen(color_black);
+			gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 0, color_white, text_scale);
+			ui_window->state = GFXWIN_DIRTY;
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 			rx_evaluate(input);
@@ -210,12 +233,24 @@ void interface_loop(void)
 	case IPHASE_SETPW:
 		if (auth_is_auth())
 		{
+			while (ui_window->state != GFXWIN_CLEAN)
+			vTaskDelay(pdMS_TO_TICKS(1));
+			ui_window->state = GFXWIN_WRITING;
+			gfx_fill_screen(color_black);
+			gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 0, color_white, text_scale);
+			ui_window->state = GFXWIN_DIRTY;
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 			rx_evaluate(input);
 		}
 		else
 		{
+			while (ui_window->state != GFXWIN_CLEAN)
+			vTaskDelay(pdMS_TO_TICKS(1));
+			ui_window->state = GFXWIN_WRITING;
+			gfx_fill_screen(color_black);
+			gfx_print_string("Cannot change password without authentication.", 0, 0, color_white, text_scale);
+			ui_window->state = GFXWIN_DIRTY;
 			serial_print_line("Cannot change password without authentication.", 0);
 		}
 		break;

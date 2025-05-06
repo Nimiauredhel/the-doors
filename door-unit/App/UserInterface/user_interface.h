@@ -21,6 +21,7 @@
 #include "uart_io.h"
 #include "door_control.h"
 #include "hub_comms.h"
+#include "gfx.h"
 
 typedef enum InterfacePhase
 {

@@ -62,7 +62,7 @@ extern DMA_HandleTypeDef hdma_i2c1_rx;
 /* USER CODE END 0 */
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-                                        /**
+                                                            /**
   * Initializes the Global MSP.
   */
 void HAL_MspInit(void)
@@ -366,6 +366,17 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 
     /* USER CODE END TIM3_MspInit 1 */
   }
+  else if(htim_pwm->Instance==TIM9)
+  {
+    /* USER CODE BEGIN TIM9_MspInit 0 */
+
+    /* USER CODE END TIM9_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM9_CLK_ENABLE();
+    /* USER CODE BEGIN TIM9_MspInit 1 */
+
+    /* USER CODE END TIM9_MspInit 1 */
+  }
 
 }
 
@@ -408,6 +419,32 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
 
 }
 
+/**
+  * @brief TIM_Base MSP Initialization
+  * This function configures the hardware resources used in this example
+  * @param htim_base: TIM_Base handle pointer
+  * @retval None
+  */
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
+{
+  if(htim_base->Instance==TIM6)
+  {
+    /* USER CODE BEGIN TIM6_MspInit 0 */
+
+    /* USER CODE END TIM6_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM6_CLK_ENABLE();
+    /* TIM6 interrupt Init */
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+    /* USER CODE BEGIN TIM6_MspInit 1 */
+
+    /* USER CODE END TIM6_MspInit 1 */
+
+  }
+
+}
+
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -438,9 +475,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
 
     /* USER CODE END TIM3_MspPostInit 0 */
 
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     /**TIM3 GPIO Configuration
-    PA6     ------> TIM3_CH1
+    PB4     ------> TIM3_CH1
     */
     GPIO_InitStruct.Pin = SERVO_PULSE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -452,6 +489,27 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
     /* USER CODE BEGIN TIM3_MspPostInit 1 */
 
     /* USER CODE END TIM3_MspPostInit 1 */
+  }
+  else if(htim->Instance==TIM9)
+  {
+    /* USER CODE BEGIN TIM9_MspPostInit 0 */
+
+    /* USER CODE END TIM9_MspPostInit 0 */
+
+    __HAL_RCC_GPIOE_CLK_ENABLE();
+    /**TIM9 GPIO Configuration
+    PE5     ------> TIM9_CH1
+    */
+    GPIO_InitStruct.Pin = AUDIO_PWM_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF3_TIM9;
+    HAL_GPIO_Init(AUDIO_PWM_GPIO_Port, &GPIO_InitStruct);
+
+    /* USER CODE BEGIN TIM9_MspPostInit 1 */
+
+    /* USER CODE END TIM9_MspPostInit 1 */
   }
 
 }
@@ -485,6 +543,17 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* htim_pwm)
 
     /* USER CODE END TIM3_MspDeInit 1 */
   }
+  else if(htim_pwm->Instance==TIM9)
+  {
+    /* USER CODE BEGIN TIM9_MspDeInit 0 */
+
+    /* USER CODE END TIM9_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_TIM9_CLK_DISABLE();
+    /* USER CODE BEGIN TIM9_MspDeInit 1 */
+
+    /* USER CODE END TIM9_MspDeInit 1 */
+  }
 
 }
 
@@ -514,6 +583,31 @@ void HAL_TIM_IC_MspDeInit(TIM_HandleTypeDef* htim_ic)
     /* USER CODE BEGIN TIM2_MspDeInit 1 */
 
     /* USER CODE END TIM2_MspDeInit 1 */
+  }
+
+}
+
+/**
+  * @brief TIM_Base MSP De-Initialization
+  * This function freeze the hardware resources used in this example
+  * @param htim_base: TIM_Base handle pointer
+  * @retval None
+  */
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
+{
+  if(htim_base->Instance==TIM6)
+  {
+    /* USER CODE BEGIN TIM6_MspDeInit 0 */
+
+    /* USER CODE END TIM6_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_TIM6_CLK_DISABLE();
+
+    /* TIM6 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(TIM6_DAC_IRQn);
+    /* USER CODE BEGIN TIM6_MspDeInit 1 */
+
+    /* USER CODE END TIM6_MspDeInit 1 */
   }
 
 }

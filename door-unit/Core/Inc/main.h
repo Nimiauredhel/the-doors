@@ -29,6 +29,7 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f7xx_hal.h"
 
+#include "lcd_io.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -59,6 +60,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define AUDIO_PWM_Pin GPIO_PIN_5
+#define AUDIO_PWM_GPIO_Port GPIOE
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
@@ -70,16 +73,14 @@ void Error_Handler(void);
 #define RMII_REF_CLK_GPIO_Port GPIOA
 #define RMII_MDIO_Pin GPIO_PIN_2
 #define RMII_MDIO_GPIO_Port GPIOA
-#define SERVO_PULSE_Pin GPIO_PIN_6
-#define SERVO_PULSE_GPIO_Port GPIOA
-#define RMII_CRS_DV_Pin GPIO_PIN_7
-#define RMII_CRS_DV_GPIO_Port GPIOA
 #define RMII_RXD0_Pin GPIO_PIN_4
 #define RMII_RXD0_GPIO_Port GPIOC
 #define RMII_RXD1_Pin GPIO_PIN_5
 #define RMII_RXD1_GPIO_Port GPIOC
 #define LD1_Pin GPIO_PIN_0
 #define LD1_GPIO_Port GPIOB
+#define LCD_RESET_Pin GPIO_PIN_12
+#define LCD_RESET_GPIO_Port GPIOF
 #define DOOR_SENSOR_ECHO_Pin GPIO_PIN_10
 #define DOOR_SENSOR_ECHO_GPIO_Port GPIOB
 #define DOOR_SENSOR_TRIG_Pin GPIO_PIN_11
@@ -92,6 +93,14 @@ void Error_Handler(void);
 #define STLK_RX_GPIO_Port GPIOD
 #define STLK_TX_Pin GPIO_PIN_9
 #define STLK_TX_GPIO_Port GPIOD
+#define LCD_CS_Pin GPIO_PIN_14
+#define LCD_CS_GPIO_Port GPIOD
+#define LCD_DC_Pin GPIO_PIN_15
+#define LCD_DC_GPIO_Port GPIOD
+#define TOUCH_CS_Pin GPIO_PIN_2
+#define TOUCH_CS_GPIO_Port GPIOG
+#define TOUCH_IRQ_Pin GPIO_PIN_3
+#define TOUCH_IRQ_GPIO_Port GPIOG
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
@@ -116,6 +125,8 @@ void Error_Handler(void);
 #define RMII_TXD0_GPIO_Port GPIOG
 #define SW0_Pin GPIO_PIN_3
 #define SW0_GPIO_Port GPIOB
+#define SERVO_PULSE_Pin GPIO_PIN_4
+#define SERVO_PULSE_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
 
