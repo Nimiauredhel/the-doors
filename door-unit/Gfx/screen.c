@@ -20,10 +20,6 @@ uint32_t screen_init(uint32_t orientation)
 	sprintf(buffer, "LCD Init result: %ld.\r\n", ret);
 	HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer)+1, 0xff);
 
-	ret = BSP_LCD_SetOrientation(0, LCD_ORIENTATION_LANDSCAPE);
-	sprintf(buffer, "Set Orientation result: %ld\r\n", ret);
-	HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer)+1, 0xff);
-
 	uint32_t xs, ys;
 	xs = screen_get_x_size();
 	ys = screen_get_y_size();

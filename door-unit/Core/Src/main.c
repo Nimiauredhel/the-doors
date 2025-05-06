@@ -984,10 +984,10 @@ void StartUserInterfaceTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 	while (!display_init) vTaskDelay(pdMS_TO_TICKS(10));
-	  app_init();
+	  /*app_init();
 	  app_loop();
-	  app_clean();
-	vTaskDelay(pdMS_TO_TICKS(500));
+	  app_clean();*/
+	vTaskDelay(pdMS_TO_TICKS(100));
 
 	interface_init();
   /* Infinite loop */
@@ -1070,7 +1070,7 @@ void StartDisplayTask(void *argument)
   for(;;)
   {
 	  gfx_refresh();
-	  vTaskDelay(pdMS_TO_TICKS(33));
+	  vTaskDelay(pdMS_TO_TICKS(16));
   }
   /* USER CODE END StartDisplayTask */
 }

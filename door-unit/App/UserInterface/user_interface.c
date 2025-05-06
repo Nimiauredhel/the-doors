@@ -24,7 +24,7 @@ static const uint8_t phase_char_limits[6] =
 static const char *phase_prompts[6] =
 {
 		"Unknown Phase",
-		"Welcome to DOOR. Valid commands: open, close, setpw, settime, debug_comms, debug_sensor.",
+		"1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)settime\r\r\n5)debug_comms\r\r\n6)debug_sensor",
 		"Please Enter Password.",
 		"Please Enter NEW Password.",
 		"Opening Door!",
@@ -36,7 +36,9 @@ static InterfacePhase_t phase_queue[PHASE_QUEUE_SIZE] = {0};
 static bool phase_just_reset = false;
 static uint8_t phase_queue_index = 0;
 static uint8_t phase_queue_tail = 0;
-static GfxWindow_t *ui_window = NULL;
+static GfxWindow_t *msg_window = NULL;
+static GfxWindow_t *datetime_window = NULL;
+static GfxWindow_t *keypad_window = NULL;
 
 static void phase_reset()
 {
@@ -155,12 +157,73 @@ static void rx_evaluate(const char *rx_msg)
 	}
 }
 
+static void draw_keypad(void)
+{
+	static const uint8_t x_start = 17;
+	static const uint8_t key_width = 68;
+	static const uint8_t key_height = 40;
+	static const uint8_t digit_scale = 4;
+	static const uint8_t digit_width = 8 * digit_scale;
+	static const uint8_t digit_height = 5 * digit_scale;
+
+	static const char digits[12][2] =
+	{
+			"1\0", "2\0", "3\0",
+			"4\0", "5\0", "6\0",
+			"7\0", "8\0", "9\0",
+			"*\0", "0\0", "#\0",
+	};
+	// 120x120
+	while (keypad_window->state != GFXWIN_CLEAN)
+	vTaskDelay(pdMS_TO_TICKS(1));
+	gfx_select_window(keypad_window);
+	keypad_window->state = GFXWIN_WRITING;
+	gfx_fill_screen(color_blue);
+	for (uint8_t i = 0; i < 12; i++)
+	{
+		gfx_fill_rect_single_color(
+				x_start + (key_width * (i % 3)) + (key_width/8),
+				(key_height * (i / 3)) + (key_height/8),
+				key_width - (key_width/4),
+				key_height - (key_height/4),
+				color_white);
+		gfx_print_string(digits[i], x_start + (key_width * (i % 3)) + ((key_width - digit_width)/2), (key_height * (i / 3)) + ((key_height - digit_height)/2), color_black, digit_scale);
+	}
+	keypad_window->state = GFXWIN_DIRTY;
+}
+
+static void draw_datetime(void)
+{
+	static const uint8_t text_scale = 2;
+	static const uint8_t font_width = 8*text_scale;
+	static const uint8_t font_height = 5*text_scale;
+
+	char buff[64] = {0};
+
+	while (datetime_window->state != GFXWIN_CLEAN)
+	vTaskDelay(pdMS_TO_TICKS(1));
+	gfx_select_window(datetime_window);
+	datetime_window->state = GFXWIN_WRITING;
+	gfx_fill_screen(color_blue);
+	date_time_get_time_str_hhmm(buff);
+	gfx_print_string(buff, 2, font_height/2, color_cyan, text_scale);
+	date_time_get_date_str(buff);
+	gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), font_height/2, color_cyan, text_scale);
+	datetime_window->state = GFXWIN_DIRTY;
+}
+
 void interface_init(void)
 {
+	static const uint8_t font_height = 10;
 	while(!door_control_is_init()) vTaskDelay(pdMS_TO_TICKS(1));
-	ui_window = gfx_create_window(0, 0, screen_get_x_size(), screen_get_y_size());
-	gfx_select_window(ui_window);
-	gfx_show_window(ui_window);
+
+	gfx_init(LCD_ORIENTATION_PORTRAIT_ROT180);
+	datetime_window = gfx_create_window(0, 0, screen_get_x_size(), font_height*2);
+	msg_window = gfx_create_window(0, font_height*2, screen_get_x_size(), (screen_get_y_size()/2)-(font_height*2));
+	keypad_window = gfx_create_window(0, screen_get_y_size()/2, screen_get_x_size(), screen_get_y_size()/2);
+	gfx_show_window(datetime_window);
+	gfx_show_window(msg_window);
+	gfx_show_window(keypad_window);
 	phase_reset();
 
 	vTaskDelay(1);
@@ -179,13 +242,19 @@ void interface_init(void)
 void interface_loop(void)
 {
 	static const uint8_t text_scale = 2;
+	static const uint8_t font_width = 8*text_scale;
+	static const uint8_t font_height = 5*text_scale;
+
 	char input[MAX_CHARS_FREE_INPUT] = {0};
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
 
 	if (phase_just_reset)
 	{
 		date_time_print();
+		draw_datetime();
 	}
+
+	gfx_select_window(msg_window);
 
 	vTaskDelay(1);
 	phase_just_reset = false;
@@ -196,36 +265,39 @@ void interface_loop(void)
 		phase_reset();
 		break;
 	case IPHASE_TOP:
-		while (ui_window->state != GFXWIN_CLEAN)
+		while (msg_window->state != GFXWIN_CLEAN)
 		vTaskDelay(pdMS_TO_TICKS(1));
-		ui_window->state = GFXWIN_WRITING;
+		msg_window->state = GFXWIN_WRITING;
 		gfx_fill_screen(color_black);
-		gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 0, color_white, text_scale);
-		ui_window->state = GFXWIN_DIRTY;
+		gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 2, color_white, text_scale);
+		msg_window->state = GFXWIN_DIRTY;
 		serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+		draw_keypad();
 		serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 		rx_evaluate(input);
 		break;
 	case IPHASE_CHECKPW:
 		if (auth_is_auth())
 		{
-			while (ui_window->state != GFXWIN_CLEAN)
+			while (msg_window->state != GFXWIN_CLEAN)
 			vTaskDelay(pdMS_TO_TICKS(1));
-			ui_window->state = GFXWIN_WRITING;
+			msg_window->state = GFXWIN_WRITING;
 			gfx_fill_screen(color_black);
-			gfx_print_string("Auth already granted, skipping password check.", 0, 0, color_white, text_scale);
-			ui_window->state = GFXWIN_DIRTY;
+			gfx_print_string("Auth already granted, skipping password check.", 0, 2, color_white, text_scale);
+			msg_window->state = GFXWIN_DIRTY;
 			serial_print_line("Auth already granted, skipping password check.", 0);
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		else
 		{
-			while (ui_window->state != GFXWIN_CLEAN)
+			while (msg_window->state != GFXWIN_CLEAN)
 			vTaskDelay(pdMS_TO_TICKS(1));
-			ui_window->state = GFXWIN_WRITING;
+			msg_window->state = GFXWIN_WRITING;
 			gfx_fill_screen(color_black);
-			gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 0, color_white, text_scale);
-			ui_window->state = GFXWIN_DIRTY;
+			gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 2, color_white, text_scale);
+			msg_window->state = GFXWIN_DIRTY;
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			draw_keypad();
 			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 			rx_evaluate(input);
 		}
@@ -233,25 +305,27 @@ void interface_loop(void)
 	case IPHASE_SETPW:
 		if (auth_is_auth())
 		{
-			while (ui_window->state != GFXWIN_CLEAN)
+			while (msg_window->state != GFXWIN_CLEAN)
 			vTaskDelay(pdMS_TO_TICKS(1));
-			ui_window->state = GFXWIN_WRITING;
+			msg_window->state = GFXWIN_WRITING;
 			gfx_fill_screen(color_black);
-			gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 0, color_white, text_scale);
-			ui_window->state = GFXWIN_DIRTY;
+			gfx_print_string(phase_prompts[phase_queue[phase_queue_index]], 0, 2, color_white, text_scale);
+			msg_window->state = GFXWIN_DIRTY;
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			draw_keypad();
 			serial_scan(input, phase_char_limits[phase_queue[phase_queue_index]]);
 			rx_evaluate(input);
 		}
 		else
 		{
-			while (ui_window->state != GFXWIN_CLEAN)
+			while (msg_window->state != GFXWIN_CLEAN)
 			vTaskDelay(pdMS_TO_TICKS(1));
-			ui_window->state = GFXWIN_WRITING;
+			msg_window->state = GFXWIN_WRITING;
 			gfx_fill_screen(color_black);
-			gfx_print_string("Cannot change password without authentication.", 0, 0, color_white, text_scale);
-			ui_window->state = GFXWIN_DIRTY;
+			gfx_print_string("Cannot change password without authentication.", 0, 2, color_white, text_scale);
+			msg_window->state = GFXWIN_DIRTY;
 			serial_print_line("Cannot change password without authentication.", 0);
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		break;
 	case IPHASE_SETTIME:

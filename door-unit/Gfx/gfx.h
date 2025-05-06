@@ -18,8 +18,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define GFX_SCREEN_WIDTH 320
-#define GFX_SCREEN_HEIGHT 240
+#define GFX_SCREEN_WIDTH (screen_get_x_size())
+#define GFX_SCREEN_HEIGHT (screen_get_y_size())
 #define GFX_SCREEN_SIZE_BYTES (GFX_SCREEN_WIDTH * GFX_SCREEN_HEIGHT * 2)
 
 #define R565_MAX 31
@@ -168,7 +168,7 @@ void gfx_fill_rect_single_color(uint16_t x_origin, uint16_t y_origin, uint16_t w
 void gfx_draw_binary_sprite(BinarySprite_t *sprite, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale);
 void gfx_draw_binary_sprite_adhoc(uint16_t height_pixels, uint8_t width_bytes, uint8_t *pixel_mask, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale);
 
-void gfx_print_string(char *string, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale);
+void gfx_print_string(const char *string, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale);
 
 void gfx_draw_rect_sprite_565(RectSprite565_t sprite, uint16_t x_origin, uint16_t y_origin);
 void gfx_draw_rect_sprite_565_scaled(RectSprite565_t sprite, uint16_t x_origin, uint16_t y_origin, float scale);

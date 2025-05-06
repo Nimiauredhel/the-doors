@@ -81,6 +81,26 @@ void date_time_alarm_reset()
 	}
 }
 
+void date_time_get_time_str_hhmm(char *buf)
+{
+	sprintf(buf, "%02u:%02u", time_now.Hours, time_now.Minutes);
+}
+
+void date_time_get_time_str(char *buf)
+{
+	sprintf(buf, "%02u:%02u:%02u", time_now.Hours, time_now.Minutes, time_now.Seconds);
+}
+
+void date_time_get_date_str(char *buf)
+{
+	sprintf(buf, "%02u/%02u/%02u", date_now.Date, date_now.Month, date_now.Year);
+}
+
+void date_time_get_str(char *buf)
+{
+	sprintf(buf, "%02u:%02u:%02u %02u/%02u/%02u", time_now.Hours, time_now.Minutes, time_now.Seconds, date_now.Date, date_now.Month, date_now.Year);
+}
+
 void date_time_print()
 {
 	sprintf(output_buffer, "\n\rThe current date is: %02u/%02u/%02u.", date_now.Date, date_now.Month, date_now.Year);

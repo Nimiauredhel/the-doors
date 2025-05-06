@@ -354,7 +354,7 @@ void gfx_draw_binary_sprite(BinarySprite_t *sprite, uint16_t x_origin, uint16_t 
 	gfx_draw_binary_sprite_adhoc(sprite->height_pixels, sprite->width_bytes, sprite->pixel_mask, x_origin, y_origin, color, scale);
 }
 
-void gfx_print_string(char *string, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale)
+void gfx_print_string(const char *string, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale)
 {
 	uint16_t x = x_origin;
 	uint16_t y = y_origin;
@@ -363,22 +363,32 @@ void gfx_print_string(char *string, uint16_t x_origin, uint16_t y_origin, const 
 
 	for (i = 0; i < length; i++)
 	{
-		if (x+(default_font.width_bytes*8*scale) >= GFX_SCREEN_WIDTH || string[i] == '\n')
+		if (string[i] == '\r')
+		{
+			x = x_origin;
+		}
+		else if (string[i] == '\n')
 		{
 			y += default_font.height_pixels * scale * 1.25f;
-			x = x_origin;
-
 		}
-
-		if (string[i] != ' ')
+		else
 		{
-			gfx_draw_binary_sprite_adhoc(
-			default_font.height_pixels, default_font.width_bytes,
-			&default_font.data[((uint8_t)string[i])*default_font.height_pixels*default_font.width_bytes],
-			x, y, color, scale);
-		}
+			if(x+(default_font.width_bytes*8*scale) >= GFX_SCREEN_WIDTH)
+			{
+				x = x_origin;
+				y += default_font.height_pixels * scale * 1.25f;
+			}
 
-		x += default_font.width_bytes * 8 * scale;
+			if (string[i] != ' ')
+			{
+				gfx_draw_binary_sprite_adhoc(
+				default_font.height_pixels, default_font.width_bytes,
+				&default_font.data[((uint8_t)string[i])*default_font.height_pixels*default_font.width_bytes],
+				x, y, color, scale);
+			}
+
+			x += default_font.width_bytes * 8 * scale;
+		}
 	}
 
 }

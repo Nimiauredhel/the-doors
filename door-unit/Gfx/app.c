@@ -86,9 +86,9 @@ const uint8_t alien_bytes[25] =
 		0b00110000,
 };
 
-const uint16_t half_step_delay = pdMS_TO_TICKS(8);
-const uint16_t step_delay = pdMS_TO_TICKS(16);
-const uint16_t second_delay = pdMS_TO_TICKS(250);
+const uint16_t half_step_delay = pdMS_TO_TICKS(4);
+const uint16_t step_delay = pdMS_TO_TICKS(8);
+const uint16_t second_delay = pdMS_TO_TICKS(125);
 
 GfxWindow_t * app_window = NULL;
 
