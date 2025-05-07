@@ -6,7 +6,8 @@
  */
 
 #include "gfx.h"
-#include <stdbool.h>
+
+//#define GFX_PRINT_DEBUG
 
 // RGB565 2 byte format: [ggGbbbbB][rrrrRggg]
 const Color565_t color_black = { 0b00000000, 0b00000000 };
@@ -43,30 +44,49 @@ static GfxWindow_t *window_list = NULL;
  * @brief Static gfx.c variable representing currently selected window for gfx operations.
  */
 static GfxWindow_t *selected_window = NULL;
+/**
+ * @brief Static gfx.c variable representing next window to be transferred to the screen.
+ */
+static GfxWindow_t *sent_window = NULL;
 
-void gfx_refresh(void)
+static StaticSemaphore_t transfer_sem_buffer;
+static SemaphoreHandle_t transfer_sem_handle;
+
+bool gfx_refresh(void)
 {
-	if (!initialized) return;
+	if (!initialized) return false;
 	GfxWindow_t *current = window_list;
 
 	while (current != NULL)
 	{
+        xSemaphoreTake(current->sem_handle, portMAX_DELAY);
 		gfx_push_to_screen(current);
-		current = current->next;
+		xSemaphoreGive(current->sem_handle);
+
+        current = current->next;
 	}
+
+	return true;
 }
 
 void gfx_init(uint32_t orientation)
 {
 	if (initialized) return;
+
+#ifdef GFX_PRINT_DEBUG
+    serial_print_line("Initializing graphics library.\n", 0);
+#endif
+    transfer_sem_handle = xSemaphoreCreateBinaryStatic(&transfer_sem_buffer);
 	screen_init(orientation);
+    xSemaphoreGive(transfer_sem_handle);
 	initialized = true;
 }
 
-GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name)
 {
 	uint32_t buffer_size = width*height*2;
 	GfxWindow_t *new_window = malloc(sizeof(GfxWindow_t) + buffer_size);
+
 	explicit_bzero(new_window->buffer, buffer_size);
 	new_window->state = GFXWIN_CLEAN;
 	new_window->size_bytes = buffer_size;
@@ -74,26 +94,89 @@ GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 	new_window->y = y;
 	new_window->width = width;
 	new_window->height = height;
+
+    strncpy(new_window->name, name == NULL ? "Untitled Window" : name, 16);
+
+    new_window->sem_handle = xSemaphoreCreateBinaryStatic(&new_window->sem_buff);
+    xSemaphoreGive(new_window->sem_handle);
+
+#ifdef GFX_PRINT_DEBUG
+    serial_print("Created new window: ", 0);
+    serial_print(new_window->name, 0);
+    serial_print_line(".", 1);
+#endif
+
 	return new_window;
 }
 
-void gfx_select_window(GfxWindow_t *window)
+void gfx_dispose_window(GfxWindow_t *window)
 {
-	/**
-	 * TEMPORARY use-lock measure
-	 * TODO: replace this with a mutex or more thought-out method
-	 */
-	while (selected_window != NULL
-			&& selected_window->state != GFXWIN_CLEAN)
-	{
-		vTaskDelay(1);
-	}
+    if (selected_window == window) gfx_unselect_window(window);
 
-	selected_window = window;
+    while (sent_window == window) vTaskDelay(pdMS_TO_TICKS(2));
+
+#ifdef GFX_PRINT_DEBUG
+    serial_print("Disposing of window: ", 0);
+    serial_print(window->name, 0);
+    serial_print_line(".", 1);
+#endif
+    if (!xSemaphoreTake(window->sem_handle, pdMS_TO_TICKS(1000) == pdPASS))
+    {
+		serial_print("Failed to safely acquire window: ", 0);
+		serial_print(window->name, 0);
+		serial_print_line(". Disposing anyway (risky!)", 0);
+    }
+    vSemaphoreDelete(window->sem_handle);
+    free(window);
+}
+
+bool gfx_select_window(GfxWindow_t *window, bool blocking)
+{
+    if (blocking)
+    {
+        while (sent_window == window) vTaskDelay(pdMS_TO_TICKS(2));
+        while (xSemaphoreTake(window->sem_handle, 0) != pdPASS) vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    else
+    {
+        if (sent_window == window) return false;
+        if (xSemaphoreTake(window->sem_handle, 0) != pdPASS) return false;
+    }
+
+#ifdef GFX_PRINT_DEBUG
+		serial_print("Selected window: ", 0);
+		serial_print(window->name, 0);
+		serial_print_line(".", 1);
+#endif
+    selected_window = window;
+    selected_window->state = GFXWIN_WRITING;
+    xSemaphoreGive(window->sem_handle);
+
+    return true;
+}
+
+void gfx_unselect_window(GfxWindow_t *window)
+{
+    if (xSemaphoreTake(window->sem_handle, 0))
+    {
+#ifdef GFX_PRINT_DEBUG
+		serial_print("Unselected window: ", 0);
+		serial_print(window->name, 0);
+		serial_print_line(".", 1);
+#endif
+        selected_window->state = GFXWIN_DIRTY;
+        selected_window = NULL;
+        xSemaphoreGive(window->sem_handle);
+    }
 }
 
 void gfx_show_window(GfxWindow_t *window)
 {
+#ifdef GFX_PRINT_DEBUG
+		serial_print("Showing window: ", 0);
+		serial_print(window->name, 0);
+		serial_print_line(".", 1);
+#endif
 	window->next = NULL;
 
 	if (window_list == NULL)
@@ -111,6 +194,12 @@ void gfx_show_window(GfxWindow_t *window)
 
 void gfx_hide_window(GfxWindow_t *window)
 {
+#ifdef GFX_PRINT_DEBUG
+		serial_print("Hiding window: ", 0);
+		serial_print(window->name, 0);
+		serial_print_line(".", 1);
+#endif
+
 	if (window_list == NULL)
 	{
 		return;
@@ -145,50 +234,54 @@ void gfx_hide_window(GfxWindow_t *window)
 	}
 }
 
-void gfx_push_to_screen(GfxWindow_t *window)
+bool gfx_push_to_screen(GfxWindow_t *window)
 {
 	if (window == NULL)
 	{
 		// no more default full-screen buffer -
 		// if we WANT a full screen buffer, it's easy to define one as a window
-		return;
+		return false;
 	}
 	else if (window->state == GFXWIN_DIRTY)
 	{
-		window->state = GFXWIN_READING;
-		screen_fill_rect_loop(window->buffer, window->size_bytes,
-				window->x, window->y, window->width, window->height);
-		window->state = GFXWIN_CLEAN;
+        if (selected_window != window && sent_window == NULL)
+        {
+            xSemaphoreTake(transfer_sem_handle, portMAX_DELAY);
+            bool transfer = false;
+            window->state = GFXWIN_READING;
+
+            transfer = screen_fill_rect_loop(window->buffer, window->size_bytes,
+                    window->x, window->y, window->width, window->height);
+            sent_window = window;
+            window->state = GFXWIN_CLEAN;
+
+			sent_window = NULL;
+            xSemaphoreGive(transfer_sem_handle);
+
+            return transfer;
+        }
 	}
+
+    return false;
 }
 
 void gfx_rgb_to_565_nonalloc(Color565_t dest, uint8_t red_percent, uint8_t green_percent, uint8_t blue_percent)
 {
-    // RGB565 2 byte format: [ggGbbbbB][rrrrRggg]
+    // RGB565 2 byte format: [RrrrrGgg][gggBbbbb]
     // start with zeroed struct
-	dest[0] = 0x0;
-	dest[1] = 0x0;
+	dest[1] = 0x00;
+	dest[0] = 0x00;
 
     // set correctly shifted R segment in the second byte, its final location
-    dest[1] = INT_PERCENT(red_percent, R565_MAX) << 3;
+    dest[0] = INT_PERCENT(red_percent, R565_MAX) << 3;
     // temporarily set unshifted G segment in first byte
-    dest[0] = INT_PERCENT(green_percent, G565_MAX);
+    dest[1] = INT_PERCENT(green_percent, G565_MAX);
     // OR shifted upper half of G into second byte
-    dest[1] |= (dest[0] >> 3);
+    dest[0] |= (dest[1] >> 3);
     // shift first byte to only leave lower half of G
-    dest[0] <<= 5;
+    dest[1] <<= 5;
     // finally, OR entire B segment into first byte
-    dest[0] |= INT_PERCENT(blue_percent, B565_MAX);
-
-    /*
-    char log[64];
-    sprintf(log, "R%03u|G%03u|B%03u translated to binary.\r\n", red_percent, green_percent, blue_percent);
-    HAL_UART_Transmit(&huart3, (uint8_t *)log, strlen(log), 0xff);
-    sprintf(log, BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(*dest[0]));
-    HAL_UART_Transmit(&huart3, (uint8_t *)log, strlen(log), 0xff);
-    sprintf(log, BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(*dest[1]));
-    HAL_UART_Transmit(&huart3, (uint8_t *)log, strlen(log), 0xff);
-    */
+    dest[1] |= INT_PERCENT(blue_percent, B565_MAX);
 }
 
 void gfx_bytes_to_binary_sprite_nonalloc(BinarySprite_t *sprite, uint16_t height_pixels, uint8_t width_bytes, const uint8_t *data)

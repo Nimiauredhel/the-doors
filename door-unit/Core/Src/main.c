@@ -26,7 +26,6 @@
 #include "door_sensor.h"
 #include "user_interface.h"
 #include "hub_comms.h"
-#include "app.h"
 
 /* USER CODE END Includes */
 
@@ -969,7 +968,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static bool display_init = false;
 
 /* USER CODE END 4 */
 
@@ -983,12 +981,6 @@ static bool display_init = false;
 void StartUserInterfaceTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-	while (!display_init) vTaskDelay(pdMS_TO_TICKS(10));
-	  /*app_init();
-	  app_loop();
-	  app_clean();*/
-	vTaskDelay(pdMS_TO_TICKS(100));
-
 	interface_init();
   /* Infinite loop */
 	for(;;)
@@ -1009,6 +1001,7 @@ void StartDoorOpsTask(void *argument)
 {
   /* USER CODE BEGIN StartDoorOpsTask */
 	door_control_init();
+	// the Low Power Timer is used for the door auto-closing countdown
 	HAL_LPTIM_Counter_Start_IT(&hlptim1, 28125);
   /* Infinite loop */
   for(;;)
@@ -1065,13 +1058,12 @@ void StartDoorSensorTask(void *argument)
 void StartDisplayTask(void *argument)
 {
   /* USER CODE BEGIN StartDisplayTask */
-  display_init = true;
+	display_init();
   /* Infinite loop */
-  for(;;)
-  {
-	  gfx_refresh();
-	  vTaskDelay(pdMS_TO_TICKS(16));
-  }
+	for(;;)
+	{
+		display_loop();
+	}
   /* USER CODE END StartDisplayTask */
 }
 

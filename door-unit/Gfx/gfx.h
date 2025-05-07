@@ -16,17 +16,17 @@
 #include "screen.h"
 #include "fonts.h"
 #include "FreeRTOS.h"
-#include "task.h"
+#include "semphr.h"
 
-#define GFX_SCREEN_WIDTH (screen_get_x_size())
-#define GFX_SCREEN_HEIGHT (screen_get_y_size())
+#define GFX_SCREEN_WIDTH 320
+#define GFX_SCREEN_HEIGHT 240
 #define GFX_SCREEN_SIZE_BYTES (GFX_SCREEN_WIDTH * GFX_SCREEN_HEIGHT * 2)
 
 #define R565_MAX 31
 #define G565_MAX 63
 #define B565_MAX 31
 
-#define INT_PERCENT(percent, max) ((max * percent * 2) / 200)
+#define INT_PERCENT(percent, max) ((max * percent) / 100)
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c\r\n"
 #define BYTE_TO_BINARY(byte)  \
@@ -80,6 +80,8 @@ typedef enum GfxWindowState
  */
 typedef struct GfxWindow
 {
+    StaticSemaphore_t sem_buff;
+    SemaphoreHandle_t sem_handle;
 	GfxWindowState_t state : 4;
 	uint16_t x : 12;
 	uint16_t y : 12;
@@ -88,6 +90,7 @@ typedef struct GfxWindow
 	uint32_t size_bytes : 24;
 	uint32_t id;
 	struct GfxWindow *next;
+    char name[16];
 	uint8_t buffer[];
 } GfxWindow_t;
 
@@ -125,9 +128,6 @@ typedef struct RectSprite565
 	Color565_t pixel_colors[];
 } RectSprite565_t;
 
-extern TIM_HandleTypeDef htim6;
-extern UART_HandleTypeDef huart3;
-
 extern bool gfx_dirty;
 
 extern const Color565_t color_black;
@@ -141,13 +141,16 @@ extern const Color565_t color_yellow;
 
 extern const BinarySpriteSheet_t default_font;
 
-void gfx_refresh(void);
+bool gfx_refresh(void);
 void gfx_init(uint32_t orientation);
-GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
-void gfx_select_window(GfxWindow_t *window);
+uint8_t gfx_get_transfer_count(void);
+GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name);
+void gfx_dispose_window(GfxWindow_t *window);
+bool gfx_select_window(GfxWindow_t *window, bool blocking);
+void gfx_unselect_window(GfxWindow_t *window);
 void gfx_show_window(GfxWindow_t *window);
 void gfx_hide_window(GfxWindow_t *window);
-void gfx_push_to_screen(GfxWindow_t *window);
+bool gfx_push_to_screen(GfxWindow_t *window);
 
 /**
  * @brief takes in 0-100 percentages of RGB values and maps them to an approximate 565 representation
