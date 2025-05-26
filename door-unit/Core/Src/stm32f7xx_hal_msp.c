@@ -161,11 +161,6 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 
     __HAL_LINKDMA(hi2c,hdmarx,hdma_i2c1_rx);
 
-    /* I2C1 interrupt Init */
-    HAL_NVIC_SetPriority(I2C1_EV_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
-    HAL_NVIC_SetPriority(I2C1_ER_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
     /* USER CODE BEGIN I2C1_MspInit 1 */
 
     /* USER CODE END I2C1_MspInit 1 */
@@ -238,9 +233,6 @@ void HAL_LPTIM_MspInit(LPTIM_HandleTypeDef* hlptim)
 
     /* Peripheral clock enable */
     __HAL_RCC_LPTIM1_CLK_ENABLE();
-    /* LPTIM1 interrupt Init */
-    HAL_NVIC_SetPriority(LPTIM1_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(LPTIM1_IRQn);
     /* USER CODE BEGIN LPTIM1_MspInit 1 */
 
     /* USER CODE END LPTIM1_MspInit 1 */
@@ -300,9 +292,6 @@ void HAL_RTC_MspInit(RTC_HandleTypeDef* hrtc)
 
     /* Peripheral clock enable */
     __HAL_RCC_RTC_ENABLE();
-    /* RTC interrupt Init */
-    HAL_NVIC_SetPriority(RTC_Alarm_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(RTC_Alarm_IRQn);
     /* USER CODE BEGIN RTC_MspInit 1 */
 
     /* USER CODE END RTC_MspInit 1 */
@@ -332,6 +321,81 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* hrtc)
     /* USER CODE BEGIN RTC_MspDeInit 1 */
 
     /* USER CODE END RTC_MspDeInit 1 */
+  }
+
+}
+
+/**
+  * @brief SPI MSP Initialization
+  * This function configures the hardware resources used in this example
+  * @param hspi: SPI handle pointer
+  * @retval None
+  */
+void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(hspi->Instance==SPI5)
+  {
+    /* USER CODE BEGIN SPI5_MspInit 0 */
+
+    /* USER CODE END SPI5_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_SPI5_CLK_ENABLE();
+
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+    /**SPI5 GPIO Configuration
+    PF7     ------> SPI5_SCK
+    PF8     ------> SPI5_MISO
+    PF9     ------> SPI5_MOSI
+    */
+    GPIO_InitStruct.Pin = TS_SCK_Pin|TS_MOSI_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF5_SPI5;
+    HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = TS_MISO_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF5_SPI5;
+    HAL_GPIO_Init(TS_MISO_GPIO_Port, &GPIO_InitStruct);
+
+    /* USER CODE BEGIN SPI5_MspInit 1 */
+
+    /* USER CODE END SPI5_MspInit 1 */
+
+  }
+
+}
+
+/**
+  * @brief SPI MSP De-Initialization
+  * This function freeze the hardware resources used in this example
+  * @param hspi: SPI handle pointer
+  * @retval None
+  */
+void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
+{
+  if(hspi->Instance==SPI5)
+  {
+    /* USER CODE BEGIN SPI5_MspDeInit 0 */
+
+    /* USER CODE END SPI5_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_SPI5_CLK_DISABLE();
+
+    /**SPI5 GPIO Configuration
+    PF7     ------> SPI5_SCK
+    PF8     ------> SPI5_MISO
+    PF9     ------> SPI5_MOSI
+    */
+    HAL_GPIO_DeInit(GPIOF, TS_SCK_Pin|TS_MISO_Pin|TS_MOSI_Pin);
+
+    /* USER CODE BEGIN SPI5_MspDeInit 1 */
+
+    /* USER CODE END SPI5_MspDeInit 1 */
   }
 
 }
@@ -408,9 +472,6 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
     HAL_GPIO_Init(DOOR_SENSOR_ECHO_GPIO_Port, &GPIO_InitStruct);
 
-    /* TIM2 interrupt Init */
-    HAL_NVIC_SetPriority(TIM2_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(TIM2_IRQn);
     /* USER CODE BEGIN TIM2_MspInit 1 */
 
     /* USER CODE END TIM2_MspInit 1 */
@@ -434,9 +495,6 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     /* USER CODE END TIM6_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_TIM6_CLK_ENABLE();
-    /* TIM6 interrupt Init */
-    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
     /* USER CODE BEGIN TIM6_MspInit 1 */
 
     /* USER CODE END TIM6_MspInit 1 */

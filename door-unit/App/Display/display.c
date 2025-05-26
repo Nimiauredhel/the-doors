@@ -53,6 +53,9 @@ void display_init(void)
 	gfx_show_window(keypad_window);
 
 	display_initialized = true;
+
+	xpt2046_spi(&hspi5);
+	xpt2046_init();
 }
 
 void display_loop(void)
@@ -60,4 +63,16 @@ void display_loop(void)
 	display_draw_datetime();
 	gfx_refresh();
 	vTaskDelay(pdMS_TO_TICKS(16));
+
+	char buff[32] = {0};
+
+	uint16_t x = 0;
+	uint16_t y = 0;
+
+	xpt2046_read_position(&x, &y);
+	//sprintf(buff, "%03u : %03u : %03u : %03u", ts_CoordinatesRaw.x, ts_CoordinatesRaw.y, ts_CoordinatesRaw.z1, ts_CoordinatesRaw.z2);
+	//sprintf(buff, "%03u : %03u : %03u", ts_Coordinates.x, ts_Coordinates.y, ts_Coordinates.z);
+	//sprintf(buff, "%03u : %03u", x, y);
+	//serial_print_line(buff, 0);
+	//event_log_append(PACKET_REPORT_ERROR, x, y);
 }

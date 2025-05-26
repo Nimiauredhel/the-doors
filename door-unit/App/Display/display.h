@@ -12,6 +12,9 @@
 
 #include "gfx.h"
 #include "door_date_time.h"
+#include "xpt2046.h"
+
+extern SPI_HandleTypeDef hspi5;
 
 extern GfxWindow_t *msg_window;
 extern GfxWindow_t *keypad_window;
