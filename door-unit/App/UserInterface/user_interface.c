@@ -218,6 +218,7 @@ static uint8_t touch_scan(const uint8_t max_len)
 			input_idx++;
 			input_is_dirty = true;
 			GIVE_GUI_MUTEX;
+			audio_click_sound();
 			break;
 		}
 	}
@@ -368,6 +369,7 @@ void interface_init(void)
 	gui_lock = xSemaphoreCreateMutexStatic(&gui_lock_buffer);
 	xpt2046_spi(&hspi5);
 	xpt2046_init();
+	init_audio();
 	interface_initialized = true;
 
 	while(!display_is_initialized() || !door_control_is_init())
@@ -380,6 +382,11 @@ void interface_init(void)
 void interface_loop(void)
 {
 	vTaskDelay(pdMS_TO_TICKS(1));
+
+	if (phase_just_reset)
+	{
+		audio_top_phase_jingle();
+	}
 
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
 	phase_just_reset = false;

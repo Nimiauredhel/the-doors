@@ -11,7 +11,6 @@
 #include <door_date_time.h>
 #include <string.h>
 #include <stdbool.h>
-#include <user_auth.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -21,9 +20,11 @@
 #include "main.h"
 
 #include "gfx.h"
+#include "audio.h"
+#include "uart_io.h"
 
 #include "display.h"
-#include "uart_io.h"
+#include "user_auth.h"
 #include "door_control.h"
 #include "hub_comms.h"
 

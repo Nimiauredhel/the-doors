@@ -16,6 +16,7 @@
 
 #include "event_log.h"
 #include "uart_io.h"
+#include "audio.h"
 
 void auth_reset_auth(void);
 bool auth_is_auth(void);

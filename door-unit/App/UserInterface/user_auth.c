@@ -5,7 +5,7 @@
  *      Author: mickey
  */
 
-#include <user_auth.h>
+#include "user_auth.h"
 
 // since a password is 4 digits it can fit in a 16-bit int (digit=nibble)
 static uint16_t password = 0x0000;
@@ -47,6 +47,15 @@ void auth_check_password(const char *rx_msg)
 	if (in_pass == password) is_auth = true;
 	event_log_append(is_auth ? PACKET_REPORT_PASS_CORRECT : PACKET_REPORT_PASS_WRONG, in_pass, 0);
 	serial_print_line(is_auth ? "Password Accepted." : "Password Rejected.", 0);
+
+	if (is_auth)
+	{
+		audio_success_jingle();
+	}
+	else
+	{
+		audio_failure_jingle();
+	}
 }
 
 void auth_set_password(const char *rx_msg)
