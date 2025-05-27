@@ -174,8 +174,6 @@ void xpt2046_update(){
 		{
 			return;
 		}
-
-
 	}
 
 	uint8_t zeros[2] = { 0x00,0x00};
@@ -191,14 +189,12 @@ void xpt2046_update(){
 		HAL_SPI_Transmit(spiPort,&command,sizeof(command),HAL_MAX_DELAY);
 		HAL_SPI_TransmitReceive(spiPort,(uint8_t*)zeros,receiveByteX,sizeof(receiveByteX),HAL_MAX_DELAY);
 
-
 		ts_ControlByte.channel = XPT2046_DFR_Y;
 		xpt2046_control_byte_update();
 
 		uint8_t receiveByteY[2] = {0x00,0x00};
 		HAL_SPI_Transmit(spiPort,&command,sizeof(command),HAL_MAX_DELAY);
 		HAL_SPI_TransmitReceive(spiPort,(uint8_t*)zeros,receiveByteY,sizeof(receiveByteY),HAL_MAX_DELAY);
-
 
 		ts_ControlByte.channel = XPT2046_DFR_Z1;
 		xpt2046_control_byte_update();
@@ -207,27 +203,27 @@ void xpt2046_update(){
 		HAL_SPI_Transmit(spiPort,&command,sizeof(command),HAL_MAX_DELAY);
 		HAL_SPI_TransmitReceive(spiPort,(uint8_t*)zeros,receiveByteZ1,sizeof(receiveByteZ1),HAL_MAX_DELAY);
 
-
 		ts_ControlByte.channel = XPT2046_DFR_Z2;
 		xpt2046_control_byte_update();
 		uint8_t receiveByteZ2[2] = {0x00,0x00};
 
 		HAL_SPI_Transmit(spiPort,&command,sizeof(command),HAL_MAX_DELAY);
 		HAL_SPI_TransmitReceive(spiPort,(uint8_t*)zeros,receiveByteZ2,sizeof(receiveByteZ2),HAL_MAX_DELAY);
+
 		if(ts_ControlByte.bitMode == XPT2046_12BIT_MODE)
 		{
 			x_avg+= 	(receiveByteX[1] 	<< 4) | (receiveByteX[0] 	>> 4);
 			y_avg+= 	(receiveByteY[1] 	<< 4) | (receiveByteY[0] 	>> 4);
 			z1_avg+= 	(receiveByteZ1[1] 	<< 4) | (receiveByteZ1[0] 	>> 4);
 			z2_avg+= 	(receiveByteZ2[1] 	<< 4) | (receiveByteZ2[0] 	>> 4);
-		}else
+		}
+		else
 		{
 			x_avg+= 	(receiveByteX[1]);
 			y_avg+= 	(receiveByteY[1]) ;
 			z1_avg+= 	(receiveByteZ1[1]);
 			z2_avg+= 	(receiveByteZ2[1]);
 		}
-
 	}
 
 	ts_CoordinatesRaw.x = x_avg/AVERAGE_POINTS;
@@ -271,7 +267,6 @@ void xpt2046_update(){
 			break;
 		}
 	}
-
 
 	xpt2046_unselect();
 }

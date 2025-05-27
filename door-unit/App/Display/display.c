@@ -74,16 +74,29 @@ static void display_draw_keypad(void)
 	static const uint8_t digit_width = 8 * digit_scale;
 	static const uint8_t digit_height = 5 * digit_scale;
 
+	static bool fresh = true;
+	static int8_t key_last_states[12] = {-1};
+
 	if (!interface_is_keypad_dirty()) return;
 
 	int8_t touched_button_idx = interface_get_touched_button_idx();
 
 	// 160x240
 	gfx_select_window(keypad_window, true);
-	gfx_fill_screen(color_black);
+
+	if (fresh)
+	{
+		gfx_fill_screen(color_black);
+	}
 
 	for (int8_t i = 0; i < 12; i++)
 	{
+		if (!fresh
+			&& key_last_states[i] == (i == touched_button_idx))
+			continue;
+
+		key_last_states[i] = (i == touched_button_idx);
+
 		gfx_fill_rect_single_color(
 				keypad_buttons[i].x,
 				keypad_buttons[i].y,
@@ -97,6 +110,7 @@ static void display_draw_keypad(void)
 						 digit_scale);
 	}
 
+	fresh = false;
 	gfx_unselect_window(keypad_window);
 }
 

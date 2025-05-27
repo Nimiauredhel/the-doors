@@ -117,14 +117,22 @@ static char touch_interpret()
 
 static void touch_update(void)
 {
-	bool new_touch = !touched;
+	bool was_touched = touched;
 	xpt2046_read_position(&touch_state.current_x, &touch_state.current_y);
-	touched = touch_state.current_x > 0 || touch_state.current_y > 0;
+	touched = ts_Coordinates.z > 0 && ts_Coordinates.z < 128
+			&& (touch_state.current_x > 0 || touch_state.current_y > 0);
 
-	if (touched && new_touch)
+	if (touched)
 	{
-		touch_state.start_x = touch_state.current_x;
-		touch_state.start_y = touch_state.current_y;
+		if (!was_touched)
+		{
+			touch_state.start_x = touch_state.current_x;
+			touch_state.start_y = touch_state.current_y;
+		}
+	}
+	else if (was_touched)
+	{
+
 	}
 }
 
@@ -151,7 +159,7 @@ static uint8_t touch_scan(const uint8_t max_len)
 	{
 		if (input_idx >= max_len)
 		{
-			vTaskDelay(pdMS_TO_TICKS(20));
+			vTaskDelay(pdMS_TO_TICKS(8));
 			return input_idx;
 		}
 
@@ -179,6 +187,8 @@ static uint8_t touch_scan(const uint8_t max_len)
 
 		currchar = inchar;
 
+		audio_sfx_touch_down();
+
 		do
 		{
 			if (touched)
@@ -191,11 +201,16 @@ static uint8_t touch_scan(const uint8_t max_len)
 			touch_update();
 		} while (up_counter < up_threshold);
 
-		if (inchar != upchar) continue;
+		if (inchar != upchar)
+		{
+			audio_sfx_touch_up();
+			continue;
+		}
 
 		switch (inchar)
 		{
 		case 0:
+			audio_sfx_touch_up();
 			break;
 		case '\b':
 			if (input_idx > 0)
@@ -297,7 +312,7 @@ static void input_evaluate(void)
 				snprintf(msg_string, sizeof(msg_string), "Command Redundant");
 				msg_is_dirty = true;
 				GIVE_GUI_MUTEX;
-				vTaskDelay(pdMS_TO_TICKS(1000));
+				vTaskDelay(pdMS_TO_TICKS(500));
 			}
 			break;
 		case 2:
@@ -313,7 +328,7 @@ static void input_evaluate(void)
 				snprintf(msg_string, sizeof(msg_string), "Command Redundant");
 				msg_is_dirty = true;
 				GIVE_GUI_MUTEX;
-				vTaskDelay(pdMS_TO_TICKS(1000));
+				vTaskDelay(pdMS_TO_TICKS(500));
 			}
 			break;
 		case 3:
@@ -336,7 +351,7 @@ static void input_evaluate(void)
 			snprintf(msg_string, sizeof(msg_string), "Unknown Command");
 			msg_is_dirty = true;
 			GIVE_GUI_MUTEX;
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(500));
 			phase_reset();
 			break;
 		}
@@ -413,7 +428,7 @@ void interface_loop(void)
 			msg_is_dirty = true;
 			GIVE_GUI_MUTEX;
 			serial_print_line("Auth already granted, skipping password check.", 0);
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		else
 		{
@@ -444,7 +459,7 @@ void interface_loop(void)
 			msg_is_dirty = true;
 			GIVE_GUI_MUTEX;
 			serial_print_line("Cannot change password without authentication.", 0);
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		break;
 	case IPHASE_SETTIME:
@@ -460,7 +475,7 @@ void interface_loop(void)
 			snprintf(msg_string, sizeof(msg_string), "Cannot set time/date without authentication.");
 			msg_is_dirty = true;
 			GIVE_GUI_MUTEX;
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		phase_reset();
 		break;
@@ -473,7 +488,7 @@ void interface_loop(void)
 			snprintf(msg_string, sizeof(msg_string), "Command Redundant");
 			msg_is_dirty = true;
 			GIVE_GUI_MUTEX;
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		else if (auth_is_auth())
 		{
@@ -492,7 +507,7 @@ void interface_loop(void)
 			snprintf(msg_string, sizeof(msg_string), "Cannot proceeed without authentication.");
 			msg_is_dirty = true;
 			GIVE_GUI_MUTEX;
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		auth_reset_auth();
 		break;

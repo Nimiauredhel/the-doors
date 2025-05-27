@@ -22,6 +22,20 @@ void set_audio(uint32_t pitch_period, float duty_percent)
 	HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_1);
 }
 
+void audio_sfx_touch_down(void)
+{
+	set_audio(E3, 0.2f);
+	vTaskDelay(pdMS_TO_TICKS(50));
+	stop_audio();
+}
+
+void audio_sfx_touch_up(void)
+{
+	set_audio(F4, 0.2f);
+	vTaskDelay(pdMS_TO_TICKS(50));
+	stop_audio();
+}
+
 void audio_click_sound(void)
 {
 	float mod = 1.0f;
@@ -30,7 +44,7 @@ void audio_click_sound(void)
 	for (int i = 0; i < 10; i++)
 	{
 		set_audio(base * mod, 0.25f);
-		mod -= 0.01f;
+		mod -= 0.05f;
 		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 
