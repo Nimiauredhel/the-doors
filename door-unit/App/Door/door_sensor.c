@@ -138,6 +138,10 @@ void door_sensor_loop(void)
 	{
 		door_sensor_trigger();
 	}
+	else
+	{
+		vTaskDelay(50);
+	}
 
 	if (debug_enabled)
 	{

@@ -11,17 +11,15 @@
 #include <stdbool.h>
 
 #include "gfx.h"
+#include "user_interface.h"
 #include "door_date_time.h"
+
 #include "xpt2046.h"
 
-extern SPI_HandleTypeDef hspi5;
-
-extern GfxWindow_t *msg_window;
 extern GfxWindow_t *keypad_window;
-extern bool display_initialized;
 
+bool display_is_initialized(void);
 void display_init(void);
 void display_loop(void);
-void display_draw_datetime(void);
 
 #endif /* DISPLAY_H_ */

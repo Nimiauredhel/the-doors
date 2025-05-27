@@ -100,7 +100,7 @@ const osThreadAttr_t CommsTask_attributes = {
   .cb_size = sizeof(CommsTaskControlBlock),
   .stack_mem = &CommsTaskBuffer[0],
   .stack_size = sizeof(CommsTaskBuffer),
-  .priority = (osPriority_t) osPriorityAboveNormal,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for DoorSensorTask */
 osThreadId_t DoorSensorTaskHandle;
@@ -112,7 +112,7 @@ const osThreadAttr_t DoorSensorTask_attributes = {
   .cb_size = sizeof(DoorSensorTaskControlBlock),
   .stack_mem = &DoorSensorTaskBuffer[0],
   .stack_size = sizeof(DoorSensorTaskBuffer),
-  .priority = (osPriority_t) osPriorityRealtime1,
+  .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for DisplayTask */
 osThreadId_t DisplayTaskHandle;
@@ -124,7 +124,7 @@ const osThreadAttr_t DisplayTask_attributes = {
   .cb_size = sizeof(DisplayTaskControlBlock),
   .stack_mem = &DisplayTaskBuffer[0],
   .stack_size = sizeof(DisplayTaskBuffer),
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
 

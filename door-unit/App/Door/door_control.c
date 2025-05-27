@@ -149,8 +149,6 @@ void door_control_init(void)
 
 void door_control_loop(void)
 {
-	vTaskDelay(1);
-
 	static uint16_t last_timer_notification = 0;
 
 	char msg_buff[64];
@@ -170,6 +168,9 @@ void door_control_loop(void)
 	{
 		last_timer_notification = 0;
 	}
+
+	vTaskDelay(pdMS_TO_TICKS(
+		door_is_closed() ? 250 : 10));
 }
 
 void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
