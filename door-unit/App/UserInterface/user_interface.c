@@ -50,13 +50,19 @@ static const uint8_t phase_char_limits[6] =
 
 static const char *phase_prompts[6] =
 {
-		"Unknown Phase",
+		"Unknown\r\nPhase",
 		"1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)settime\r\r\n5)debug_comms\r\r\n6)debug_sensor",
-		"Please Enter Password.",
-		"Please Enter NEW Password.",
-		"Opening Door!",
-		"Closing Door!",
+		"Please\r\nEnter\r\nPassword.",
+		"Please\r\nEnter\r\nNEW\r\nPassword.",
+		"Opening\r\nDoor!",
+		"Closing\r\nDoor!",
 };
+
+static const char *imsg_command_redundant = "Command\r\nRedundant.";
+static const char *imsg_command_unknown = "Unknown\r\nCommand.";
+static const char *imsg_auth_already = "Auth already\r\ngranted,\r\nskipping\r\npassword\r\ncheck.";
+static const char *imsg_auth_required = "Cannot\r\nproceeed\r\nwithout\r\nauthentication.";
+
 
 static bool phase_just_reset = false;
 static bool touched = false;
@@ -75,6 +81,14 @@ static char msg_string[128] = {0};
 static char msg_string_safe[128] = {0};
 static char input_string[8] = {0};
 static char input_string_safe[8] = {0};
+
+static void interface_set_msg(const char *new_msg)
+{
+	TAKE_GUI_MUTEX;
+	snprintf(msg_string, sizeof(msg_string), new_msg);
+	msg_is_dirty = true;
+	GIVE_GUI_MUTEX;
+}
 
 static char touch_interpret()
 {
@@ -307,11 +321,8 @@ static void input_evaluate(void)
 			}
 			else
 			{
-				serial_print_line("Command Redundant.", 0);
-				TAKE_GUI_MUTEX;
-				snprintf(msg_string, sizeof(msg_string), "Command Redundant");
-				msg_is_dirty = true;
-				GIVE_GUI_MUTEX;
+				serial_print_line(imsg_command_redundant, 0);
+				interface_set_msg(imsg_command_redundant);
 				vTaskDelay(pdMS_TO_TICKS(500));
 			}
 			break;
@@ -323,11 +334,8 @@ static void input_evaluate(void)
 			}
 			else
 			{
-				serial_print_line("Command Redundant.", 0);
-				TAKE_GUI_MUTEX;
-				snprintf(msg_string, sizeof(msg_string), "Command Redundant");
-				msg_is_dirty = true;
-				GIVE_GUI_MUTEX;
+				serial_print_line(imsg_command_redundant, 0);
+				interface_set_msg(imsg_command_redundant);
 				vTaskDelay(pdMS_TO_TICKS(500));
 			}
 			break;
@@ -346,11 +354,8 @@ static void input_evaluate(void)
 			door_sensor_toggle_debug();
 			break;
 		default:
-			serial_print_line("Unknown Command.", 0);
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), "Unknown Command");
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			serial_print_line(imsg_command_unknown, 0);
+			interface_set_msg(imsg_command_unknown);
 			vTaskDelay(pdMS_TO_TICKS(500));
 			phase_reset();
 			break;
@@ -412,10 +417,7 @@ void interface_loop(void)
 		phase_reset();
 		break;
 	case IPHASE_TOP:
-		TAKE_GUI_MUTEX;
-		snprintf(msg_string, sizeof(msg_string), phase_prompts[phase_queue[phase_queue_index]]);
-		msg_is_dirty = true;
-		GIVE_GUI_MUTEX;
+		interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 		serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 		touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
 		input_evaluate();
@@ -423,19 +425,13 @@ void interface_loop(void)
 	case IPHASE_CHECKPW:
 		if (auth_is_auth())
 		{
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), "Auth already granted, skipping password check.");
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
-			serial_print_line("Auth already granted, skipping password check.", 0);
+			interface_set_msg(imsg_auth_already);
+			serial_print_line(imsg_auth_already, 0);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		else
 		{
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), phase_prompts[phase_queue[phase_queue_index]], sizeof(msg_string), phase_prompts[phase_queue[phase_queue_index]]);
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
 			input_evaluate();
@@ -444,21 +440,14 @@ void interface_loop(void)
 	case IPHASE_SETPW:
 		if (auth_is_auth())
 		{
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), phase_prompts[phase_queue[phase_queue_index]], sizeof(msg_string), phase_prompts[phase_queue[phase_queue_index]]);
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
 			input_evaluate();
 		}
 		else
 		{
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), "Cannot change password without authentication.");
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
-			serial_print_line("Cannot change password without authentication.", 0);
+			interface_set_msg(imsg_auth_required);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		break;
@@ -470,11 +459,8 @@ void interface_loop(void)
 		}
 		else
 		{
-			serial_print_line("Cannot set time/date without authentication.", 0);
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), "Cannot set time/date without authentication.");
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			serial_print_line(imsg_auth_required, 0);
+			interface_set_msg(imsg_auth_required);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		phase_reset();
@@ -483,30 +469,21 @@ void interface_loop(void)
 	case IPHASE_CLOSE:
 		if (door_is_closed() == (current_phase == IPHASE_CLOSE))
 		{
-			serial_print_line("Command Redundant.", 0);
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), "Command Redundant");
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			serial_print_line(imsg_command_redundant, 0);
+			interface_set_msg(imsg_command_redundant);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		else if (auth_is_auth())
 		{
 			serial_print_line(phase_prompts[current_phase], 0);
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), phase_prompts[current_phase]);
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			interface_set_msg(phase_prompts[current_phase]);
 			door_set_closed(current_phase == IPHASE_CLOSE);
 			vTaskDelay(pdMS_TO_TICKS(1000));
 		}
 		else
 		{
-			serial_print_line("Cannot proceeed without authentication.", 0);
-			TAKE_GUI_MUTEX;
-			snprintf(msg_string, sizeof(msg_string), "Cannot proceeed without authentication.");
-			msg_is_dirty = true;
-			GIVE_GUI_MUTEX;
+			serial_print_line(imsg_auth_required, 0);
+			interface_set_msg(imsg_auth_required);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		auth_reset_auth();
