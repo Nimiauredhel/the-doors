@@ -9,6 +9,7 @@
 
 #define MAX_CHARS_MENU_INPUT 1
 #define MAX_CHARS_PASS_INPUT 4
+#define MAX_CHARS_ADMIN_PASS_INPUT 8
 #define PHASE_QUEUE_SIZE 8
 
 #define TAKE_GUI_MUTEX \
@@ -38,24 +39,32 @@ const InterfaceButton_t keypad_buttons[12] =
 	{ .id = '#', .width = 51, .height = 30, .x = 160, .y = 125, .label = "#\0" },
 };
 
-static const uint8_t phase_char_limits[6] =
+static const uint8_t phase_char_limits[10] =
 {
 		MAX_CHARS_MENU_INPUT, // phase NONE
 		MAX_CHARS_MENU_INPUT, // phase TOP
-		MAX_CHARS_PASS_INPUT, // phase CHECKPW
+		MAX_CHARS_MENU_INPUT, // phase ADMIN
+		MAX_CHARS_PASS_INPUT, // phase CHECKPW_USER
+		MAX_CHARS_ADMIN_PASS_INPUT, // phase CHECKPW_ADMIN
 		MAX_CHARS_PASS_INPUT, // phase SETPW
 		MAX_CHARS_PASS_INPUT, // phase OPEN
 		MAX_CHARS_PASS_INPUT, // phase CLOSE
+		MAX_CHARS_PASS_INPUT, // phase BELL
+		MAX_CHARS_PASS_INPUT, // phase SETTIME
 };
 
-static const char *phase_prompts[6] =
+static const char *phase_prompts[10] =
 {
 		"Unknown\r\nPhase",
-		"1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)settime\r\r\n5)debug_comms\r\r\n6)debug_sensor",
+		"",
+		"ADMIN MENU\r\n1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)settime\r\r\n5)debug_comms\r\r\n6)debug_sensor",
 		"Please\r\nEnter\r\nPassword.",
+		"Please\r\nEnter\r\nADMIN\r\nPassword.",
 		"Please\r\nEnter\r\nNEW\r\nPassword.",
 		"Opening\r\nDoor!",
 		"Closing\r\nDoor!",
+		"Please Select\r\nClient Number.",
+		"Setting the time.",
 };
 
 static const char *imsg_command_redundant = "Command\r\nRedundant.";
@@ -79,8 +88,8 @@ static InterfacePhase_t phase_queue[PHASE_QUEUE_SIZE] = {0};
 
 static char msg_string[128] = {0};
 static char msg_string_safe[128] = {0};
-static char input_string[8] = {0};
-static char input_string_safe[8] = {0};
+static char input_string[16] = {0};
+static char input_string_safe[16] = {0};
 
 static void interface_set_msg(const char *new_msg)
 {
@@ -169,11 +178,12 @@ static uint8_t touch_scan(const uint8_t max_len)
 	input_is_dirty = true;
 	GIVE_GUI_MUTEX;
 
+	vTaskDelay(pdMS_TO_TICKS(1));
+
 	for(;;)
 	{
 		if (input_idx >= max_len)
 		{
-			vTaskDelay(pdMS_TO_TICKS(8));
 			return input_idx;
 		}
 
@@ -248,6 +258,12 @@ static uint8_t touch_scan(const uint8_t max_len)
 			input_is_dirty = true;
 			GIVE_GUI_MUTEX;
 			audio_click_sound();
+			if (input_string[input_idx-1] == '*'
+			|| input_string[input_idx-1] == '#')
+			{
+				vTaskDelay(pdMS_TO_TICKS(10));
+				return input_idx;
+			}
 			break;
 		}
 	}
@@ -308,7 +324,7 @@ static void input_evaluate(void)
 {
 	switch (phase_queue[phase_queue_index])
 	{
-	case IPHASE_TOP:
+	case IPHASE_ADMIN:
 		uint8_t num = atoi(input_string);
 
 		switch (num)
@@ -316,7 +332,7 @@ static void input_evaluate(void)
 		case 1:
 			if (door_is_closed())
 			{
-				phase_push(IPHASE_CHECKPW);
+				phase_push(IPHASE_CHECKPW_USER);
 				phase_push(IPHASE_OPEN);
 			}
 			else
@@ -329,7 +345,7 @@ static void input_evaluate(void)
 		case 2:
 			if (!door_is_closed())
 			{
-				phase_push(IPHASE_CHECKPW);
+				phase_push(IPHASE_CHECKPW_USER);
 				phase_push(IPHASE_CLOSE);
 			}
 			else
@@ -340,11 +356,11 @@ static void input_evaluate(void)
 			}
 			break;
 		case 3:
-			phase_push(IPHASE_CHECKPW);
+			phase_push(IPHASE_CHECKPW_ADMIN);
 			phase_push(IPHASE_SETPW);
 			break;
 		case 4:
-			phase_push(IPHASE_CHECKPW);
+			phase_push(IPHASE_CHECKPW_ADMIN);
 			phase_push(IPHASE_SETTIME);
 			break;
 		case 5:
@@ -361,16 +377,33 @@ static void input_evaluate(void)
 			break;
 		}
 		break;
-	case IPHASE_CHECKPW:
-		auth_check_password(input_string);
+	case IPHASE_CHECKPW_USER:
+		switch(input_string[0])
+		{
+		case '*':
+			phase_queue[phase_queue_tail] = IPHASE_BELL;
+			break;
+		case '#':
+			phase_queue[phase_queue_tail] = IPHASE_CHECKPW_ADMIN;
+			phase_push(IPHASE_ADMIN);
+			break;
+		default:
+			auth_check_password(input_string, false);
+			break;
+		}
+		break;
+	case IPHASE_CHECKPW_ADMIN:
+		auth_check_password(input_string, true);
 		break;
 	case IPHASE_SETPW:
 		auth_set_password(input_string);
 		auth_reset_auth();
 		break;
+	case IPHASE_TOP:
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:
 	case IPHASE_NONE:
+	case IPHASE_BELL:
 		phase_reset();
 		break;
 	case IPHASE_SETTIME:
@@ -396,7 +429,7 @@ void interface_init(void)
 		vTaskDelay(pdMS_TO_TICKS(1));
 
 	phase_reset();
-	vTaskDelay(pdMS_TO_TICKS(1));
+	vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 void interface_loop(void)
@@ -414,16 +447,53 @@ void interface_loop(void)
 	switch (current_phase)
 	{
 	case IPHASE_NONE:
+	case IPHASE_BELL:
 		phase_reset();
 		break;
 	case IPHASE_TOP:
-		interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
-		serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-		touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
-		input_evaluate();
+		auth_reset_auth();
+
+		if (door_is_closed())
+		{
+			phase_push(IPHASE_CHECKPW_USER);
+			phase_push(IPHASE_OPEN);
+		}
+		else
+		{
+			vTaskDelay(pdMS_TO_TICKS(100));
+		}
 		break;
-	case IPHASE_CHECKPW:
-		if (auth_is_auth())
+	case IPHASE_ADMIN:
+		if (auth_is_admin_auth())
+		{
+			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
+			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
+			input_evaluate();
+		}
+		else
+		{
+			interface_set_msg(imsg_auth_required);
+			vTaskDelay(pdMS_TO_TICKS(500));
+		}
+		break;
+	case IPHASE_CHECKPW_USER:
+		if (auth_is_user_auth())
+		{
+			interface_set_msg(imsg_auth_already);
+			serial_print_line(imsg_auth_already, 0);
+			vTaskDelay(pdMS_TO_TICKS(500));
+		}
+		else
+		{
+			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
+			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
+			input_evaluate();
+		}
+		break;
+	case IPHASE_CHECKPW_ADMIN:
+		if (auth_is_admin_auth())
 		{
 			interface_set_msg(imsg_auth_already);
 			serial_print_line(imsg_auth_already, 0);
@@ -438,7 +508,7 @@ void interface_loop(void)
 		}
 		break;
 	case IPHASE_SETPW:
-		if (auth_is_auth())
+		if (auth_is_admin_auth())
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
@@ -452,7 +522,7 @@ void interface_loop(void)
 		}
 		break;
 	case IPHASE_SETTIME:
-		if (auth_is_auth())
+		if (auth_is_admin_auth())
 		{
 			date_time_set_interactive();
 			auth_reset_auth();
@@ -473,7 +543,7 @@ void interface_loop(void)
 			interface_set_msg(imsg_command_redundant);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
-		else if (auth_is_auth())
+		else if (auth_is_user_auth())
 		{
 			serial_print_line(phase_prompts[current_phase], 0);
 			interface_set_msg(phase_prompts[current_phase]);

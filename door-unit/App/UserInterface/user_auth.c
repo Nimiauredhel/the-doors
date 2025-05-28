@@ -7,21 +7,26 @@
 
 #include "user_auth.h"
 
-// since a password is 4 digits it can fit in a 16-bit int (digit=nibble)
-static uint16_t password = 0x0000;
-static bool is_auth = false;
+// since a door pass is 4 digits it can fit in a 16-bit int (digit=nibble)
+static uint16_t user_password = 0x0000;
+// the admin pass is 8 digits but follows the same method
+static uint32_t admin_password = 0x00000000;
 
-static uint16_t str_to_pass(const char *rx_msg)
+static bool is_user_auth = false;
+static bool is_admin_auth = false;
+
+static uint32_t str_to_pass(const char *input_str)
 {
-	char debug_buff[8] = {0};
-	uint16_t idx = 0;
-	uint16_t in_pass = 0x00;
+	char debug_buff[32] = {0};
+	uint8_t idx = 0;
+	uint8_t len = strlen(input_str);
+	uint32_t in_pass = 0x00000000;
 
-	for (idx = 0; idx < 4; idx++)
+	for (idx = 0; idx < len; idx++)
 	{
-		uint16_t input = (rx_msg[idx] - '0') << (idx * 4);
+		uint32_t input = (input_str[idx] - '0') << (idx * 4);
 		in_pass |= input;
-		sprintf(debug_buff, "%u ", input);
+		sprintf(debug_buff, "%lu ", input);
 		serial_print(debug_buff, 0);
 	}
 
@@ -33,39 +38,57 @@ static uint16_t str_to_pass(const char *rx_msg)
 void auth_reset_auth(void)
 {
 	serial_print_line("Auth Status Reset.", 0);
-	is_auth = false;
+	is_user_auth = false;
+	is_admin_auth = false;
 }
 
-bool auth_is_auth(void)
+bool auth_is_user_auth(void)
 {
-	return is_auth;
+	return is_user_auth;
 }
 
-void auth_check_password(const char *rx_msg)
+bool auth_is_admin_auth(void)
 {
-	uint16_t in_pass = str_to_pass(rx_msg);
-	if (in_pass == password) is_auth = true;
-	event_log_append(is_auth ? PACKET_REPORT_PASS_CORRECT : PACKET_REPORT_PASS_WRONG, in_pass, 0);
-	serial_print_line(is_auth ? "Password Accepted." : "Password Rejected.", 0);
+	return is_admin_auth;
+}
 
-	if (is_auth)
+void auth_check_password(const char *input_str, bool admin)
+{
+	uint32_t in_pass = str_to_pass(input_str);
+
+	if ((admin && in_pass == admin_password)
+		|| (!admin && in_pass == user_password))
 	{
+		if (admin)
+		{
+			is_admin_auth = true;
+		}
+		else
+		{
+			is_user_auth = true;
+		}
+
+		event_log_append(PACKET_REPORT_PASS_CORRECT, in_pass, 0);
+		serial_print_line("Password Accepted.", 0);
 		audio_success_jingle();
 	}
 	else
 	{
+		event_log_append(PACKET_REPORT_PASS_WRONG, in_pass, 0);
+		serial_print_line("Password Rejected.", 0);
 		audio_failure_jingle();
 	}
+
 }
 
 void auth_set_password(const char *rx_msg)
 {
-	if (auth_is_auth())
+	if (auth_is_user_auth())
 	{
 		uint16_t in_pass = str_to_pass(rx_msg);
 		serial_print_line("Password Changed.", 0);
-		event_log_append(PACKET_REPORT_PASS_CHANGED, password, in_pass);
-		password = in_pass;
+		user_password = in_pass;
+		event_log_append(PACKET_REPORT_PASS_CHANGED, user_password, admin_password);
 	}
 	else
 	{

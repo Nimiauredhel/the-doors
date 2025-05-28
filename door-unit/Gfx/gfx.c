@@ -13,6 +13,7 @@
 const Color565_t color_black = { 0b00000000, 0b00000000 };
 const Color565_t color_white = { 0b11111111, 0b11111111 };
 const Color565_t color_red = { 0b00000000, 0b11111000 };
+const Color565_t color_red_dark = { 0b00000000, 0b01111000 };
 const Color565_t color_green = { 0b11100000, 0b00000111 };
 const Color565_t color_blue = { 0b00011111, 0b00000000 };
 const Color565_t color_cyan = { 0b11111111, 0b00000111 };

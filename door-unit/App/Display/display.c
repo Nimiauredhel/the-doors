@@ -15,7 +15,7 @@ static GfxWindow_t *datetime_window = NULL;
 static GfxWindow_t *msg_window = NULL;
 static GfxWindow_t *input_window = NULL;
 
-static void display_draw_datetime(void)
+static uint8_t display_draw_datetime(void)
 {
 	static const uint8_t text_scale = 2;
 	static const uint8_t font_width = 8*text_scale;
@@ -27,7 +27,7 @@ static void display_draw_datetime(void)
 
 	RTC_TimeTypeDef now_time = time_get();
 
-	if (now_time.Minutes == prev_time.Minutes) return;
+	if (now_time.Minutes == prev_time.Minutes) return 0;
 
 	if (gfx_select_window(datetime_window, false))
 	{
@@ -39,36 +39,73 @@ static void display_draw_datetime(void)
 		date_time_get_date_str(buff);
 		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), font_height/2, color_cyan, text_scale);
 		gfx_unselect_window(datetime_window);
+		return 1;
 	}
+
+	return 0;
 }
 
-static void display_draw_msg(void)
+static uint8_t display_draw_msg(void)
 {
-	static const uint8_t text_scale = 2;
-
 	if (interface_is_msg_dirty())
 	{
 		gfx_select_window(msg_window, true);
-		gfx_fill_screen(color_black);
-		gfx_print_string(interface_get_msg(), 0, 2, color_white, text_scale);
+
+		const char *msg = interface_get_msg();
+
+		if (strlen(msg) > 0)
+		{
+			gfx_fill_screen(color_black);
+			gfx_print_string(interface_get_msg(), 0, 2, color_white, 2);
+		}
+		else
+		{
+			gfx_fill_screen(color_red_dark);
+			gfx_print_string("DOORS", 6, 32, color_black, 6);
+		}
+
 		gfx_unselect_window(msg_window);
+		return 1;
 	}
+
+	return 0;
 }
 
-static void display_draw_input(void)
+static uint8_t display_draw_input(void)
 {
-	static const uint8_t text_scale = 4;
-
 	if (interface_is_input_dirty())
 	{
+		const char *input = interface_get_input();
+		uint8_t len = strlen(input);
+
 		gfx_select_window(input_window, true);
-		gfx_fill_screen(color_white);
-		gfx_print_string(interface_get_input(), 0, 2, color_red, text_scale);
+
+		if (len == 0)
+		{
+			gfx_fill_screen(color_black);
+		}
+		else
+		{
+			gfx_fill_screen(color_white);
+
+			if (len <= 4)
+			{
+				gfx_print_string(input, 40, 6, color_red_dark, 5);
+			}
+			else
+			{
+				gfx_print_string(input, 24, 12, color_red, 3);
+			}
+		}
+
 		gfx_unselect_window(input_window);
+		return 1;
 	}
+
+	return 0;
 }
 
-static void display_draw_keypad(void)
+static uint8_t display_draw_keypad(void)
 {
 	static const uint8_t digit_scale = 4;
 	static const uint8_t digit_width = 8 * digit_scale;
@@ -77,7 +114,7 @@ static void display_draw_keypad(void)
 	static bool fresh = true;
 	static int8_t key_last_states[12] = {-1};
 
-	if (!interface_is_keypad_dirty()) return;
+	if (!interface_is_keypad_dirty()) return 0;
 
 	int8_t touched_button_idx = interface_get_touched_button_idx();
 
@@ -112,6 +149,7 @@ static void display_draw_keypad(void)
 
 	fresh = false;
 	gfx_unselect_window(keypad_window);
+	return 1;
 }
 
 bool display_is_initialized(void)
@@ -141,10 +179,14 @@ void display_loop(void)
 {
 	if (!interface_is_initialized()) return;
 
-	display_draw_datetime();
-	display_draw_msg();
-	display_draw_input();
-	display_draw_keypad();
-	gfx_refresh();
-	vTaskDelay(pdMS_TO_TICKS(16));
+	uint8_t dirt = 0;
+
+	dirt += display_draw_datetime();
+	dirt += display_draw_msg();
+	dirt += display_draw_input();
+	dirt += display_draw_keypad();
+
+	if (dirt > 0) gfx_refresh();
+
+	vTaskDelay(pdMS_TO_TICKS(32));
 }

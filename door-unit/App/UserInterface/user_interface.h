@@ -34,11 +34,14 @@ typedef enum InterfacePhase
 {
 	IPHASE_NONE = 0,
 	IPHASE_TOP = 1,
-	IPHASE_CHECKPW = 2,
-	IPHASE_SETPW = 3,
-	IPHASE_OPEN = 4,
-	IPHASE_CLOSE = 5,
-	IPHASE_SETTIME = 6,
+	IPHASE_ADMIN = 2,
+	IPHASE_CHECKPW_USER = 3,
+	IPHASE_CHECKPW_ADMIN = 4,
+	IPHASE_SETPW = 5,
+	IPHASE_OPEN = 6,
+	IPHASE_CLOSE = 7,
+	IPHASE_BELL = 8,
+	IPHASE_SETTIME = 9,
 } InterfacePhase_t;
 
 typedef struct InterfaceTouchState
