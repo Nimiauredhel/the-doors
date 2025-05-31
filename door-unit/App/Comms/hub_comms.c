@@ -99,6 +99,12 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		serial_print_line("Received SYNC TIME command from hub.", 0);
 		date_time_set_from_packet(cmd_ptr->header.date, cmd_ptr->header.time);
 		break;
+	case PACKET_REQUEST_SYNC_PASS:
+		serial_print_line("Received SYNC PASS command from hub, still unimplemented.", 0);
+		break;
+	case PACKET_REQUEST_RESET_ADDRESS:
+		serial_print_line("Received RESET ADDRESS command from hub, still unimplemented.", 0);
+		break;
 	case PACKET_REQUEST_MAX:
 		serial_print_line("Received MAX command from hub, this makes no sense.", 0);
 		break;
