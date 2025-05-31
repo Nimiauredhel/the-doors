@@ -23,6 +23,10 @@ static bool interface_initialized = false;
 static SemaphoreHandle_t gui_lock = NULL;
 static StaticSemaphore_t gui_lock_buffer;
 
+static StaticTimer_t input_timer_buffer = {0};
+static TimerHandle_t input_timer_handle;
+static uint8_t input_timer_percent = 0;
+
 const InterfaceButton_t keypad_buttons[12] =
 {
 	{ .id = '1', .width = 51, .height = 30, .x = 25, .y = 5, .label = "1\0" },
@@ -165,26 +169,44 @@ static void touch_scan_timer_callback(TimerHandle_t xTimer)
 	vTimerSetTimerID(xTimer, (void *)pdTRUE);
 }
 
+static void touch_scan_update_timer_percent(void)
+{
+	TickType_t expiry = xTimerGetExpiryTime(input_timer_handle);
+	TickType_t count = xTaskGetTickCount();
+	TickType_t elapsed = expiry > count ? expiry - count : count - expiry;
+	input_timer_percent = (elapsed * 100) / xTimerGetPeriod(input_timer_handle);
+}
+
 static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 {
 #define TEST_INPUT_TIMER \
-		vTaskDelay(pdMS_TO_TICKS(1)); \
-		if (timeout_ms > 0 \
-			&& pdTRUE == (BaseType_t)pvTimerGetTimerID(timer_handle)) \
+		if (timeout_ms > 0) \
 		{ \
 			TAKE_GUI_MUTEX; \
-			keypad_is_enabled = false; \
+			touch_scan_update_timer_percent(); \
 			keypad_is_dirty = true; \
+			if (pdTRUE == (BaseType_t)pvTimerGetTimerID(input_timer_handle)) \
+			{ \
+				bzero(input_string, sizeof(input_string)); \
+				input_is_dirty = true; \
+				keypad_is_enabled = false; \
+				GIVE_GUI_MUTEX; \
+				return -1; \
+			} \
 			GIVE_GUI_MUTEX; \
-			return -1; \
+		} \
+		vTaskDelay(pdMS_TO_TICKS(1));
+
+#define RESET_INPUT_TIMER \
+		xTimerStop(input_timer_handle, 1); \
+		vTimerSetTimerID(input_timer_handle, (void *)pdFALSE); \
+		if (timeout_ms > 0) \
+		{ \
+			xTimerChangePeriod(input_timer_handle, pdMS_TO_TICKS(timeout_ms), 1); \
 		}
 
 	static const uint8_t down_threshold = 2;
 	static const uint8_t up_threshold = 2;
-
-	static bool timer_initialzed = false;
-	static StaticTimer_t timer_buffer = {0};
-	static TimerHandle_t timer_handle;
 
 	uint8_t downchar = 0;
 	uint8_t inchar = 0;
@@ -195,12 +217,6 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 	uint8_t down_counter = 0;
 	uint8_t up_counter = 0;
 
-	if (!timer_initialzed)
-	{
-		 timer_handle = xTimerCreateStatic("InputTimer", 2000, pdFALSE, (void *)pdFALSE, touch_scan_timer_callback, &timer_buffer);
-		 timer_initialzed = true;
-	}
-
 	TAKE_GUI_MUTEX;
 	bzero(input_string, sizeof(input_string));
 	input_is_dirty = true;
@@ -209,18 +225,10 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 	GIVE_GUI_MUTEX;
 
 	vTaskDelay(pdMS_TO_TICKS(1));
-	xTimerStop(timer_handle, 1);
-	vTimerSetTimerID(timer_handle, (void *)pdFALSE);
-
-	if (timeout_ms > 0)
-	{
-		xTimerChangePeriod(timer_handle, pdMS_TO_TICKS(timeout_ms), 1);
-	}
+	RESET_INPUT_TIMER;
 
 	for(;;)
 	{
-		TEST_INPUT_TIMER;
-
 		if (input_idx >= max_len)
 		{
 			TAKE_GUI_MUTEX;
@@ -229,6 +237,8 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 			GIVE_GUI_MUTEX;
 			return input_idx;
 		}
+
+		TEST_INPUT_TIMER;
 
 		downchar = 0;
 		inchar = 0;
@@ -256,13 +266,11 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 		} while (down_counter < down_threshold);
 
 		currchar = inchar;
-
 		audio_sfx_touch_down();
+		RESET_INPUT_TIMER;
 
 		do
 		{
-			TEST_INPUT_TIMER;
-
 			if (touched)
 			{
 				upchar = currchar;
@@ -272,6 +280,8 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 
 			touch_update();
 		} while (up_counter < up_threshold);
+
+		RESET_INPUT_TIMER;
 
 		if (inchar != upchar)
 		{
@@ -320,6 +330,7 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 		}
 	}
 #undef TEST_INPUT_TIMER
+#undef RESET_INPUT_TIMER
 }
 
 static void phase_reset()
@@ -493,8 +504,12 @@ bool interface_is_initialized(void)
 void interface_init(void)
 {
 	gui_lock = xSemaphoreCreateMutexStatic(&gui_lock_buffer);
+
 	xpt2046_spi(&hspi5);
 	xpt2046_init();
+
+	input_timer_handle = xTimerCreateStatic("InputTimer", 2000, pdFALSE, (void *)pdFALSE, touch_scan_timer_callback, &input_timer_buffer);
+
 	init_audio();
 	interface_initialized = true;
 
@@ -585,7 +600,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 10000));
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		}
 		break;
 	case IPHASE_SETPW:
@@ -593,7 +608,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 2000));
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		}
 		else
 		{
@@ -673,6 +688,12 @@ bool interface_is_keypad_enabled(void)
 	bool ret = keypad_is_enabled;
 	GIVE_GUI_MUTEX;
 	return ret;
+}
+
+uint8_t interface_get_input_timer_percent(void)
+{
+	// TODO: check that this is fine without a mutex
+	return input_timer_percent;
 }
 
 const char* interface_get_msg(void)

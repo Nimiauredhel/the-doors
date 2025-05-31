@@ -124,16 +124,20 @@ static uint8_t display_draw_keypad(void)
 	static const uint8_t digit_height = 5 * digit_scale;
 
 	static bool fresh = true;
-	static bool prev_enabled = true;
+	static bool prev_enabled = false;
+	static uint8_t prev_timer_percent = 0;
 	static int8_t key_last_states[12] = {-1};
 
 	bool enabled;
 	int8_t touched_button_idx;
-
-	if (!interface_is_keypad_dirty()) return 0;
+	uint8_t timer_percent;
 
 	enabled = interface_is_keypad_enabled();
+
+	if (enabled == prev_enabled && !interface_is_keypad_dirty()) return 0;
+
 	touched_button_idx = enabled ? interface_get_touched_button_idx() : -1;
+	timer_percent = enabled ? interface_get_input_timer_percent() : 0;
 
 	// 160x240
 	gfx_select_window(keypad_window, true);
@@ -141,6 +145,13 @@ static uint8_t display_draw_keypad(void)
 	if (fresh)
 	{
 		gfx_fill_screen(color_black);
+	}
+
+	if (fresh || timer_percent != prev_timer_percent)
+	{
+		gfx_fill_rect_single_color(20, 0, 200, 2, color_grey_dark);
+		gfx_fill_rect_single_color(20, 0, 2 * timer_percent, 2, color_red);
+		prev_timer_percent = timer_percent;
 	}
 
 	for (int8_t i = 0; i < 12; i++)
