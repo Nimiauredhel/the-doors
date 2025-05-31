@@ -77,6 +77,26 @@ void audio_failure_jingle(void)
 	stop_audio();
 }
 
+void audio_still_open_reminder(void)
+{
+	set_audio(Eb4, 0.1f);
+	vTaskDelay(pdMS_TO_TICKS(125));
+	stop_audio();
+	vTaskDelay(pdMS_TO_TICKS(125));
+	set_audio(C4, 0.1f);
+	vTaskDelay(pdMS_TO_TICKS(125));
+	stop_audio();
+	vTaskDelay(pdMS_TO_TICKS(125));
+	set_audio(Eb4, 0.1f);
+	vTaskDelay(pdMS_TO_TICKS(125));
+	stop_audio();
+	vTaskDelay(pdMS_TO_TICKS(125));
+	set_audio(C4, 0.1f);
+	vTaskDelay(pdMS_TO_TICKS(125));
+	stop_audio();
+	vTaskDelay(pdMS_TO_TICKS(125));
+}
+
 void audio_top_phase_jingle(void)
 {
 	set_audio(Gb3, 0.25f);

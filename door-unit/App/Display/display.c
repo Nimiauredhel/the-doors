@@ -61,7 +61,9 @@ static uint8_t display_draw_msg(void)
 		else
 		{
 			gfx_fill_screen(color_red_dark);
-			gfx_print_string("DOORS", 6, 32, color_black, 6);
+			gfx_print_string("DOORS", 8, 33, color_blue, 6);
+			gfx_print_string("DOORS", 4, 30, color_white, 6);
+			gfx_print_string("DOORS", 7, 32, color_black, 6);
 		}
 
 		gfx_unselect_window(msg_window);
@@ -86,15 +88,24 @@ static uint8_t display_draw_input(void)
 		}
 		else
 		{
-			gfx_fill_screen(color_white);
+			uint8_t digit_scale = len <= 4 ? 5 : 3;
+			uint8_t digit_width = (8*digit_scale);
+			uint16_t start_x = 120 - ((digit_width/2) * len);
+			gfx_fill_screen(color_blue_dark);
 
-			if (len <= 4)
+			if (len > 8)
 			{
-				gfx_print_string(input, 40, 6, color_red_dark, 5);
+				gfx_print_string("ERROR", 40, 6, color_blue, 5);
+			}
+			else if (len <= 4)
+			{
+				gfx_print_string(input, start_x+(4-(len/2)), 5, color_yellow, digit_scale);
+				gfx_print_string(input, start_x, 6, color_blue, digit_scale);
 			}
 			else
 			{
-				gfx_print_string(input, 24, 12, color_red, 3);
+				gfx_print_string(input, start_x+(4-(len/2)), 11, color_white, digit_scale);
+				gfx_print_string(input, start_x, 12, color_cyan, digit_scale);
 			}
 		}
 
@@ -141,9 +152,23 @@ static uint8_t display_draw_keypad(void)
 				keypad_buttons[i].height,
 				i == touched_button_idx ? color_blue : color_white);
 		gfx_print_string(keypad_buttons[i].label,
+						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2)
+						 +1,
+						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2)
+						 +1,
+						 i == touched_button_idx ? color_black : color_yellow,
+						 digit_scale);
+		gfx_print_string(keypad_buttons[i].label,
+						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2)
+						 -1,
+						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2)
+						 -1,
+						 i == touched_button_idx ? color_black : color_yellow,
+						 digit_scale);
+		gfx_print_string(keypad_buttons[i].label,
 						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2),
 						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2),
-						 i == touched_button_idx ? color_yellow : color_black,
+						 i == touched_button_idx ? color_yellow : color_blue_dark,
 						 digit_scale);
 	}
 

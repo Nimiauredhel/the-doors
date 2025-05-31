@@ -11,11 +11,14 @@
 
 // RGB565 2 byte format: [ggGbbbbB][rrrrRggg]
 const Color565_t color_black = { 0b00000000, 0b00000000 };
+const Color565_t color_grey = { 0b11101111, 0b01111011 };
 const Color565_t color_white = { 0b11111111, 0b11111111 };
 const Color565_t color_red = { 0b00000000, 0b11111000 };
 const Color565_t color_red_dark = { 0b00000000, 0b01111000 };
 const Color565_t color_green = { 0b11100000, 0b00000111 };
+const Color565_t color_green_dark = { 0b11100000, 0b00000011 };
 const Color565_t color_blue = { 0b00011111, 0b00000000 };
+const Color565_t color_blue_dark = { 0b00001111, 0b00000000 };
 const Color565_t color_cyan = { 0b11111111, 0b00000111 };
 const Color565_t color_magenta = { 0b00011111, 0b11111000 };
 const Color565_t color_yellow = { 0b11100000, 0b11111111 };

@@ -368,6 +368,21 @@ static void input_evaluate(int8_t input_len)
 
 	switch (phase_queue[phase_queue_index])
 	{
+	case IPHASE_TOP:
+		switch(input_string[0])
+		{
+		case '*':
+			phase_queue[phase_queue_tail] = IPHASE_BELL;
+			break;
+		case '#':
+			phase_queue[phase_queue_tail] = IPHASE_CHECKPW_ADMIN;
+			phase_push(IPHASE_ADMIN);
+			break;
+		default:
+			phase_reset();
+			break;
+		}
+		break;
 	case IPHASE_ADMIN:
 		uint8_t num = atoi(input_string);
 
@@ -443,7 +458,6 @@ static void input_evaluate(int8_t input_len)
 		auth_set_password(input_string);
 		auth_reset_auth();
 		break;
-	case IPHASE_TOP:
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:
 	case IPHASE_NONE:
@@ -478,11 +492,20 @@ void interface_init(void)
 
 void interface_loop(void)
 {
-	vTaskDelay(pdMS_TO_TICKS(1));
+	vTaskDelay(pdMS_TO_TICKS(10));
 
 	if (phase_just_reset)
 	{
-		audio_top_phase_jingle();
+		vTaskDelay(pdMS_TO_TICKS(10));
+
+		if (door_is_closed())
+		{
+			audio_top_phase_jingle();
+		}
+		else
+		{
+			audio_still_open_reminder();
+		}
 	}
 
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
@@ -504,7 +527,9 @@ void interface_loop(void)
 		}
 		else
 		{
-			vTaskDelay(pdMS_TO_TICKS(100));
+			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
+			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 0));
 		}
 		break;
 	case IPHASE_ADMIN:
@@ -545,7 +570,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 2000));
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 10000));
 		}
 		break;
 	case IPHASE_SETPW:
