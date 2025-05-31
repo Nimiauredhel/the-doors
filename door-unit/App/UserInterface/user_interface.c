@@ -159,10 +159,27 @@ static void touch_update(void)
 	}
 }
 
-static uint8_t touch_scan(const uint8_t max_len)
+static void touch_scan_timer_callback(TimerHandle_t xTimer)
 {
+	vTimerSetTimerID(xTimer, (void *)pdTRUE);
+}
+
+static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
+{
+#define TEST_INPUT_TIMER \
+		vTaskDelay(pdMS_TO_TICKS(1)); \
+		if (timeout_ms > 0 \
+			&& pdTRUE == (BaseType_t)pvTimerGetTimerID(timer_handle)) \
+		{ \
+			return -1; \
+		}
+
 	static const uint8_t down_threshold = 2;
 	static const uint8_t up_threshold = 2;
+
+	static bool timer_initialzed = false;
+	static StaticTimer_t timer_buffer = {0};
+	static TimerHandle_t timer_handle;
 
 	uint8_t downchar = 0;
 	uint8_t inchar = 0;
@@ -173,15 +190,30 @@ static uint8_t touch_scan(const uint8_t max_len)
 	uint8_t down_counter = 0;
 	uint8_t up_counter = 0;
 
+	if (!timer_initialzed)
+	{
+		 timer_handle = xTimerCreateStatic("InputTimer", 2000, pdFALSE, (void *)pdFALSE, touch_scan_timer_callback, &timer_buffer);
+		 timer_initialzed = true;
+	}
+
 	TAKE_GUI_MUTEX;
 	bzero(input_string, sizeof(input_string));
 	input_is_dirty = true;
 	GIVE_GUI_MUTEX;
 
 	vTaskDelay(pdMS_TO_TICKS(1));
+	xTimerStop(timer_handle, 1);
+	vTimerSetTimerID(timer_handle, (void *)pdFALSE);
+
+	if (timeout_ms > 0)
+	{
+		xTimerChangePeriod(timer_handle, pdMS_TO_TICKS(timeout_ms), 1);
+	}
 
 	for(;;)
 	{
+		TEST_INPUT_TIMER;
+
 		if (input_idx >= max_len)
 		{
 			return input_idx;
@@ -195,8 +227,11 @@ static uint8_t touch_scan(const uint8_t max_len)
 
 		do
 		{
+			TEST_INPUT_TIMER;
+
 			touch_update();
 			downchar = touch_interpret();
+
 			if (inchar != 0 && inchar == downchar)
 			{
 				down_counter++;
@@ -215,6 +250,8 @@ static uint8_t touch_scan(const uint8_t max_len)
 
 		do
 		{
+			TEST_INPUT_TIMER;
+
 			if (touched)
 			{
 				upchar = currchar;
@@ -267,6 +304,7 @@ static uint8_t touch_scan(const uint8_t max_len)
 			break;
 		}
 	}
+#undef TEST_INPUT_TIMER
 }
 
 static void phase_reset()
@@ -279,6 +317,7 @@ static void phase_reset()
 	phase_queue_index = 0;
 	phase_queue_tail = 0;
 	phase_just_reset = true;
+	vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 static void phase_increment()
@@ -320,8 +359,13 @@ static void phase_push(InterfacePhase_t new_phase)
 	}
 }
 
-static void input_evaluate(void)
+static void input_evaluate(int8_t input_len)
 {
+	if (input_len <= 0)
+	{
+		phase_reset();
+	}
+
 	switch (phase_queue[phase_queue_index])
 	{
 	case IPHASE_ADMIN:
@@ -468,8 +512,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
-			input_evaluate();
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 0));
 		}
 		else
 		{
@@ -488,8 +531,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
-			input_evaluate();
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 0));
 		}
 		break;
 	case IPHASE_CHECKPW_ADMIN:
@@ -503,8 +545,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
-			input_evaluate();
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 2000));
 		}
 		break;
 	case IPHASE_SETPW:
@@ -512,8 +553,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			touch_scan(phase_char_limits[phase_queue[phase_queue_index]]);
-			input_evaluate();
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 2000));
 		}
 		else
 		{

@@ -177,7 +177,8 @@ void door_timer_callback(void)
 
 bool door_is_closed(void)
 {
-	return door_state_flags & DOOR_FLAG_CLOSED;
+	return (door_state_flags & DOOR_FLAG_CLOSED)
+			&& !(door_state_flags & DOOR_FLAG_TRANSITION);
 }
 
 bool door_set_closed(bool closed)
