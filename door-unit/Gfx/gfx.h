@@ -131,7 +131,9 @@ typedef struct RectSprite565
 extern bool gfx_dirty;
 
 extern const Color565_t color_black;
-extern const Color565_t color_grey;
+extern const Color565_t color_grey_dark;
+extern const Color565_t color_grey_mid;
+extern const Color565_t color_grey_light;
 extern const Color565_t color_white;
 extern const Color565_t color_red;
 extern const Color565_t color_red_dark;

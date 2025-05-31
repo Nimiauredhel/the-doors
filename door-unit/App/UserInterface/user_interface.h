@@ -71,6 +71,7 @@ void interface_loop(void);
 bool interface_is_msg_dirty(void);
 bool interface_is_input_dirty(void);
 bool interface_is_keypad_dirty(void);
+bool interface_is_keypad_enabled(void);
 const char* interface_get_msg(void);
 const char* interface_get_input(void);
 int8_t interface_get_touched_button_idx(void);

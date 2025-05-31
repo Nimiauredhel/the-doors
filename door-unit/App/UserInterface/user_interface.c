@@ -77,6 +77,7 @@ static bool phase_just_reset = false;
 static bool touched = false;
 static bool msg_is_dirty = true;
 static bool input_is_dirty = true;
+static bool keypad_is_enabled = false;
 static bool keypad_is_dirty = true;
 
 static uint8_t phase_queue_index = 0;
@@ -171,6 +172,10 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 		if (timeout_ms > 0 \
 			&& pdTRUE == (BaseType_t)pvTimerGetTimerID(timer_handle)) \
 		{ \
+			TAKE_GUI_MUTEX; \
+			keypad_is_enabled = false; \
+			keypad_is_dirty = true; \
+			GIVE_GUI_MUTEX; \
 			return -1; \
 		}
 
@@ -199,6 +204,8 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 	TAKE_GUI_MUTEX;
 	bzero(input_string, sizeof(input_string));
 	input_is_dirty = true;
+	keypad_is_enabled = true;
+	keypad_is_dirty = true;
 	GIVE_GUI_MUTEX;
 
 	vTaskDelay(pdMS_TO_TICKS(1));
@@ -216,6 +223,10 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 
 		if (input_idx >= max_len)
 		{
+			TAKE_GUI_MUTEX;
+			keypad_is_enabled = false;
+			keypad_is_dirty = true;
+			GIVE_GUI_MUTEX;
 			return input_idx;
 		}
 
@@ -299,6 +310,10 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 			|| input_string[input_idx-1] == '#')
 			{
 				vTaskDelay(pdMS_TO_TICKS(10));
+				TAKE_GUI_MUTEX;
+				keypad_is_enabled = false;
+				keypad_is_dirty = true;
+				GIVE_GUI_MUTEX;
 				return input_idx;
 			}
 			break;
@@ -529,7 +544,7 @@ void interface_loop(void)
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
-			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 0));
+			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		}
 		break;
 	case IPHASE_ADMIN:
@@ -648,6 +663,14 @@ bool interface_is_keypad_dirty(void)
 {
 	TAKE_GUI_MUTEX;
 	bool ret = keypad_is_dirty;
+	GIVE_GUI_MUTEX;
+	return ret;
+}
+
+bool interface_is_keypad_enabled(void)
+{
+	TAKE_GUI_MUTEX;
+	bool ret = keypad_is_enabled;
 	GIVE_GUI_MUTEX;
 	return ret;
 }

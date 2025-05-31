@@ -11,7 +11,9 @@
 
 // RGB565 2 byte format: [ggGbbbbB][rrrrRggg]
 const Color565_t color_black = { 0b00000000, 0b00000000 };
-const Color565_t color_grey = { 0b11101111, 0b01111011 };
+const Color565_t color_grey_dark =  { 0b11101111, 0b01111011 };
+const Color565_t color_grey_mid =   { 0b01111011, 0b11011111 };
+const Color565_t color_grey_light = { 0b11011110, 0b11110111 };
 const Color565_t color_white = { 0b11111111, 0b11111111 };
 const Color565_t color_red = { 0b00000000, 0b11111000 };
 const Color565_t color_red_dark = { 0b00000000, 0b01111000 };

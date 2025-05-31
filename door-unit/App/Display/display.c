@@ -56,7 +56,8 @@ static uint8_t display_draw_msg(void)
 		if (strlen(msg) > 0)
 		{
 			gfx_fill_screen(color_black);
-			gfx_print_string(interface_get_msg(), 0, 2, color_white, 2);
+			gfx_print_string(interface_get_msg(), 5, 11, color_blue, 2);
+			gfx_print_string(interface_get_msg(), 4, 10, color_white, 2);
 		}
 		else
 		{
@@ -123,11 +124,16 @@ static uint8_t display_draw_keypad(void)
 	static const uint8_t digit_height = 5 * digit_scale;
 
 	static bool fresh = true;
+	static bool prev_enabled = true;
 	static int8_t key_last_states[12] = {-1};
+
+	bool enabled;
+	int8_t touched_button_idx;
 
 	if (!interface_is_keypad_dirty()) return 0;
 
-	int8_t touched_button_idx = interface_get_touched_button_idx();
+	enabled = interface_is_keypad_enabled();
+	touched_button_idx = enabled ? interface_get_touched_button_idx() : -1;
 
 	// 160x240
 	gfx_select_window(keypad_window, true);
@@ -139,8 +145,7 @@ static uint8_t display_draw_keypad(void)
 
 	for (int8_t i = 0; i < 12; i++)
 	{
-		if (!fresh
-			&& key_last_states[i] == (i == touched_button_idx))
+		if (!fresh && (enabled == prev_enabled) && key_last_states[i] == (i == touched_button_idx))
 			continue;
 
 		key_last_states[i] = (i == touched_button_idx);
@@ -150,29 +155,38 @@ static uint8_t display_draw_keypad(void)
 				keypad_buttons[i].y,
 				keypad_buttons[i].width,
 				keypad_buttons[i].height,
-				i == touched_button_idx ? color_blue : color_white);
+				enabled ?
+				i == touched_button_idx ? color_blue_dark : color_grey_light
+				: color_grey_light);
 		gfx_print_string(keypad_buttons[i].label,
 						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2)
 						 +1,
 						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2)
 						 +1,
-						 i == touched_button_idx ? color_black : color_yellow,
+						 enabled ?
+						 i == touched_button_idx ? color_black : color_yellow
+						 : color_grey_mid,
 						 digit_scale);
 		gfx_print_string(keypad_buttons[i].label,
 						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2)
 						 -1,
 						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2)
 						 -1,
-						 i == touched_button_idx ? color_black : color_yellow,
+						 enabled ?
+						 i == touched_button_idx ? color_black : color_yellow
+						 : color_grey_mid,
 						 digit_scale);
 		gfx_print_string(keypad_buttons[i].label,
 						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2),
 						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2),
-						 i == touched_button_idx ? color_yellow : color_blue_dark,
+						 enabled ?
+						 i == touched_button_idx ? color_yellow : color_blue_dark
+						 : color_grey_dark,
 						 digit_scale);
 	}
 
 	fresh = false;
+	prev_enabled = enabled;
 	gfx_unselect_window(keypad_window);
 	return 1;
 }
