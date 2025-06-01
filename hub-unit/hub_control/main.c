@@ -19,9 +19,9 @@ static const uint16_t check_interval_sec = 5;
 
 static HubProcess_t processes[] =
 {
-    {-1, "door_manager"},
- //   {-1, "intercom_server"},
- //   {-1, "db_service"},
+    {-1, "/usr/bin/doors_hub/door_manager"},
+ //   {-1, "/usr/bin/doors_hub/intercom_server"},
+ //   {-1, "/usr/bin/doors_hub/db_service"},
 };
 
 

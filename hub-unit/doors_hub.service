@@ -2,9 +2,11 @@
 Description=DOORS Daemon
 
 [Service]
-Type=simple
-ExecStart=/home/debian/exe/hub_control
+Type=forking
+WorkingDirectory=/usr/bin/doors_hub/
+ExecStart=/usr/bin/doors_hub/hub_control
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
