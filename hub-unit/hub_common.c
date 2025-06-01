@@ -1,4 +1,4 @@
-#include "common.h"
+#include "hub_common.h"
 
 /**
  * Global flag set by OS termination signals

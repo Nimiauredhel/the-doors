@@ -1,13 +1,13 @@
-SOURCE=*.c ../common/*.c
-PROGRAM=doors_hub
-EXE_NAME=$(PROGRAM).out
+SOURCE= ../../common/*.c ../*.c *.c
+PROGRAM=door_manager
+EXE_NAME=$(PROGRAM)
 ARGS=
-BUILD_DIR=build/
+BUILD_DIR=../build/
 EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
-INC= -I ../common
+INC= -I ../../common ../
 LIBS= -li2c
-DEFAULT_FLAGS=
-STRICT_FLAGS= $(DEFAULT_FLAGS) -std=c99 -Wall -pedantic -Wextra
+DEFAULT_FLAGS= -std=c99
+STRICT_FLAGS= $(DEFAULT_FLAGS) -Wall -pedantic -Wextra
 DEBUG_FLAGS= $(STRICT_FLAGS) -g -o0
 
 default:
