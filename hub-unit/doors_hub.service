@@ -1,0 +1,10 @@
+[Unit]
+Description=DOORS Daemon
+
+[Service]
+Type=simple
+ExecStart=/home/debian/exe/hub_control
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
