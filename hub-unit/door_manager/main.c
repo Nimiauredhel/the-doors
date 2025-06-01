@@ -1,4 +1,4 @@
-#include "../hub_common.h"
+#include "hub_common.h"
 
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>

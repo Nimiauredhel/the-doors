@@ -1,7 +1,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "../hub_common.h"
+#include "hub_common.h"
 
 #include "packet_defs.h"
 #include "packet_utils.h"
@@ -29,7 +29,7 @@ static void daemon_init(void)
 {
     syslog_append("Daemonizing!");
 
-    int ret = daemon(0, 0);
+    int ret = daemon(1, 0);
 
     if (ret < 0)
     {
@@ -56,8 +56,7 @@ static void write_pid_pipe(pid_t pid)
 
 static void launch_process(uint8_t index)
 {
-    char buff[64] = {0};
-    char *args[] = {processes[0].exe_name, NULL};
+    char buff[128] = {0};
     pid_t pid = fork();
 
     if (pid < 0)
@@ -80,13 +79,11 @@ static void launch_process(uint8_t index)
         write_pid_pipe(getpid());
         printf("Child process daemonized with PID %u\n", getpid());
         */
-        int exec_ret = execv(processes[index].exe_name, args);
-        if (exec_ret != 0)
-        {
-            perror("Failed to execute process");
-            exit(EXIT_FAILURE);
-        }
-        printf("This print should not run\n");
+        int exec_ret = execl(processes[index].exe_name, processes[index].exe_name, NULL);
+        sprintf(buff, "Failed to execute process: %s", strerror(exec_ret));
+        syslog_append(buff);
+        perror("Failed to execute process");
+        exit(EXIT_FAILURE);
     }
     else
     {

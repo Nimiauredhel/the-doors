@@ -52,6 +52,7 @@ void signal_handler(int signum)
             break;
         case SIGINT:
             syslog_append("Received signal SIGINT");
+            exit(EXIT_SUCCESS);
             break;
         case SIGTERM:
             syslog_append("Received signal SIGTERM");
