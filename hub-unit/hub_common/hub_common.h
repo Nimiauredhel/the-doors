@@ -21,12 +21,6 @@
 #include <signal.h>
 #include <pthread.h>
 
-/**
- * Global flag set by OS termination signals
- * and polled by functions to allow graceful termination.
- */
-extern bool should_terminate;
-
 void syslog_init(char *self_label);
 void syslog_append(char *msg);
 void initialize_signal_handler(void);
