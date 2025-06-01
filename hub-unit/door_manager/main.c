@@ -17,15 +17,6 @@ static int device_fd = 0;
 static uint8_t rx_buff[255] = {0};
 static DoorPacket_t packet_buff = {0};
 
-static struct tm get_datetime(void)
-{
-    time_t rawtime;
-    struct tm *timeinfo;
-    time (&rawtime);
-    timeinfo = localtime (&rawtime);
-    return *timeinfo;
-}
-
 static void i2c_init(void)
 {
 	// open the i2c device file
@@ -67,7 +58,7 @@ static void send_request(DoorRequest_t request, uint32_t extra_data, uint16_t pr
 
 static void poll_slave_event_queue(void)
 {
-	static const uint32_t timeout_sec = 60;
+	static const uint32_t timeout_sec = 15;
 	static const uint8_t zero = 0;
 
 	char debug_buff[32] = {0};
@@ -177,9 +168,12 @@ static void poll_slave_event_queue(void)
 
 int main(void)
 {
+    /*
 	printf("Size of header: %d\n", sizeof(DoorPacketHeader_t));
 	printf("Size of body: %d\n", sizeof(DoorPacketBody_t));
 	printf("Size of packet: %d\n", sizeof(DoorPacket_t));
+    */
+    printf("Hub Door Manager starting, PID %u\n", getpid());
 	i2c_init();
 	sleep(1);
 	poll_slave_event_queue();

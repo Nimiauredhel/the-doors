@@ -1,5 +1,5 @@
 SOURCE= ../../common/*.c ../*.c *.c
-PROGRAM=door_manager
+PROGRAM=hub_control
 EXE_NAME=$(PROGRAM)
 ARGS=
 BUILD_DIR=../build/

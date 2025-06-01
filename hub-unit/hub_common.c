@@ -79,3 +79,12 @@ float seconds_since_clock(struct timespec start_clock)
     elapsed_float += (now_clock.tv_sec - start_clock.tv_sec);
     return elapsed_float;
 }
+
+struct tm get_datetime(void)
+{
+    time_t rawtime;
+    struct tm *timeinfo;
+    time (&rawtime);
+    timeinfo = localtime (&rawtime);
+    return *timeinfo;
+}
