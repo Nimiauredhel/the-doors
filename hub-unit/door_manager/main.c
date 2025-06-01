@@ -58,19 +58,17 @@ static void send_request(DoorRequest_t request, uint32_t extra_data, uint16_t pr
 
 static void poll_slave_event_queue(void)
 {
-	static const uint32_t timeout_sec = 15;
 	static const uint8_t zero = 0;
 
 	char debug_buff[32] = {0};
-	uint32_t idle_counter = 0;
+	char syslog_buff[128] = {0};
 
-	printf("Starting polling.\n");
+	syslog_append("Starting polling");
 
-	while(idle_counter < timeout_sec)
+    for(;;)
 	{
 		sleep(polling_interval_sec);
 		bzero(rx_buff, sizeof(rx_buff));
-		idle_counter += polling_interval_sec;
 
         // read event queue length, a uint16_t value
 		i2c_master_read(I2C_REG_EVENT_COUNT, 1);
@@ -86,6 +84,7 @@ static void poll_slave_event_queue(void)
 
 			memcpy(&packet_buff, rx_buff, sizeof(DoorPacket_t));
 
+            /*
 			printf("[%02u/%02u/%02u][%02u:%02u:%02u]: ",
 					packet_decode_day(packet_buff.header.date),
 					packet_decode_month(packet_buff.header.date),
@@ -93,33 +92,34 @@ static void poll_slave_event_queue(void)
 					packet_decode_hour(packet_buff.header.time),
 					packet_decode_minutes(packet_buff.header.time),
 					packet_decode_seconds(packet_buff.header.time));
+                    */
 
 			DoorReport_t report_type = packet_buff.body.Report.report_id;
 
 			switch(report_type)
 			{
 			case PACKET_REPORT_NONE:
-			       printf("NONE.\n");
+			       sprintf(syslog_buff, "Door event NONE.");
 			       break;
 			case PACKET_REPORT_DOOR_OPENED:
-			       printf("Door Opened.\n");
+			       sprintf(syslog_buff, "Door Opened");
 			       break;
 			case PACKET_REPORT_DOOR_CLOSED:
-			       printf("Door Closed.\n");
+			       sprintf(syslog_buff, "Door Closed");
 			       break;
 			case PACKET_REPORT_DOOR_BLOCKED:
-				printf("Door Blocked for %lu seconds.\n",
+				sprintf(syslog_buff, "Door Blocked for %lu seconds",
 				packet_buff.body.Report.report_data_32);
 			    break;
 			case PACKET_REPORT_PASS_CORRECT:
 			       bzero(debug_buff, sizeof(debug_buff));
 			       door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
-			       printf("Correct Password Entered: %s.\n", debug_buff);
+			       sprintf(syslog_buff, "Correct Password Entered: %s.", debug_buff);
 			       break;
 			case PACKET_REPORT_PASS_WRONG:
 			       bzero(debug_buff, sizeof(debug_buff));
 			       door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
-				printf("Wrong Password Entered: %s.\n", debug_buff);
+				sprintf(syslog_buff, "Wrong Password Entered: %s.", debug_buff);
 				break;
 			case PACKET_REPORT_PASS_CHANGED:
 				bzero(debug_buff, sizeof(debug_buff));
@@ -127,19 +127,19 @@ static void poll_slave_event_queue(void)
 				debug_buff[4] = '-';
 				debug_buff[5] = '>';
 				door_pw_to_str(packet_buff.body.Report.report_data_32, debug_buff+6);
-				printf("Password Changed. %s\n", debug_buff);
+				sprintf(syslog_buff, "Password Changed. %s", debug_buff);
 				break;
 			case PACKET_REPORT_QUERY_RESULT:
-				printf("Query Result [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
+				sprintf(syslog_buff, "Query Result [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
 				break;
 			case PACKET_REPORT_DATA_READY:
-				printf("Data Ready.\n");
+				sprintf(syslog_buff, "Data Ready.");
 				break;
 			case PACKET_REPORT_ERROR:
-				printf("Error Code [%u][%u]\n", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
+				sprintf(syslog_buff, "Error Code [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
 				break;
 			case PACKET_REPORT_TIME_SET:
-				printf("Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.\n",
+				sprintf(syslog_buff, "Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
 				packet_buff.body.Report.report_data_16,
 				packet_buff.body.Report.report_data_32,
 				packet_decode_day(packet_buff.body.Report.report_data_16),
@@ -150,30 +150,31 @@ static void poll_slave_event_queue(void)
 				packet_decode_seconds(packet_buff.body.Report.report_data_32));
 				break;
 			case PACKET_REPORT_FRESH_BOOT:
-				printf("Fresh Boot. Sending time sync!\n");
+				sprintf(syslog_buff, "Fresh Boot. Sending time sync!");
 				send_request(PACKET_REQUEST_SYNC_TIME, 0, 1);
 				break;
+            default:
+                sprintf(syslog_buff, "Unknown Door Event");
+                break;
 			}
+
+            syslog_append(syslog_buff);
 		}
 
 	//	printf("Events retrieved. Ordering slave device to reset its local queue...\n");
 		i2c_master_write(I2C_REG_EVENT_COUNT, &zero, 1);
 		//printf("Report concluded, polling resumed.\n");
-
-		idle_counter = 0;
 	}
-
-	printf("Idle timeout exceeded, terminating.\n");
 }
 
 int main(void)
 {
-    /*
-	printf("Size of header: %d\n", sizeof(DoorPacketHeader_t));
-	printf("Size of body: %d\n", sizeof(DoorPacketBody_t));
-	printf("Size of packet: %d\n", sizeof(DoorPacket_t));
-    */
-    printf("Hub Door Manager starting, PID %u\n", getpid());
+    char buff[64] = {0};
+
+    syslog_init("Hub Door Manager");
+    initialize_signal_handler();
+    sprintf(buff, "[Hub Door Manager] starting program, PID %u", getpid());
+    syslog_append(buff);
 	i2c_init();
 	sleep(1);
 	poll_slave_event_queue();

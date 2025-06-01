@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <syslog.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -26,11 +27,12 @@
  */
 extern bool should_terminate;
 
+void syslog_init(char *self_label);
+void syslog_append(char *msg);
 void initialize_signal_handler(void);
 void initialize_random_seed(void);
 void signal_handler(int signum);
 int random_range(int min, int max);
-float seconds_since_clock(struct timespec start_clock);
 struct tm get_datetime(void);
 
 #endif

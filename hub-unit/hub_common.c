@@ -1,30 +1,35 @@
 #include "hub_common.h"
 
 /**
- * Global flag set by OS termination signals
- * and polled by functions to allow graceful termination.
- */
-bool should_terminate = false;
-
-/**
  * The random_range() function uses this to determine
  * whether rand() was already seeded or not.
  */
 static bool random_was_seeded = false;
+
+void syslog_init(char *self_label)
+{
+    setlogmask(LOG_UPTO(LOG_INFO));
+    openlog(self_label, LOG_CONS | LOG_PERROR, LOG_USER);
+}
+
+void syslog_append(char *msg)
+{
+    syslog(LOG_INFO, "%s", msg);
+}
 
 /**
  * Hooks up OS signals to our custom handler.
  */
 void initialize_signal_handler(void)
 {
-    should_terminate = false;
+    syslog_append("Initializing signal handler");
 
-    struct sigaction action;
-    explicit_bzero(&action, sizeof(action));
-    action.sa_handler = signal_handler;
-    sigaction(SIGINT, &action, NULL);
-    sigaction(SIGTERM, &action, NULL);
-    sigaction(SIGHUP, &action, NULL);
+    struct sigaction new_sigaction;
+    new_sigaction.sa_handler = signal_handler;
+
+    sigaction(SIGHUP, &new_sigaction, NULL);
+    sigaction(SIGTERM, &new_sigaction, NULL);
+    sigaction(SIGINT, &new_sigaction, NULL);
 }
 
 // calling random_range once to ensure that random is seeded
@@ -42,10 +47,18 @@ void signal_handler(int signum)
 {
     switch (signum)
     {
-        case SIGINT:
-        case SIGTERM:
         case SIGHUP:
-            should_terminate = true;
+            syslog_append("Received signal SIGHUP");
+            break;
+        case SIGINT:
+            syslog_append("Received signal SIGINT");
+            break;
+        case SIGTERM:
+            syslog_append("Received signal SIGTERM");
+            exit(EXIT_SUCCESS);
+            break;
+        default:
+            syslog_append("Received signal Unknown");
             break;
     }
 }
@@ -65,19 +78,6 @@ int random_range(int min, int max)
     int random_number = rand();
     random_number = (random_number % (max - min + 1)) + min;
     return random_number;
-}
-
-/**
- * Returns the seconds elapsed since a given clock value.
- * Used for timing operations!
- */
-float seconds_since_clock(struct timespec start_clock)
-{
-    struct timespec now_clock;
-    clock_gettime(CLOCK_MONOTONIC, &now_clock);
-    float elapsed_float = (now_clock.tv_nsec - start_clock.tv_nsec) / 1000000000.0;
-    elapsed_float += (now_clock.tv_sec - start_clock.tv_sec);
-    return elapsed_float;
 }
 
 struct tm get_datetime(void)

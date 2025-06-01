@@ -15,7 +15,7 @@ typedef struct HubProcess
 
 static const uint16_t check_interval_sec = 5;
 
-static int pid_pipe[2] = {0};
+//static int pid_pipe[2] = {0};
 
 static HubProcess_t processes[] =
 {
@@ -24,6 +24,23 @@ static HubProcess_t processes[] =
  //   {-1, "db_service"},
 };
 
+
+static void daemon_init(void)
+{
+    syslog_append("Daemonizing!");
+
+    int ret = daemon(0, 0);
+
+    if (ret < 0)
+    {
+        perror("Failed to Daemonize");
+        syslog_append("Failed to Daemonize, Terminating");
+        exit(EXIT_FAILURE);
+    }
+
+    syslog_append("Successfully Daemonized");
+}
+/*
 static int read_pid_pipe(void)
 {
     pid_t ret_pid = -1;
@@ -35,14 +52,17 @@ static void write_pid_pipe(pid_t pid)
 {
     write(pid_pipe[1], &pid, sizeof(pid_t));
 }
+*/
 
 static void launch_process(uint8_t index)
 {
+    char buff[64] = {0};
     char *args[] = {processes[0].exe_name, NULL};
     pid_t pid = fork();
 
     if (pid < 0)
     {
+        syslog_append("Failed to fork");
         perror("Failed to fork");
         exit(EXIT_FAILURE);
     }
@@ -76,18 +96,54 @@ static void launch_process(uint8_t index)
         processes[0].pid = read_pid_pipe();
         */
         processes[0].pid = pid;
-        printf("Successfully launched program %s with PID %d.\n", processes[index].exe_name, processes[index].pid);
+        sprintf(buff, "Successfully launched program %s with PID %d.\n", processes[index].exe_name, processes[index].pid);
+        syslog_append(buff);
     }
+}
 
+static void control_loop(void)
+{
+    static const uint16_t delay_secs = 5;
+    static uint64_t runtime_secs = 0;
+    
+    char syslog_buff[128] = {0};
+    int status;
+    int ret;
+
+    for(;;)
+    {
+        sleep(delay_secs);
+        runtime_secs += delay_secs;
+
+        snprintf(syslog_buff, 128, "Still alive, runtime: %lu seconds", runtime_secs);
+        syslog_append(syslog_buff);
+
+        ret = waitpid(processes[0].pid, &status, WNOHANG);
+
+        if (ret != 0)
+        {
+            snprintf(syslog_buff, 128, "Program %s (PID %d) seems to have been terminated - relaunching.\n", processes[0].exe_name, processes[0].pid);
+            syslog_append(syslog_buff);
+            launch_process(0);
+        }
+        else
+        {
+            snprintf(syslog_buff, 128, "Program %s still running with code %d.\n", processes[0].exe_name, status);
+            syslog_append(syslog_buff);
+        }
+    }
 }
 
 int main(void)
 {
+    syslog_init("Hub Control");
+    initialize_signal_handler();
+
     // daemonize
-    daemon(1,1);
+    daemon_init();
 
     // initializee hub common resources (pipes, shared memory, etc.)
-    int ret = pipe(pid_pipe);
+    //int ret = pipe(pid_pipe);
 
     // prepare the arguments to be passed to individual processes
 
@@ -95,21 +151,9 @@ int main(void)
     launch_process(0);
 
     // begin loop checking that all processes are still running
+    control_loop();
+
     for(;;)
     {
-        int status;
-        int ret = waitpid(processes[0].pid, &status, WNOHANG);
-
-        if (ret != 0)
-        {
-            printf("Program %s (PID %d) seems to have been terminated - relaunching.\n", processes[0].exe_name, processes[0].pid);
-            launch_process(0);
-        }
-        else
-        {
-            printf("Program %s still running with code %d.\n", processes[0].exe_name, status);
-        }
-
-        sleep(check_interval_sec);
     }
 }
