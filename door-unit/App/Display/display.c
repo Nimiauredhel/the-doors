@@ -24,20 +24,29 @@ static uint8_t display_draw_datetime(void)
 	static char buff[16] = {0};
 	// initialized at nonsensical value to ensure first draw
 	static RTC_TimeTypeDef prev_time = {255, 255, 255};
+	static uint32_t prev_i2c_hit_count = 0;
 
 	RTC_TimeTypeDef now_time = time_get();
 
-	if (now_time.Minutes == prev_time.Minutes) return 0;
+	if (now_time.Seconds == prev_time.Seconds) return 0;
+
+	uint32_t i2c_hit_count = i2c_get_addr_hit_counter();
+
+	if ((prev_i2c_hit_count == 0) == (i2c_hit_count == 0)
+		&& now_time.Minutes == prev_time.Minutes) return 0;
+
+	prev_i2c_hit_count = i2c_hit_count;
+	prev_time = now_time;
 
 	if (gfx_select_window(datetime_window, false))
 	{
 		prev_time = now_time;
-		gfx_fill_screen(color_blue);
+		gfx_fill_screen(i2c_hit_count > 0 ? color_blue : color_grey_dark);
 		bzero(buff, sizeof(buff));
 		date_time_get_time_str_hhmm(buff);
-		gfx_print_string(buff, 2, font_height/2, color_cyan, text_scale);
+		gfx_print_string(buff, 2, font_height/2, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
 		date_time_get_date_str(buff);
-		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), font_height/2, color_cyan, text_scale);
+		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), font_height/2, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
 		gfx_unselect_window(datetime_window);
 		return 1;
 	}

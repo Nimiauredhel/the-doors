@@ -15,6 +15,7 @@
 #include "door_date_time.h"
 
 #include "xpt2046.h"
+#include "i2c_io.h"
 
 extern GfxWindow_t *keypad_window;
 

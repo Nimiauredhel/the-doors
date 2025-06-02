@@ -31,5 +31,6 @@ extern I2C_HandleTypeDef hi2c1;
 
 void i2c_io_init(void);
 uint16_t i2c_io_get_device_id(void);
+uint32_t i2c_get_addr_hit_counter(void);
 
 #endif /* I2C_IO_H_ */

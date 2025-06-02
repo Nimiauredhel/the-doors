@@ -39,13 +39,9 @@ static void randomize_i2c_address(void)
 	while(HAL_OK != HAL_I2C_DisableListen_IT(&hi2c1));
 	while(HAL_OK != HAL_I2C_DeInit(&hi2c1));
 	int new_address = random_range(I2C_MIN_ADDRESS, I2C_MAX_ADDRESS);
-	sprintf(buff, "Old I2C address: [0x%X]", hi2c1.Init.OwnAddress1);
-	serial_print_line(buff, 0);
 	sprintf(buff, "Randomized I2C address: [0x%X]", new_address);
 	serial_print_line(buff, 0);
 	hi2c1.Init.OwnAddress1 = new_address << 1;
-	sprintf(buff, "New I2C address: [0x%X]", hi2c1.Init.OwnAddress1);
-	serial_print_line(buff, 0);
 	while(HAL_OK != HAL_I2C_Init(&hi2c1));
 	while(HAL_OK != HAL_I2C_EnableListen_IT(&hi2c1));
 }

@@ -7,18 +7,26 @@
 
 #include "i2c_io.h"
 
-volatile uint8_t i2c_direction = 0;
+static volatile uint8_t i2c_direction = 0;
+static volatile uint32_t i2c_addr_hit_counter = 0;
 
-uint16_t i2c_rx_count = 0;
-uint16_t i2c_tx_count = 0;
+static uint16_t i2c_rx_count = 0;
+static uint16_t i2c_tx_count = 0;
 
-I2CRegisterDefinition_t i2c_tx_register;
-uint8_t *i2c_tx_position;
+static I2CRegisterDefinition_t i2c_tx_register;
+static uint8_t *i2c_tx_position;
 
-uint8_t i2c_tx_buff[I2C_TX_BUFF_SIZE] = {0};
-uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
+static uint8_t i2c_tx_buff[I2C_TX_BUFF_SIZE] = {0};
+static uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
 
-DoorPacket_t i2c_query_result_register = {0};
+static DoorPacket_t i2c_query_result_register = {0};
+
+uint32_t i2c_get_addr_hit_counter(void)
+{
+	uint32_t ret = i2c_addr_hit_counter;
+	if (i2c_addr_hit_counter > 0) i2c_addr_hit_counter -= 1;
+	return ret;
+}
 
 /*
 static uint16_t register_definition_to_packet_size(I2CRegisterDefinition_t reg_def)
@@ -156,6 +164,7 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef * hi2c)
 extern void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
 {
 	i2c_direction = TransferDirection;
+	i2c_addr_hit_counter = 100;
 
 	if(i2c_direction == I2C_DIRECTION_TRANSMIT)  // if the master wants to transmit the data
 	{
