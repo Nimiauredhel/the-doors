@@ -1,3 +1,4 @@
+sudo systemctl stop doors_hub
 sudo mkdir /usr/bin/doors_hub
 sudo cp build/* /usr/bin/doors_hub/
 sudo cp doors_hub.service /etc/systemd/system/doors_hub.service
