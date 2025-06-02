@@ -99,11 +99,25 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		serial_print_line("Received SYNC TIME command from hub.", 0);
 		date_time_set_from_packet(cmd_ptr->header.date, cmd_ptr->header.time);
 		break;
-	case PACKET_REQUEST_SYNC_PASS:
-		serial_print_line("Received SYNC PASS command from hub, still unimplemented.", 0);
+	case PACKET_REQUEST_SYNC_PASS_USER:
+		serial_print_line("Received SYNC PASS USER command from hub, setting password.", 0);
+		auth_set_user_pass_internal(cmd_ptr->body.Request.request_data_32);
+		break;
+	case PACKET_REQUEST_SYNC_PASS_ADMIN:
+		serial_print_line("Received SYNC PASS ADMIN command from hub, setting password.", 0);
+		auth_set_admin_pass_internal(cmd_ptr->body.Request.request_data_32);
 		break;
 	case PACKET_REQUEST_RESET_ADDRESS:
-		serial_print_line("Received RESET ADDRESS command from hub, still unimplemented.", 0);
+		serial_print_line("Received RESET ADDRESS command from hub, randomizing new address.", 0);
+		HAL_I2C_DisableListen_IT(&hi2c1);
+		HAL_I2C_DeInit(&hi2c1);
+		hi2c1.Init.OwnAddress1 = random_range(I2C_MIN_ADDRESS, I2C_MAX_ADDRESS);
+		HAL_I2C_Init(&hi2c1);
+		HAL_I2C_EnableListen_IT(&hi2c1);
+		break;
+	case PACKET_REQUEST_PING:
+		serial_print_line("Received PING from hub.", 0);
+		event_log_append_minimal(PACKET_REPORT_PONG);
 		break;
 	case PACKET_REQUEST_MAX:
 		serial_print_line("Received MAX command from hub, this makes no sense.", 0);

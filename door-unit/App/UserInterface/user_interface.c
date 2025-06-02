@@ -43,7 +43,7 @@ const InterfaceButton_t keypad_buttons[12] =
 	{ .id = '#', .width = 51, .height = 30, .x = 160, .y = 125, .label = "#\0" },
 };
 
-static const uint8_t phase_char_limits[10] =
+static const uint8_t phase_char_limits[9] =
 {
 		MAX_CHARS_MENU_INPUT, // phase NONE
 		MAX_CHARS_MENU_INPUT, // phase TOP
@@ -54,21 +54,19 @@ static const uint8_t phase_char_limits[10] =
 		MAX_CHARS_PASS_INPUT, // phase OPEN
 		MAX_CHARS_PASS_INPUT, // phase CLOSE
 		MAX_CHARS_PASS_INPUT, // phase BELL
-		MAX_CHARS_PASS_INPUT, // phase SETTIME
 };
 
-static const char *phase_prompts[10] =
+static const char *phase_prompts[9] =
 {
 		"Unknown\r\nPhase",
 		"",
-		"ADMIN MENU\r\n1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)settime\r\r\n5)debug_comms\r\r\n6)debug_sensor",
+		"ADMIN MENU\r\n1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)debug_comms\r\r\n5)debug_sensor",
 		"Please\r\nEnter\r\nPassword.",
 		"Please\r\nEnter\r\nADMIN\r\nPassword.",
 		"Please\r\nEnter\r\nNEW\r\nPassword.",
 		"Opening\r\nDoor!",
 		"Closing\r\nDoor!",
 		"Please Select\r\nClient Number.",
-		"Setting the time.",
 };
 
 static const char *imsg_command_redundant = "Command\r\nRedundant.";
@@ -445,13 +443,9 @@ static void input_evaluate(int8_t input_len)
 			phase_push(IPHASE_SETPW);
 			break;
 		case 4:
-			phase_push(IPHASE_CHECKPW_ADMIN);
-			phase_push(IPHASE_SETTIME);
-			break;
-		case 5:
 			comms_toggle_debug();
 			break;
-		case 6:
+		case 5:
 			door_sensor_toggle_debug();
 			break;
 		default:
@@ -489,9 +483,6 @@ static void input_evaluate(int8_t input_len)
 	case IPHASE_NONE:
 	case IPHASE_BELL:
 		phase_reset();
-		break;
-	case IPHASE_SETTIME:
-		// handled externally, shouldn't get here
 		break;
 	}
 }
@@ -615,20 +606,6 @@ void interface_loop(void)
 			interface_set_msg(imsg_auth_required);
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
-		break;
-	case IPHASE_SETTIME:
-		if (auth_is_admin_auth())
-		{
-			date_time_set_interactive();
-			auth_reset_auth();
-		}
-		else
-		{
-			serial_print_line(imsg_auth_required, 0);
-			interface_set_msg(imsg_auth_required);
-			vTaskDelay(pdMS_TO_TICKS(500));
-		}
-		phase_reset();
 		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:

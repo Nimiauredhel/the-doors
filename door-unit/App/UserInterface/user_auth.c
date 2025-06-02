@@ -95,3 +95,13 @@ void auth_set_password(const char *rx_msg)
 		serial_print_line("Cannot change password without authentication.", 0);
 	}
 }
+
+void auth_set_user_pass_internal(uint16_t new_user_pass)
+{
+	user_password = new_user_pass;
+}
+
+void auth_set_admin_pass_internal(uint32_t new_admin_pass)
+{
+	admin_password = new_admin_pass;
+}

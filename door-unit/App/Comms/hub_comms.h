@@ -19,12 +19,15 @@
 
 #include "main.h"
 
-#include "door_control.h"
-#include "i2c_io.h"
-#include "uart_io.h"
-#include "event_log.h"
 #include "packet_defs.h"
 #include "i2c_register_defs.h"
+#include "i2c_io.h"
+#include "uart_io.h"
+#include "sw_random.h"
+
+#include "door_control.h"
+#include "user_auth.h"
+#include "event_log.h"
 
 typedef enum CommsEventType
 {

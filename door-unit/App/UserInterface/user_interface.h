@@ -42,7 +42,6 @@ typedef enum InterfacePhase
 	IPHASE_OPEN = 6,
 	IPHASE_CLOSE = 7,
 	IPHASE_BELL = 8,
-	IPHASE_SETTIME = 9,
 } InterfacePhase_t;
 
 typedef struct InterfaceTouchState
