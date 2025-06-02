@@ -137,6 +137,7 @@ int main(void)
     initialize_signal_handler();
 
     // daemonize
+    sleep(1);
     daemon_init();
 
     // initializee hub common resources (pipes, shared memory, etc.)
@@ -145,9 +146,11 @@ int main(void)
     // prepare the arguments to be passed to individual processes
 
     // launch all hub processes
+    sleep(1);
     launch_process(0);
 
     // begin loop checking that all processes are still running
+    sleep(1);
     control_loop();
 
     for(;;)
