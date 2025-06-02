@@ -33,6 +33,23 @@ static uint8_t priority_command_queue_len = 0;
 static DoorPacket_t general_command_queue[GENERAL_COMMAND_QUEUE_CAPACITY] = {0};
 static DoorPacket_t priority_command_queue[PRIORITY_COMMAND_QUEUE_CAPACITY] = {0};
 
+static void randomize_i2c_address(void)
+{
+	char buff[32] = {0};
+	while(HAL_OK != HAL_I2C_DisableListen_IT(&hi2c1));
+	while(HAL_OK != HAL_I2C_DeInit(&hi2c1));
+	int new_address = random_range(I2C_MIN_ADDRESS, I2C_MAX_ADDRESS);
+	sprintf(buff, "Old I2C address: [0x%X]", hi2c1.Init.OwnAddress1);
+	serial_print_line(buff, 0);
+	sprintf(buff, "Randomized I2C address: [0x%X]", new_address);
+	serial_print_line(buff, 0);
+	hi2c1.Init.OwnAddress1 = new_address << 1;
+	sprintf(buff, "New I2C address: [0x%X]", hi2c1.Init.OwnAddress1);
+	serial_print_line(buff, 0);
+	while(HAL_OK != HAL_I2C_Init(&hi2c1));
+	while(HAL_OK != HAL_I2C_EnableListen_IT(&hi2c1));
+}
+
 static void comms_debug_output(void)
 {
 	char buff[64] = {0};
@@ -109,11 +126,7 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		break;
 	case PACKET_REQUEST_RESET_ADDRESS:
 		serial_print_line("Received RESET ADDRESS command from hub, randomizing new address.", 0);
-		HAL_I2C_DisableListen_IT(&hi2c1);
-		HAL_I2C_DeInit(&hi2c1);
-		hi2c1.Init.OwnAddress1 = random_range(I2C_MIN_ADDRESS, I2C_MAX_ADDRESS);
-		HAL_I2C_Init(&hi2c1);
-		HAL_I2C_EnableListen_IT(&hi2c1);
+		randomize_i2c_address();
 		break;
 	case PACKET_REQUEST_PING:
 		serial_print_line("Received PING from hub.", 0);
@@ -162,6 +175,7 @@ static void comms_check_command_queue(void)
 void comms_init(void)
 {
 	command_queues_lock = xSemaphoreCreateMutexStatic(&command_queues_lock_buffer);
+	//randomize_i2c_address();
 	i2c_io_init();
 	serial_print_line("Initialized I2C listening to hub unit.", 0);
 }
