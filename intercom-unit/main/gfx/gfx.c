@@ -53,9 +53,15 @@ static GfxWindow_t *sent_window = NULL;
 
 static StaticSemaphore_t transfer_sem_buffer;
 static SemaphoreHandle_t transfer_sem_handle;
+static volatile esp_lcd_touch_handle_t touch_handle = NULL;
 
 static bool gfx_refresh_timer_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx)
 {
+    if (touch_handle != NULL)
+    {
+        ESP_ERROR_CHECK(esp_lcd_touch_read_data(touch_handle));
+    }
+
 	GfxWindow_t *current = window_list;
 
 	while (current != NULL)
@@ -85,6 +91,11 @@ static bool gfx_on_color_transmission_done(esp_lcd_panel_io_handle_t panel_io, e
     xSemaphoreGiveFromISR(transfer_sem_handle, NULL);
 
     return false;
+}
+
+void gfx_set_touch_handle(esp_lcd_touch_handle_t new_handle)
+{
+    touch_handle = new_handle;
 }
 
 void gfx_init(LCDOrientation_t orientation)

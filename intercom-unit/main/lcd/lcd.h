@@ -19,6 +19,10 @@ typedef enum LCDOrientation
     LCD_LANDSCAPE_FLIP = 3
 } LCDOrientation_t;
 
+extern spi_bus_config_t buscfg;
+extern esp_lcd_panel_io_handle_t io_handle;
+extern esp_lcd_panel_io_spi_config_t io_config;
+
 void lcd_initialize_bus(void);
 void lcd_initialize_interface(esp_lcd_panel_io_color_trans_done_cb_t tx_done_cb, void *user_ctx);
 esp_lcd_panel_handle_t lcd_initialize_screen(LCDOrientation_t orientation);

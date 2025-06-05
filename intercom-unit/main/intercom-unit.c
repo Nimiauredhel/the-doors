@@ -13,9 +13,7 @@
 #include "esp_flash.h"
 #include "esp_system.h"
 
-#include "audio.h"
-#include "gfx.h"
-#include "app.h"
+#include "gui.h"
 
 void app_main(void)
 {
@@ -46,9 +44,7 @@ void app_main(void)
 
     printf("Minimum free heap size: %" PRIu32 " bytes\n", esp_get_minimum_free_heap_size());
 
-    init_audio();
-	gfx_init(LCD_LANDSCAPE);
-
+    /*
     printf("Free heap size after Gfx init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
     app_init();
     printf("Free heap size after \"Gfx App\" init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
@@ -56,6 +52,14 @@ void app_main(void)
     printf("Free heap size after \"Gfx App\" loop: %" PRIu32 " bytes\n", esp_get_free_heap_size());
     app_clean();
     printf("Free heap size after \"Gfx App\" clean: %" PRIu32 " bytes\n", esp_get_free_heap_size());
+    */
+
+    gui_init();
+
+    for(;;)
+    {
+        gui_loop();
+    }
 
     for (int i = 1; i >= 0; i--) {
         printf("Restarting in %d seconds...\n", i);

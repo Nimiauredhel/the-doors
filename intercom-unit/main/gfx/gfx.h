@@ -18,6 +18,8 @@
 
 #include "driver/gptimer.h"
 
+#include "esp_lcd_touch_xpt2046.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
@@ -144,6 +146,7 @@ extern const Color565_t color_yellow;
 
 extern const BinarySpriteSheet_t default_font;
 
+void gfx_set_touch_handle(esp_lcd_touch_handle_t new_handle);
 void gfx_init(LCDOrientation_t orientation);
 uint8_t gfx_get_transfer_count(void);
 GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name);
