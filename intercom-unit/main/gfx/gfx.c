@@ -317,9 +317,11 @@ void gfx_rgb_to_565_nonalloc(Color565_t dest, uint8_t red_percent, uint8_t green
     dest[1] <<= 5;
     // finally, OR entire B segment into first byte
     dest[1] |= INT_PERCENT(blue_percent, B565_MAX);
+    /*
     printf("rgb input r: %u, g: %u, b: %u\n", red_percent, green_percent, blue_percent);
     printf(BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(dest[0]));
     printf(BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(dest[1]));
+    */
 }
 
 void gfx_bytes_to_binary_sprite_nonalloc(BinarySprite_t *sprite, uint16_t height_pixels, uint8_t width_bytes, const uint8_t *data)
