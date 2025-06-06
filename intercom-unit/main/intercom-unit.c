@@ -14,9 +14,10 @@
 #include "esp_system.h"
 
 #include "gui.h"
+#include "client.h"
 
-static TaskHandle_t gui_task_handle;
-static TaskHandle_t client_task_handle;
+static TaskHandle_t gui_task_handle = NULL;
+static TaskHandle_t client_task_handle = NULL;
 
 void app_main(void)
 {
@@ -57,7 +58,8 @@ void app_main(void)
     printf("Free heap size after \"Gfx App\" clean: %" PRIu32 " bytes\n", esp_get_free_heap_size());
     */
 
-    xTaskCreate(gui_task, "GUI_Task", 4096, NULL, 10, &gui_task_handle);
+    xTaskCreatePinnedToCore(gui_task, "GUI_Task", 4096, NULL, 10, &gui_task_handle, 0);
+    xTaskCreatePinnedToCore(client_task, "Client_Task", 4096, NULL, 10, &client_task_handle, 1);
 
     /*
     for (int i = 1; i >= 0; i--) {
