@@ -138,10 +138,43 @@ void gfx_init(LCDOrientation_t orientation)
 	initialized = true;
 }
 
+GfxWindow_t *gfx_create_window_nonalloc(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name, GfxWindow_t *new_window)
+{
+	uint32_t buffer_size = width*height*2;
+
+	explicit_bzero(new_window->buffer, buffer_size);
+	new_window->state = GFXWIN_CLEAN;
+	new_window->size_bytes = buffer_size;
+	new_window->x = x;
+	new_window->y = y;
+	new_window->width = width;
+	new_window->height = height;
+
+    strncpy(new_window->name, name == NULL ? "Untitled Window" : name, 16);
+
+    new_window->sem_handle = xSemaphoreCreateBinaryStatic(&new_window->sem_buff);
+    xSemaphoreGive(new_window->sem_handle);
+
+#ifdef GFX_PRINT_DEBUG
+    printf("Created new window: %s.\n", new_window->name);
+    printf("Free heap size: %" PRIu32 " bytes\n", esp_get_free_heap_size());
+#endif
+
+    return new_window;
+}
+
 GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name)
 {
 	uint32_t buffer_size = width*height*2;
-	GfxWindow_t *new_window = malloc(sizeof(GfxWindow_t) + buffer_size);
+    printf("Attempting to create GfxWindow %s, required size is %lu bytes.\n", name, (sizeof(GfxWindow_t) + buffer_size));
+    printf("Free DRAM before GfxWindow creation attempt: %u bytes\n", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+	GfxWindow_t *new_window = heap_caps_malloc(sizeof(GfxWindow_t) + buffer_size, MALLOC_CAP_8BIT);
+    if (new_window == NULL)
+    {
+        perror("malloc");
+        printf("Failed to create window: %s\n", name);
+        return NULL;
+    }
 
 	explicit_bzero(new_window->buffer, buffer_size);
 	new_window->state = GFXWIN_CLEAN;

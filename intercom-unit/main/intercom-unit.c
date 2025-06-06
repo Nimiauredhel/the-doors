@@ -12,12 +12,24 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_system.h"
+#include "nvs_flash.h"
 
+#include "common.h"
+#include "wifi.h"
+#include "gfx.h"
 #include "gui.h"
 #include "client.h"
 
+#define GUI_STACK_SIZE 4096
+#define CLIENT_STACK_SIZE 4096
+
+static StaticTask_t gui_task_buffer;
 static TaskHandle_t gui_task_handle = NULL;
+static StackType_t gui_task_stack[GUI_STACK_SIZE];
+
+static StaticTask_t client_task_buffer;
 static TaskHandle_t client_task_handle = NULL;
+static StackType_t client_task_stack[CLIENT_STACK_SIZE];
 
 void app_main(void)
 {
@@ -48,18 +60,25 @@ void app_main(void)
 
     printf("Minimum free heap size: %" PRIu32 " bytes\n", esp_get_minimum_free_heap_size());
 
-    /*
-    printf("Free heap size after Gfx init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
-    app_init();
-    printf("Free heap size after \"Gfx App\" init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
-    app_loop();
-    printf("Free heap size after \"Gfx App\" loop: %" PRIu32 " bytes\n", esp_get_free_heap_size());
-    app_clean();
-    printf("Free heap size after \"Gfx App\" clean: %" PRIu32 " bytes\n", esp_get_free_heap_size());
-    */
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
-    xTaskCreatePinnedToCore(gui_task, "GUI_Task", 4096, NULL, 10, &gui_task_handle, 0);
-    xTaskCreatePinnedToCore(client_task, "Client_Task", 4096, NULL, 10, &client_task_handle, 1);
+    wifi_init();
+    printf("Free heap size after Wi-Fi init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
+    gfx_init(LCD_LANDSCAPE);
+    printf("Free heap size after Gfx init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
+
+    client_task_handle = xTaskCreateStaticPinnedToCore(client_task, "Client_Task", CLIENT_STACK_SIZE, NULL, 10, client_task_stack, &client_task_buffer, 0);
+    gui_task_handle = xTaskCreateStaticPinnedToCore(gui_task, "GUI_Task", GUI_STACK_SIZE, NULL, 10, gui_task_stack, &gui_task_buffer, 1);
+
+    for(;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 
     /*
     for (int i = 1; i >= 0; i--) {

@@ -3,13 +3,16 @@
 static esp_lcd_touch_handle_t touch_handle = NULL;
 static volatile InterfaceTouchState_t touch_state = {0};
 
-static GfxWindow_t *gui_window = NULL;
+static uint8_t info_window_buffer[sizeof(GfxWindow_t) + (320*120*2)];
+static GfxWindow_t *info_window = NULL;
+static GfxWindow_t *input_window = NULL;
 
 static void gui_gfx_init(void)
 {
-    gfx_init(LCD_LANDSCAPE);
-    gui_window = gfx_create_window(0, 0, 320, 240, "GUI");
-    gfx_show_window(gui_window);
+    info_window = gfx_create_window_nonalloc(0, 0, 320, 120, "Info", (GfxWindow_t *)&info_window_buffer);
+    gfx_show_window(info_window);
+    input_window = gfx_create_window(0, 120, 320, 120, "Input");
+    gfx_show_window(input_window);
 }
 
 static void gui_process_touch_coords(esp_lcd_touch_handle_t tp, uint16_t *x, uint16_t *y, uint16_t *strength, uint8_t *point_num, uint8_t max_point_num)
@@ -88,19 +91,22 @@ static void gui_init(void)
     gui_gfx_init();
     gui_touch_init();
 
-    gfx_select_window(gui_window, true);
+    gfx_select_window(info_window, true);
     gfx_fill_screen(color_magenta);
-    gfx_unselect_window(gui_window);
+    gfx_unselect_window(info_window);
+    gfx_select_window(input_window, true);
+    gfx_fill_screen(color_cyan);
+    gfx_unselect_window(input_window);
 }
 
 static void gui_loop(void)
 {
     if (gui_touch_update())
     {
-        gfx_select_window(gui_window, true);
+        gfx_select_window(info_window, true);
         gfx_fill_screen(color_black);
         gfx_fill_rect_single_color(touch_state.current_x, touch_state.current_y, 32, 24, color_red);
-        gfx_unselect_window(gui_window);
+        gfx_unselect_window(info_window);
     }
     vTaskDelay(pdMS_TO_TICKS(16));
 }
@@ -108,6 +114,7 @@ static void gui_loop(void)
 void gui_task(void *arg)
 {
     gui_init();
+    printf("Free heap size after GUI init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
 
     for(;;)
     {

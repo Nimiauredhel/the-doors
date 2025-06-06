@@ -8,9 +8,7 @@
 #ifndef GUI_H_
 #define GUI_H_
 
-#include <string.h>
-#include <stdbool.h>
-
+#include "common.h"
 #include "gfx.h"
 #include "audio.h"
 #include "utils.h"

@@ -149,6 +149,7 @@ extern const BinarySpriteSheet_t default_font;
 void gfx_set_touch_handle(esp_lcd_touch_handle_t new_handle);
 void gfx_init(LCDOrientation_t orientation);
 uint8_t gfx_get_transfer_count(void);
+GfxWindow_t *gfx_create_window_nonalloc(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name, GfxWindow_t *new_window);
 GfxWindow_t *gfx_create_window(uint16_t x, uint16_t y, uint16_t width, uint16_t height, char *name);
 void gfx_dispose_window(GfxWindow_t *window);
 bool gfx_select_window(GfxWindow_t *window, bool blocking);
