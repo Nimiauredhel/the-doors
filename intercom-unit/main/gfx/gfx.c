@@ -376,6 +376,19 @@ void gfx_fill_rect_loop(const uint8_t *data, uint32_t data_length, uint16_t x_or
 	if (selected_window == NULL) return;
 	if (width * height < 1) return;
 
+    if (x_origin > selected_window->width) return;
+    if (y_origin > selected_window->height) return;
+
+    if (x_origin + width > selected_window->width)
+    {
+        width = selected_window->width - x_origin;
+    }
+
+    if (y_origin + height > selected_window->height)
+    {
+        height = selected_window->height - y_origin;
+    }
+
     uint32_t target_size = width * height * 2;
 	uint32_t src_idx = 0;
 	uint32_t dest_x = x_origin;
@@ -411,6 +424,19 @@ void gfx_fill_rect_single_color(uint16_t x_origin, uint16_t y_origin, uint16_t w
 {
 	if (selected_window == NULL) return;
 	if (width * height < 1) return;
+
+    if (x_origin > selected_window->width) return;
+    if (y_origin > selected_window->height) return;
+
+    if (x_origin + width > selected_window->width)
+    {
+        width = selected_window->width - x_origin;
+    }
+
+    if (y_origin + height > selected_window->height)
+    {
+        height = selected_window->height - y_origin;
+    }
 
     uint32_t buffer_size = width * height * 2;
 	uint32_t buffer_divisor = 1;
