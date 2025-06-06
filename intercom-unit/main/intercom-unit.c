@@ -15,6 +15,9 @@
 
 #include "gui.h"
 
+static TaskHandle_t gui_task_handle;
+static TaskHandle_t client_task_handle;
+
 void app_main(void)
 {
     /* Print chip information */
@@ -54,13 +57,9 @@ void app_main(void)
     printf("Free heap size after \"Gfx App\" clean: %" PRIu32 " bytes\n", esp_get_free_heap_size());
     */
 
-    gui_init();
+    xTaskCreate(gui_task, "GUI_Task", 4096, NULL, 10, &gui_task_handle);
 
-    for(;;)
-    {
-        gui_loop();
-    }
-
+    /*
     for (int i = 1; i >= 0; i--) {
         printf("Restarting in %d seconds...\n", i);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -69,4 +68,5 @@ void app_main(void)
     printf("Restarting now.\n");
     fflush(stdout);
     esp_restart();
+    */
 }

@@ -48,7 +48,6 @@ typedef struct InterfaceButton
 	char label[8];
 } InterfaceButton_t;
 
-void gui_init(void);
-void gui_loop(void);
+void gui_task(void *arg);
 
 #endif /* GUI_H_ */

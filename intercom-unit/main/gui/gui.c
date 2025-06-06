@@ -83,7 +83,7 @@ static bool gui_touch_update(void)
     return touchpad_pressed;
 }
 
-void gui_init(void)
+static void gui_init(void)
 {
     gui_gfx_init();
     gui_touch_init();
@@ -93,7 +93,7 @@ void gui_init(void)
     gfx_unselect_window(gui_window);
 }
 
-void gui_loop(void)
+static void gui_loop(void)
 {
     if (gui_touch_update())
     {
@@ -104,3 +104,14 @@ void gui_loop(void)
     }
     vTaskDelay(pdMS_TO_TICKS(16));
 }
+
+void gui_task(void *arg)
+{
+    gui_init();
+
+    for(;;)
+    {
+        gui_loop();
+    }
+}
+
