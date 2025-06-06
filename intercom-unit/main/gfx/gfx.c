@@ -302,7 +302,10 @@ bool gfx_push_to_screen(GfxWindow_t *window)
             sent_window = window;
             window->state = GFXWIN_CLEAN;
 
-            if (!transfer) xSemaphoreGiveFromISR(transfer_sem_handle, NULL);
+            if (!transfer && uxSemaphoreGetCountFromISR(transfer_sem_handle) == 0)
+            {
+                xSemaphoreGiveFromISR(transfer_sem_handle, NULL);
+            }
 
             return transfer;
         }
