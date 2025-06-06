@@ -13,6 +13,7 @@
 
 #include "gfx.h"
 #include "audio.h"
+#include "utils.h"
 
 #include "esp_lcd_touch_xpt2046.h"
 
