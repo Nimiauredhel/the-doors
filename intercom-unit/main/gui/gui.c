@@ -14,20 +14,24 @@ static void gui_gfx_init(void)
 
 static void gui_touch_init(void)
 {
+    esp_lcd_panel_io_handle_t tp_io_handle = NULL;
+    esp_lcd_panel_io_spi_config_t tp_io_config = ESP_LCD_TOUCH_IO_SPI_XPT2046_CONFIG(TOUCH_CS_PIN);
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)SPI2_HOST, &tp_io_config, &tp_io_handle));
+
      esp_lcd_touch_config_t tp_cfg = {
         .x_max = 320,
         .y_max = 240,
         .rst_gpio_num = -1,
         .int_gpio_num = -1,
         .flags = {
-            .swap_xy = 0,
-            .mirror_x = 0,
-            .mirror_y = 0,
+            .swap_xy = 1,
+            .mirror_x = 1,
+            .mirror_y = 1,
         },
     };
 
     ESP_LOGI("GUI", "Initialize touch controller XPT2046");
-    ESP_ERROR_CHECK(esp_lcd_touch_new_spi_xpt2046(io_handle, &tp_cfg, &touch_handle));
+    ESP_ERROR_CHECK(esp_lcd_touch_new_spi_xpt2046(tp_io_handle, &tp_cfg, &touch_handle));
     gfx_set_touch_handle(touch_handle);
 }
 
