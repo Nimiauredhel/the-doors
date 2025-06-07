@@ -4,8 +4,7 @@ static int client_socket = -1;
 static struct sockaddr_in client_addr = {0};
 static struct sockaddr_in server_addr ={0};
 
-static volatile bool online = false;
-static volatile bool connecting = false;
+static volatile bool socket_created = false;
 static volatile ClientState_t client_state = CLIENTSTATE_NONE;
 
 struct sockaddr_in init_server_socket_address(struct in_addr peer_address_bin, in_port_t peer_port_bin)
@@ -30,7 +29,7 @@ static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_
     if (*socket_ptr < 0)
     {
         perror("Failed to create data socket");
-        exit(EXIT_FAILURE);
+        esp_restart();
     }
 
     /*
@@ -50,10 +49,10 @@ static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_
     if(0 > setsockopt(*socket_ptr, SOL_SOCKET, SO_RCVTIMEO,  &socket_timeout, sizeof(socket_timeout)))
     {
         perror("Failed to set socket timeout");
-        exit(EXIT_FAILURE);
+        esp_restart();
     }
 
-    uint16_t rx_port = 56789;
+    uint16_t rx_port = CLIENT_PORT;
     address_ptr->sin_port = htons(rx_port);
 
     printf("Created client socket.\n");
@@ -61,12 +60,14 @@ static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_
 
 static void client_connect(void)
 {
-    connecting = true;
-
-    struct in_addr server_addr_bin;
-    parse_address("192.168.8.1", &server_addr_bin);
-    server_addr = init_server_socket_address(server_addr_bin, htons(45678));
-    init_local_data_socket(&client_socket, &client_addr);
+    if (!socket_created)
+    {
+        socket_created = true;
+        struct in_addr server_addr_bin;
+        parse_address("192.168.8.1", &server_addr_bin);
+        server_addr = init_server_socket_address(server_addr_bin, htons(SERVER_PORT));
+        init_local_data_socket(&client_socket, &client_addr);
+    }
 
     int ret = connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
