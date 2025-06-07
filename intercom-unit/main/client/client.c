@@ -2,7 +2,7 @@
 
 static void client_init(void)
 {
-    wifi_ap_connect("SSID", "PASSWORD");
+    wifi_ap_connect("DOORS-HUB", "mAlabama");
 }
 
 static void client_loop(void)

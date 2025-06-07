@@ -108,7 +108,7 @@ static void gui_loop(void)
         gfx_fill_rect_single_color(touch_state.current_x, touch_state.current_y, 32, 24, color_red);
         gfx_unselect_window(info_window);
     }
-    vTaskDelay(pdMS_TO_TICKS(16));
+    vTaskDelay(pdMS_TO_TICKS(32));
 }
 
 void gui_task(void *arg)
