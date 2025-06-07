@@ -1,7 +1,5 @@
 #include "common.h"
 
-volatile bool should_terminate = false;
-
 /**
  * The random_range() function uses this to determine
  * whether rand() was already seeded or not.

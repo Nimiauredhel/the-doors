@@ -67,6 +67,8 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    esp_netif_init();
+    esp_event_loop_create_default();
     wifi_init();
     printf("Free heap size after Wi-Fi init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
     gfx_init(LCD_LANDSCAPE);
