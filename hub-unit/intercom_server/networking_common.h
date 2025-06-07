@@ -7,7 +7,7 @@
 #include <ifaddrs.h>
 #include <stdbool.h>
 
-#define SERVER_DATA_PORT 45678
+#define SERVER_PORT 45678
 
 /**
  * Conveniently wraps the inet_pton() function which converts an IP address

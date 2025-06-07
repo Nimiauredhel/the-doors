@@ -7,6 +7,8 @@
 #include "packet_utils.h"
 #include "i2c_register_defs.h"
 
+#define NUM_PROCESSES 2
+
 typedef struct HubProcess
 {
     pid_t pid;
@@ -20,7 +22,7 @@ static const uint16_t check_interval_sec = 5;
 static HubProcess_t processes[] =
 {
     {-1, "/usr/bin/doors_hub/door_manager"},
- //   {-1, "/usr/bin/doors_hub/intercom_server"},
+    {-1, "/usr/bin/doors_hub/intercom_server"},
  //   {-1, "/usr/bin/doors_hub/db_service"},
 };
 
@@ -92,7 +94,7 @@ static void launch_process(uint8_t index)
         printf("Successfully waited on PID %d.\n", pid);
         processes[0].pid = read_pid_pipe();
         */
-        processes[0].pid = pid;
+        processes[index].pid = pid;
         sprintf(buff, "Successfully launched program %s with PID %d.\n", processes[index].exe_name, processes[index].pid);
         syslog_append(buff);
     }
@@ -115,19 +117,22 @@ static void control_loop(void)
         snprintf(syslog_buff, 128, "Still alive, runtime: %lu seconds", runtime_secs);
         syslog_append(syslog_buff);
 
-        ret = waitpid(processes[0].pid, &status, WNOHANG);
+	for (int i = 0; i < NUM_PROCESSES; i++)
+	{
+		ret = waitpid(processes[i].pid, &status, WNOHANG);
 
-        if (ret != 0)
-        {
-            snprintf(syslog_buff, 128, "Program %s (PID %d) seems to have been terminated - relaunching.\n", processes[0].exe_name, processes[0].pid);
-            syslog_append(syslog_buff);
-            launch_process(0);
-        }
-        else
-        {
-            snprintf(syslog_buff, 128, "Program %s still running with code %d.\n", processes[0].exe_name, status);
-            syslog_append(syslog_buff);
-        }
+		if (ret != 0)
+		{
+		    snprintf(syslog_buff, 128, "Program %s (PID %d) seems to have been terminated - relaunching.\n", processes[i].exe_name, processes[i].pid);
+		    syslog_append(syslog_buff);
+		    launch_process(i);
+		}
+		else
+		{
+		    snprintf(syslog_buff, 128, "Program %s still running with code %d.\n", processes[i].exe_name, status);
+		    syslog_append(syslog_buff);
+		}
+	}
     }
 }
 
@@ -147,13 +152,14 @@ int main(void)
 
     // launch all hub processes
     sleep(1);
-    launch_process(0);
+    for (int i = 0; i < NUM_PROCESSES; i++)
+    {
+	    launch_process(i);
+    }
 
     // begin loop checking that all processes are still running
     sleep(1);
     control_loop();
 
-    for(;;)
-    {
-    }
+    return 1;
 }
