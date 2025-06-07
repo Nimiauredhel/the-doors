@@ -6,6 +6,7 @@ static struct sockaddr_in server_addr ={0};
 
 static volatile bool online = false;
 static volatile bool connecting = false;
+static volatile ClientState_t client_state = CLIENTSTATE_NONE;
 
 struct sockaddr_in init_server_socket_address(struct in_addr peer_address_bin, in_port_t peer_port_bin)
 {
@@ -67,23 +68,15 @@ static void client_connect(void)
     server_addr = init_server_socket_address(server_addr_bin, htons(45678));
     init_local_data_socket(&client_socket, &client_addr);
 
-    for(;;)
+    int ret = connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
+
+    if (ret != 0)
     {
-        int ret = connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
-
-        if (ret != 0)
-        {
-            perror("Failed to connect to Hub, retrying in 2 seconds.");
-            vTaskDelay(pdMS_TO_TICKS(2000));
-            continue;
-        }
-
-        break;
+        perror("Failed to connect to Hub, retrying next loop");
+        return;
     }
 
-
-    online = true;
-    connecting = false;
+    client_state = CLIENTSTATE_ONLINE;
     printf("Successfully connected to Hub Intercom Server.\n");
 }
 
@@ -98,11 +91,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
     {
         printf("Connecting to the AP succeeded.\n");
-
-        if (!online && !connecting)
-        {
-            client_connect();
-        }
+        if (client_state < CLIENTSTATE_CONNECTING) client_state = CLIENTSTATE_CONNECTING;
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -113,6 +102,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 static void client_init(void)
 {
+    client_state = CLIENTSTATE_INIT;
+
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
@@ -133,19 +124,33 @@ static void client_init(void)
 
 static void client_loop(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    int ret;
     char* msg = "Hello this is client.";
-    printf("%s\n", msg);
 
-    /*
-    int ret = send(client_socket, msg, strlen(msg)+1, 0);
-
-    if (ret <= 0)
+    switch(client_state)
     {
-        perror("Failed to send message");
+    case CLIENTSTATE_NONE:
+    case CLIENTSTATE_INIT:
         vTaskDelay(pdMS_TO_TICKS(1000));
+        break;
+    case CLIENTSTATE_CONNECTING:
+        client_connect();
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        break;
+    case CLIENTSTATE_ONLINE:
+        printf("%s\n", msg);
+        ret = send(client_socket, msg, strlen(msg)+1, 0);
+
+        if (ret <= 0)
+        {
+            perror("Failed to send message");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+
+        perror("Sent message.\n");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        break;
     }
-    */
 }
 
 void client_task(void *arg)
