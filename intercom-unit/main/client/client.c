@@ -22,7 +22,7 @@ struct sockaddr_in init_server_socket_address(struct in_addr peer_address_bin, i
 static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_ptr)
 {
     //static const int reuse_flag = 1;
-    static const struct timeval socket_timeout = { .tv_sec = 1, .tv_usec = 0 };
+    //static const struct timeval socket_timeout = { .tv_sec = 1, .tv_usec = 0 };
 
     *socket_ptr = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 
@@ -44,16 +44,13 @@ static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_
         perror("Failed to set socket 'reuse port' option");
         exit(EXIT_FAILURE);
     }
-    */
 
     if(0 > setsockopt(*socket_ptr, SOL_SOCKET, SO_RCVTIMEO,  &socket_timeout, sizeof(socket_timeout)))
     {
         perror("Failed to set socket timeout");
         esp_restart();
     }
-
-    uint16_t rx_port = CLIENT_PORT;
-    address_ptr->sin_port = htons(rx_port);
+    */
 
     printf("Created client socket.\n");
 }
@@ -98,6 +95,12 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         printf("got ip: " IPSTR " \n", IP2STR(&event->ip_info.ip));
+
+        esp_netif_ip_info_t ip_info;
+        esp_netif_get_ip_info(esp_netif_get_default_netif(), &ip_info);
+        printf("My IP: " IPSTR "\n", IP2STR(&ip_info.ip));
+        printf("My GW: " IPSTR "\n", IP2STR(&ip_info.gw));
+        printf("My NETMASK: " IPSTR "\n", IP2STR(&ip_info.netmask));
     }
 }
 
@@ -139,17 +142,28 @@ static void client_loop(void)
         vTaskDelay(pdMS_TO_TICKS(1000));
         break;
     case CLIENTSTATE_ONLINE:
-        printf("%s\n", msg);
         ret = send(client_socket, msg, strlen(msg)+1, 0);
 
-        if (ret <= 0)
+        if (ret > 0)
         {
+            char rx_buff[64] = {0};
+            printf("Sent message: %s\n", msg);
+
+            ret = recv(client_socket, rx_buff, sizeof(rx_buff), 0);
+
+            if (ret > 0)
+            {
+                printf("Received reply: %s\n", rx_buff);
+            }
+
+            vTaskDelay(pdMS_TO_TICKS(3000));
+        }
+        else
+        {
+            client_state = CLIENTSTATE_CONNECTING;
             perror("Failed to send message");
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
-
-        perror("Sent message.\n");
-        vTaskDelay(pdMS_TO_TICKS(3000));
         break;
     }
 }
