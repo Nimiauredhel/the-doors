@@ -17,11 +17,5 @@ void wifi_ap_connect(char *ssid, char *pass)
     esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
 
     ESP_ERROR_CHECK(esp_wifi_connect());
-
-    esp_netif_ip_info_t ip_info;
-    esp_netif_get_ip_info(esp_netif_get_default_netif(), &ip_info);
-    printf("My IP: " IPSTR "\n", IP2STR(&ip_info.ip));
-    printf("My GW: " IPSTR "\n", IP2STR(&ip_info.gw));
-    printf("My NETMASK: " IPSTR "\n", IP2STR(&ip_info.netmask));
 }
 
