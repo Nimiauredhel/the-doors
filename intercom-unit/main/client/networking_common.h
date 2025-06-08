@@ -6,9 +6,6 @@
 #include <netdb.h>
 #include <stdbool.h>
 
-#define SERVER_PORT 45678
-#define CLIENT_PORT 56789
-
 /**
  * Conveniently wraps the inet_pton() function which converts an IP address
  * to its network binary representation and writes to an existing address struct.
