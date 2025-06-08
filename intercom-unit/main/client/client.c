@@ -182,7 +182,7 @@ static void hub_comms(void)
         printf("Sent message: %s\n", msg);
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
-    else if (ret == EAGAIN || ret == EWOULDBLOCK)
+    else if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
         printf(" .");
     }
@@ -207,7 +207,7 @@ static void hub_comms(void)
         connection_error_count = 0;
         printf("Received reply: %s\n", rx_buff);
     }
-    else if (ret == EAGAIN || ret == EWOULDBLOCK)
+    else if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
         printf(" .");
     }
