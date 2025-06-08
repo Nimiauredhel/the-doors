@@ -227,7 +227,7 @@ static void server_loop(void)
 {
     char buff[64] = {0};
     struct sockaddr_in new_client_addr;
-    socklen_t new_client_addr_len;
+    socklen_t new_client_addr_len = sizeof(new_client_addr);
     int new_client_socket = -1;
 
     check_client_slots();
