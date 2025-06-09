@@ -155,6 +155,7 @@ int main(void)
     daemon_init();
 
     // initializee hub common resources (pipes, shared memory, etc.)
+    ipc_init();
 
     // prepare the arguments to be passed to individual processes
 
