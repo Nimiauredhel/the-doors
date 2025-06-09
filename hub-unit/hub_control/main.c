@@ -1,11 +1,4 @@
-#include <sys/types.h>
-#include <sys/wait.h>
-
 #include "hub_common.h"
-
-#include "packet_defs.h"
-#include "packet_utils.h"
-#include "i2c_register_defs.h"
 
 #define NUM_PROCESSES 2
 
@@ -16,8 +9,6 @@ typedef struct HubProcess
 } HubProcess_t;
 
 static const uint16_t check_interval_sec = 5;
-
-//static int pid_pipe[2] = {0};
 
 static HubProcess_t processes[] =
 {
@@ -42,19 +33,53 @@ static void daemon_init(void)
 
     syslog_append("Successfully Daemonized");
 }
-/*
-static int read_pid_pipe(void)
-{
-    pid_t ret_pid = -1;
-    read(pid_pipe[0], &ret_pid, sizeof(pid_t));
-    return ret_pid;
-}
 
-static void write_pid_pipe(pid_t pid)
+static void ipc_init(void)
 {
-    write(pid_pipe[1], &pid, sizeof(pid_t));
+    int ret;
+    sem_t *sem_ptr;
+    size_t shm_size = sizeof(DoorPacket_t) + sizeof(ShmState_t) + SHM_PACKET_EXTRA_DATA_BYTES;
+
+    ret = shmget(CLIENTS_TO_DOORS_SHM_KEY, shm_size, IPC_CREAT | 0666);
+
+    if (ret < 0)
+    {
+        perror("Failed to get shm with key 324");
+        syslog_append("Failed to get shm with key 324");
+        exit(EXIT_FAILURE);
+    }
+
+    ret = shmget(DOORS_TO_CLIENTS_SHM_KEY, shm_size, IPC_CREAT | 0666);
+
+    if (ret < 0)
+    {
+        perror("Failed to get shm with key 423");
+        syslog_append("Failed to get shm with key 423");
+        exit(EXIT_FAILURE);
+    }
+
+    sem_ptr = sem_open(CLIENTS_TO_DOORS_SHM_SEM, O_CREAT, 0600, 0);
+
+    if (sem_ptr == SEM_FAILED)
+    {
+        perror("Failed to open sem for shm 324");
+        syslog_append("Failed to open sem for shm 324");
+        exit(EXIT_FAILURE);
+    }
+
+    sem_close(sem_ptr);
+
+    sem_ptr = sem_open(DOORS_TO_CLIENTS_SHM_SEM, O_CREAT, 0600, 0);
+
+    if (sem_ptr == SEM_FAILED)
+    {
+        perror("Failed to open sem for shm 423");
+        syslog_append("Failed to open sem for shm 423");
+        exit(EXIT_FAILURE);
+    }
+
+    sem_close(sem_ptr);
 }
-*/
 
 static void launch_process(uint8_t index)
 {
@@ -70,17 +95,6 @@ static void launch_process(uint8_t index)
 
     if (pid == 0)
     {
-        /*
-        printf("Child process here with PID %u\n", getpid());
-        int daemon_ret = daemon(1, 1);
-        if (daemon_ret != 0)
-        {
-            perror("Failed to daemonize");
-            exit(EXIT_FAILURE);
-        }
-        write_pid_pipe(getpid());
-        printf("Child process daemonized with PID %u\n", getpid());
-        */
         int exec_ret = execl(processes[index].exe_name, processes[index].exe_name, NULL);
         sprintf(buff, "Failed to execute process: %s", strerror(exec_ret));
         syslog_append(buff);
@@ -89,11 +103,6 @@ static void launch_process(uint8_t index)
     }
     else
     {
-        /*
-        waitpid(pid, NULL, 0);
-        printf("Successfully waited on PID %d.\n", pid);
-        processes[0].pid = read_pid_pipe();
-        */
         processes[index].pid = pid;
         sprintf(buff, "Successfully launched program %s with PID %d.\n", processes[index].exe_name, processes[index].pid);
         syslog_append(buff);
@@ -117,22 +126,22 @@ static void control_loop(void)
         snprintf(syslog_buff, 128, "Still alive, runtime: %lu seconds", runtime_secs);
         syslog_append(syslog_buff);
 
-	for (int i = 0; i < NUM_PROCESSES; i++)
-	{
-		ret = waitpid(processes[i].pid, &status, WNOHANG);
+        for (int i = 0; i < NUM_PROCESSES; i++)
+        {
+            ret = waitpid(processes[i].pid, &status, WNOHANG);
 
-		if (ret != 0)
-		{
-		    snprintf(syslog_buff, 128, "Program %s (PID %d) seems to have been terminated - relaunching.\n", processes[i].exe_name, processes[i].pid);
-		    syslog_append(syslog_buff);
-		    launch_process(i);
-		}
-		else
-		{
-		    snprintf(syslog_buff, 128, "Program %s still running with code %d.\n", processes[i].exe_name, status);
-		    syslog_append(syslog_buff);
-		}
-	}
+            if (ret != 0)
+            {
+                snprintf(syslog_buff, 128, "Program %s (PID %d) seems to have been terminated - relaunching.\n", processes[i].exe_name, processes[i].pid);
+                syslog_append(syslog_buff);
+                launch_process(i);
+            }
+            else
+            {
+                snprintf(syslog_buff, 128, "Program %s still running with code %d.\n", processes[i].exe_name, status);
+                syslog_append(syslog_buff);
+            }
+        }
     }
 }
 
@@ -146,7 +155,6 @@ int main(void)
     daemon_init();
 
     // initializee hub common resources (pipes, shared memory, etc.)
-    //int ret = pipe(pid_pipe);
 
     // prepare the arguments to be passed to individual processes
 
