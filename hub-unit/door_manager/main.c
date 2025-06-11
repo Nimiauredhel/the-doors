@@ -270,7 +270,11 @@ static void scan_i2c_bus(void)
 
 static void forward_request(DoorPacket_t *request)
 {
-    i2c_set_target(request->body.Request.destination_id);
+    syslog_append("Forwarding request to door");
+    if (target_addr_last_count > 0)
+    {
+        i2c_set_target(target_addr_list[0]);
+    }
     i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)request, sizeof(DoorPacket_t));
 }
 
