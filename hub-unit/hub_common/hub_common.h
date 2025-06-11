@@ -34,6 +34,7 @@
 #define CLIENTS_TO_DOORS_SHM_KEY 324
 #define DOORS_TO_CLIENTS_SHM_KEY 423
 #define SHM_PACKET_EXTRA_DATA_BYTES 160000
+#define SHM_PACKET_TOTAL_SIZE (sizeof(DoorPacket_t) + sizeof(ShmState_t) + SHM_PACKET_EXTRA_DATA_BYTES)
 
 typedef enum ShmState
 {

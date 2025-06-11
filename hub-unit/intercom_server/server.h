@@ -22,6 +22,7 @@ typedef struct ClientData
     struct sockaddr_in client_addr;
     socklen_t client_addr_len;
     pthread_t client_thread_handle;
+    HubQueue_t *outbox;
 } ClientData_t;
 
 void server_start(void);

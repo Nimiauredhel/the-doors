@@ -38,9 +38,8 @@ static void ipc_init(void)
 {
     int ret;
     sem_t *sem_ptr;
-    size_t shm_size = sizeof(DoorPacket_t) + sizeof(ShmState_t) + SHM_PACKET_EXTRA_DATA_BYTES;
 
-    ret = shmget(CLIENTS_TO_DOORS_SHM_KEY, shm_size, IPC_CREAT | 0666);
+    ret = shmget(CLIENTS_TO_DOORS_SHM_KEY, SHM_PACKET_TOTAL_SIZE, IPC_CREAT | 0666);
 
     if (ret < 0)
     {
@@ -49,7 +48,7 @@ static void ipc_init(void)
         exit(EXIT_FAILURE);
     }
 
-    ret = shmget(DOORS_TO_CLIENTS_SHM_KEY, shm_size, IPC_CREAT | 0666);
+    ret = shmget(DOORS_TO_CLIENTS_SHM_KEY, SHM_PACKET_TOTAL_SIZE, IPC_CREAT | 0666);
 
     if (ret < 0)
     {
