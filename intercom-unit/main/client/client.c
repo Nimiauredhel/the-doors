@@ -170,16 +170,19 @@ static void hub_comms(void)
     static const uint8_t connection_error_threshold = 10;
     static uint8_t connection_error_count = 0;
 
-    char rx_buff[64] = {0};
-    char* msg = "Hello this is client.";
+    DoorPacket_t packet_buff =
+    {
+        .header.category = PACKET_CAT_REQUEST,
+        .body.Request.destination_id = 16,
+        .body.Request.request_id = PACKET_REQUEST_DOOR_OPEN,
+    };
 
-    printf("Sending to server.\n");
-    int ret = send(client_socket, msg, strlen(msg)+1, 0);
+    printf("Sending test 'open door' packet to server.\n");
+    int ret = send(client_socket, &packet_buff, sizeof(packet_buff), 0);
 
     if (ret > 0)
     {
         connection_error_count = 0;
-        printf("Sent message: %s\n", msg);
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
     else if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -199,6 +202,34 @@ static void hub_comms(void)
         }
     }
 
+    packet_buff.body.Request.request_id = PACKET_REQUEST_DOOR_CLOSE;
+
+    printf("Sending test 'close door' packet to server.\n");
+    ret = send(client_socket, &packet_buff, sizeof(packet_buff), 0);
+
+    if (ret > 0)
+    {
+        connection_error_count = 0;
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+    else if (errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+        printf(" .");
+    }
+    else
+    {
+        connection_error_count++;
+
+        if (connection_error_count > connection_error_threshold)
+        {
+            perror("Failed to send message");
+            client_state = CLIENTSTATE_CONNECTING;
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            return;
+        }
+    }
+
+    /*
     printf("Receiving from server.\n");
     ret = recv(client_socket, rx_buff, sizeof(rx_buff), 0);
 
@@ -223,6 +254,7 @@ static void hub_comms(void)
             return;
         }
     }
+    */
 }
 
 static void client_loop(void)
