@@ -43,8 +43,7 @@ HubQueue_t *hub_queue_create(uint16_t capacity)
 
 void hub_queue_destroy(HubQueue_t *queue)
 {
-    pthread_mutex_lock(&queue->mutex);
-    free(queue->contents);
+    pthread_mutex_unlock(&queue->mutex);
     pthread_mutex_destroy(&queue->mutex);
     free(queue);
 }
