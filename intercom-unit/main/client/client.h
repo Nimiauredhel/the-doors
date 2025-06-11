@@ -4,6 +4,8 @@
 #include "common.h"
 #include "networking_common.h"
 #include "wifi.h"
+#include "packet_defs.h"
+#include "packet_utils.h"
 
 #define HUB_AP_SSID "DOORS-HUB"
 #define HUB_AP_PASS "mAlabama"
