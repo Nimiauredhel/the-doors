@@ -22,7 +22,7 @@ static int doors_to_clients_shmid = -1;
 static HubShmLayout_t *doors_to_clients_ptr = NULL; 
 static sem_t *doors_to_clients_sem = NULL; 
 
-static HubQueue_t doors_to_clients_queue;
+static HubQueue_t *doors_to_clients_queue;
 
 static bool target_addr_set[TARGET_ADDR_MAX_COUNT] = {false};
 static uint8_t target_addr_list[TARGET_ADDR_MAX_COUNT] = {0};
@@ -270,8 +270,8 @@ static void scan_i2c_bus(void)
 
 static void forward_request(DoorPacket_t *request)
 {
-    i2c_set_target(request.body.RequestBody.destination_id);
-	i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)request, sizeof(DoorPacket_t));
+    i2c_set_target(request->body.Request.destination_id);
+    i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)request, sizeof(DoorPacket_t));
 }
 
 static void ipc_loop(void)

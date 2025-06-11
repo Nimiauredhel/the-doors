@@ -271,7 +271,7 @@ static void connection_check_outbox(ClientData_t *data)
 
     while(hub_queue_dequeue(data->outbox, &packet_buff) >= 0)
     {
-		ret = sendto(data->client_socket, packet_buff, sizeof(DoorPacket_t), 0, (struct sockaddr *)&data->client_addr, data->client_addr_len);
+		ret = sendto(data->client_socket, &packet_buff, sizeof(DoorPacket_t), 0, (struct sockaddr *)&data->client_addr, data->client_addr_len);
 
         if (ret > 0)
         {
@@ -395,7 +395,7 @@ void *connection_task(void *arg)
     // cleanup
     pthread_mutex_lock(&slots_mutex);
     close(data->client_socket);
-    hub_queue_destroy(&data->outbox);
+    hub_queue_destroy(data->outbox);
     data->slot_state = SLOTSTATE_GARBAGE;
     pthread_mutex_unlock(&slots_mutex);
 

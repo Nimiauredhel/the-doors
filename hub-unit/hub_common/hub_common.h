@@ -29,6 +29,8 @@
 #include "../../common/packet_defs.h"
 #include "../../common/packet_utils.h"
 
+#include "hub_queue.h"
+
 #define CLIENTS_TO_DOORS_SHM_SEM "324"
 #define DOORS_TO_CLIENTS_SHM_SEM "423"
 #define CLIENTS_TO_DOORS_SHM_KEY 324
