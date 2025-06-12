@@ -13,9 +13,8 @@
 #include "audio.h"
 #include "utils.h"
 
-#include "esp_lcd_touch_xpt2046.h"
-
-#define TOUCH_CS_PIN 21
+#include "gui_gfx.h"
+#include "gui_touch.h"
 
 typedef enum InterfacePhase
 {
@@ -28,13 +27,6 @@ typedef enum InterfacePhase
 	IPHASE_OPENING = 6,
 	IPHASE_CAMERA = 7,
 } InterfacePhase_t;
-
-typedef struct InterfaceTouchState
-{
-	uint16_t current_x;
-	uint16_t current_y;
-    uint16_t current_z;
-} InterfaceTouchState_t;
 
 typedef struct InterfaceButton
 {
