@@ -10,3 +10,5 @@ A Linux SBC (Beaglebone Green) serves as a central hub, managing multiple door u
 This hub unit also liaises between the door units and a separate set of (ESP32) client or "intercom" units, connected to the hub over a local network.
 
 Further responsibilities of the hub unit include facilitating interactive administration of the system and documenting system-wide events in a central database.
+
+More details in the project's prescriptive [design document](docs/design.pdf).
