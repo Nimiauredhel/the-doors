@@ -569,7 +569,7 @@ void gfx_print_string(char *string, uint16_t x_origin, uint16_t y_origin, const 
 
 	for (i = 0; i < length; i++)
 	{
-		if (x+(default_font.width_bytes*8*scale) >= GFX_SCREEN_WIDTH || string[i] == '\n')
+		if (x+(default_font.width_bytes*5*scale) >= GFX_SCREEN_WIDTH || string[i] == '\n')
 		{
 			y += default_font.height_pixels * scale * 1.25f;
 			x = x_origin;
