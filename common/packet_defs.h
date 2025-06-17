@@ -58,7 +58,9 @@ typedef enum DoorRequest
 typedef enum DoorDataType
 {
 	PACKET_DATA_NONE = 0,
-	PACKET_DATA_PHOTO = 1,
+	PACKET_DATA_DOOR_INFO = 1,
+	PACKET_DATA_CLIENT_INFO = 2,
+	PACKET_DATA_IMAGE = 3,
 	PACKET_DATA_MAX = UINT32_MAX,
 } DoorDataType_t;
 
@@ -82,19 +84,22 @@ typedef struct DoorPacketHeader
 
 typedef union DoorPacketBody
 {
-	struct ReportBody {
+	struct ReportBody
+    {
 		DoorReport_t report_id;
 		uint16_t source_id;
 		uint16_t report_data_16;
 		uint32_t report_data_32;
 	} Report;
-	struct RequestBody {
+	struct RequestBody
+    {
 		DoorRequest_t request_id;
 		uint16_t source_id;
 		uint16_t destination_id;
 		uint32_t request_data_32;
 	} Request;
-	struct DataInfo {
+	struct DataInfo
+    {
 		DoorDataType_t data_type;
 		uint16_t source_id;
 		uint16_t destination_id;
