@@ -513,6 +513,7 @@ static void input_evaluate(int8_t input_len)
 		auth_reset_auth();
 		break;
 	case IPHASE_ADMIN_SETNAME:
+		persistence_save_name(input_string);
 		auth_reset_auth();
 		break;
 	case IPHASE_OPEN:
@@ -572,8 +573,6 @@ void interface_loop(void)
 	switch (current_phase)
 	{
 	case IPHASE_NONE:
-	case IPHASE_BELL:
-		phase_reset();
 		break;
 	case IPHASE_TOP:
 		auth_reset_auth();
@@ -630,6 +629,11 @@ void interface_loop(void)
 			serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
 			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		}
+		break;
+	case IPHASE_BELL:
+		interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
+		serial_print_line(phase_prompts[phase_queue[phase_queue_index]], 0);
+		input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		break;
 	case IPHASE_ADMIN_SETPW_USER:
 	case IPHASE_ADMIN_SETADDR:
