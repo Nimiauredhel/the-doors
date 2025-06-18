@@ -20,6 +20,7 @@
 
 #include "main.h"
 
+#include "persistence.h"
 #include "gfx.h"
 #include "audio.h"
 #include "uart_io.h"

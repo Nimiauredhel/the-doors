@@ -14,6 +14,7 @@
 #include "task.h"
 #include "semphr.h"
 
+#include "persistence.h"
 #include "door_date_time.h"
 #include "isr_utils.h"
 #include "packet_defs.h"
