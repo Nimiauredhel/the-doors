@@ -90,7 +90,7 @@ static int32_t i2c_master_read(const uint8_t reg_addr, const uint8_t len)
     return bytes_read;
 }
 
-static void send_request(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
+static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
 {
 	DoorPacket_t request_buffer;
 	struct tm dt = get_datetime();
@@ -108,6 +108,116 @@ static void send_request(DoorRequest_t request, uint32_t extra_data, uint16_t pr
 	i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)&request_buffer, sizeof(DoorPacket_t));
 }
 
+static void process_report(void)
+{
+	char debug_buff[32] = {0};
+	char syslog_buff[128] = {0};
+
+    DoorReport_t report_type = packet_buff.body.Report.report_id;
+
+    switch(report_type)
+    {
+    case PACKET_REPORT_NONE:
+         sprintf(syslog_buff, "Door event NONE.");
+         break;
+    case PACKET_REPORT_DOOR_OPENED:
+         sprintf(syslog_buff, "Door Opened");
+         break;
+    case PACKET_REPORT_DOOR_CLOSED:
+         sprintf(syslog_buff, "Door Closed");
+         break;
+    case PACKET_REPORT_DOOR_BLOCKED:
+        sprintf(syslog_buff, "Door Blocked for %u seconds",
+        packet_buff.body.Report.report_data_32);
+        break;
+    case PACKET_REPORT_PASS_CORRECT:
+        bzero(debug_buff, sizeof(debug_buff));
+        door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
+        sprintf(syslog_buff, "Correct Password Entered: %s.", debug_buff);
+        break;
+    case PACKET_REPORT_PASS_WRONG:
+        bzero(debug_buff, sizeof(debug_buff));
+        door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
+        sprintf(syslog_buff, "Wrong Password Entered: %s.", debug_buff);
+        break;
+    case PACKET_REPORT_PASS_CHANGED:
+        bzero(debug_buff, sizeof(debug_buff));
+        door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
+        debug_buff[4] = '-';
+        debug_buff[5] = '>';
+        door_pw_to_str(packet_buff.body.Report.report_data_32, debug_buff+6);
+        sprintf(syslog_buff, "Password Changed. %s", debug_buff);
+        break;
+    case PACKET_REPORT_QUERY_RESULT:
+        sprintf(syslog_buff, "Query Result [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
+        break;
+    case PACKET_REPORT_DATA_READY:
+        sprintf(syslog_buff, "Data Ready.");
+        break;
+    case PACKET_REPORT_ERROR:
+        sprintf(syslog_buff, "Error Code [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
+        break;
+    case PACKET_REPORT_TIME_SET:
+        sprintf(syslog_buff, "Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
+        packet_buff.body.Report.report_data_16,
+        packet_buff.body.Report.report_data_32,
+        packet_decode_day(packet_buff.body.Report.report_data_16),
+        packet_decode_month(packet_buff.body.Report.report_data_16),
+        packet_decode_year(packet_buff.body.Report.report_data_16),
+        packet_decode_hour(packet_buff.body.Report.report_data_32),
+        packet_decode_minutes(packet_buff.body.Report.report_data_32),
+        packet_decode_seconds(packet_buff.body.Report.report_data_32));
+        break;
+    case PACKET_REPORT_FRESH_BOOT:
+        sprintf(syslog_buff, "Fresh Boot. Sending time sync!");
+        send_request_to_door(PACKET_REQUEST_SYNC_TIME, 0, 1);
+        break;
+    default:
+        sprintf(syslog_buff, "Unknown Door Event");
+        break;
+    }
+
+    syslog_append(syslog_buff);
+}
+
+static void process_request_from_door(void)
+{
+	char debug_buff[32] = {0};
+	char syslog_buff[128] = {0};
+
+    DoorRequest_t request_type = packet_buff.body.Request.request_id;
+
+    switch(request_type)
+    {
+    case PACKET_REQUEST_BELL:
+        sprintf(syslog_buff, "Forwarding bell from door %u to client %u.", packet_buff.body.Request.source_id, packet_buff.body.Request.destination_id);
+        hub_queue_enqueue(doors_to_clients_queue, &packet_buff);
+        break;
+    case PACKET_REQUEST_SYNC_TIME:
+        break;
+    case PACKET_REQUEST_SYNC_PASS_USER:
+        break;
+    case PACKET_REQUEST_SYNC_PASS_ADMIN:
+        break;
+    case PACKET_REQUEST_PING:
+        break;
+    case PACKET_REQUEST_NONE:
+    case PACKET_REQUEST_DOOR_OPEN:
+    case PACKET_REQUEST_DOOR_CLOSE:
+    case PACKET_REQUEST_PHOTO:
+    case PACKET_REQUEST_RESET_ADDRESS:
+    case PACKET_REQUEST_MAX:
+    default:
+      break;
+    }
+
+    syslog_append(syslog_buff);
+}
+
+static void process_data_from_door(void)
+{
+}
+
 static void poll_slave_event_queue(void)
 {
 	static const uint8_t zero = 0;
@@ -115,7 +225,7 @@ static void poll_slave_event_queue(void)
 	char debug_buff[32] = {0};
 	char syslog_buff[128] = {0};
 
-	syslog_append("Starting polling");
+	//syslog_append("Starting polling");
 
     sleep(polling_interval_sec);
 
@@ -153,71 +263,23 @@ static void poll_slave_event_queue(void)
                     packet_decode_seconds(packet_buff.header.time));
                     */
 
-            DoorReport_t report_type = packet_buff.body.Report.report_id;
-
-            switch(report_type)
+            switch(packet_buff.header.category)
             {
-            case PACKET_REPORT_NONE:
-                 sprintf(syslog_buff, "Door event NONE.");
-                 break;
-            case PACKET_REPORT_DOOR_OPENED:
-                 sprintf(syslog_buff, "Door Opened");
-                 break;
-            case PACKET_REPORT_DOOR_CLOSED:
-                 sprintf(syslog_buff, "Door Closed");
-                 break;
-            case PACKET_REPORT_DOOR_BLOCKED:
-                sprintf(syslog_buff, "Door Blocked for %lu seconds",
-                packet_buff.body.Report.report_data_32);
+            case PACKET_CAT_REPORT:
+                process_report();
                 break;
-            case PACKET_REPORT_PASS_CORRECT:
-                bzero(debug_buff, sizeof(debug_buff));
-                door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
-                sprintf(syslog_buff, "Correct Password Entered: %s.", debug_buff);
+            case PACKET_CAT_REQUEST:
+                process_request_from_door();
                 break;
-            case PACKET_REPORT_PASS_WRONG:
-                bzero(debug_buff, sizeof(debug_buff));
-                door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
-                sprintf(syslog_buff, "Wrong Password Entered: %s.", debug_buff);
+            case PACKET_CAT_DATA:
+                process_data_from_door();
                 break;
-            case PACKET_REPORT_PASS_CHANGED:
-                bzero(debug_buff, sizeof(debug_buff));
-                door_pw_to_str(packet_buff.body.Report.report_data_16, debug_buff);
-                debug_buff[4] = '-';
-                debug_buff[5] = '>';
-                door_pw_to_str(packet_buff.body.Report.report_data_32, debug_buff+6);
-                sprintf(syslog_buff, "Password Changed. %s", debug_buff);
-                break;
-            case PACKET_REPORT_QUERY_RESULT:
-                sprintf(syslog_buff, "Query Result [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
-                break;
-            case PACKET_REPORT_DATA_READY:
-                sprintf(syslog_buff, "Data Ready.");
-                break;
-            case PACKET_REPORT_ERROR:
-                sprintf(syslog_buff, "Error Code [%u][%u]", packet_buff.body.Report.report_data_16, packet_buff.body.Report.report_data_32);
-                break;
-            case PACKET_REPORT_TIME_SET:
-                sprintf(syslog_buff, "Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
-                packet_buff.body.Report.report_data_16,
-                packet_buff.body.Report.report_data_32,
-                packet_decode_day(packet_buff.body.Report.report_data_16),
-                packet_decode_month(packet_buff.body.Report.report_data_16),
-                packet_decode_year(packet_buff.body.Report.report_data_16),
-                packet_decode_hour(packet_buff.body.Report.report_data_32),
-                packet_decode_minutes(packet_buff.body.Report.report_data_32),
-                packet_decode_seconds(packet_buff.body.Report.report_data_32));
-                break;
-            case PACKET_REPORT_FRESH_BOOT:
-                sprintf(syslog_buff, "Fresh Boot. Sending time sync!");
-                send_request(PACKET_REQUEST_SYNC_TIME, 0, 1);
-                break;
+            case PACKET_CAT_NONE:
+            case PACKET_CAT_MAX:
             default:
-                sprintf(syslog_buff, "Unknown Door Event");
-                break;
+              break;
             }
 
-            syslog_append(syslog_buff);
         }
 
         //printf("Events retrieved. Ordering slave device to reset its local queue...\n");
@@ -228,7 +290,7 @@ static void poll_slave_event_queue(void)
 
 static void scan_i2c_bus(void)
 {
-    char syslog_buff[32] = {0};
+    char syslog_buff[64] = {0};
     int32_t read_bytes = 0;
 
     target_addr_last_count = 0;
