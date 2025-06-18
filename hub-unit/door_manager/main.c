@@ -54,6 +54,8 @@ static void i2c_init(void)
 {
 	char buff[64] = {0};
 
+	system("sh i2c_init.sh");
+
 	sprintf(buff, "Opening I2C device at path %s", device_path);
 	syslog_append(buff);
 
@@ -486,7 +488,7 @@ int main(void)
     sprintf(buff, "Starting Door Manager, PID %u", getpid());
     syslog_append(buff);
     ipc_init();
-	i2c_init();
+    i2c_init();
     pthread_create(&i2c_thread, NULL, i2c_task, NULL);
     pthread_create(&ipc_thread, NULL, ipc_task, NULL);
 
