@@ -11,15 +11,17 @@ static bool display_initialized = false;
 
 GfxWindow_t *keypad_window = NULL;
 
-static GfxWindow_t *datetime_window = NULL;
+static GfxWindow_t *info_bar_window = NULL;
 static GfxWindow_t *msg_window = NULL;
 static GfxWindow_t *input_window = NULL;
 
-static uint8_t display_draw_datetime(void)
+static uint8_t display_draw_info_bar(void)
 {
 	static const uint8_t text_scale = 2;
 	static const uint8_t font_width = 8*text_scale;
 	static const uint8_t font_height = 5*text_scale;
+	static const uint8_t row1_y = font_height / 2;
+	static const uint8_t row2_y = (font_height*2) + (font_height / 2);
 
 	static char buff[16] = {0};
 	// initialized at nonsensical value to ensure first draw
@@ -38,16 +40,25 @@ static uint8_t display_draw_datetime(void)
 	prev_i2c_hit_count = i2c_hit_count;
 	prev_time = now_time;
 
-	if (gfx_select_window(datetime_window, false))
+	if (gfx_select_window(info_bar_window, false))
 	{
 		prev_time = now_time;
 		gfx_fill_screen(i2c_hit_count > 0 ? color_blue : color_grey_dark);
 		bzero(buff, sizeof(buff));
+
 		date_time_get_time_str_hhmm(buff);
-		gfx_print_string(buff, 2, font_height/2, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
+		gfx_print_string(buff, 2, row1_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
+
 		date_time_get_date_str(buff);
-		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), font_height/2, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
-		gfx_unselect_window(datetime_window);
+		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), row1_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
+
+		sprintf(buff, "[%lu]", persistence_get_i2c_addr() >> (uint32_t)1);
+		gfx_print_string(buff, 2, row2_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
+
+		persistence_get_name(buff);
+		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), row2_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
+
+		gfx_unselect_window(info_bar_window);
 		return 1;
 	}
 
@@ -241,11 +252,11 @@ void display_init(void)
 
 	gfx_init(LCD_ORIENTATION_PORTRAIT);
 
-	datetime_window = gfx_create_window(0, 0, screen_get_x_size(), font_height*2, "DateTime");
-	msg_window = gfx_create_window(0, font_height*2, screen_get_x_size(), (screen_get_y_size()/2)-(font_height*2)-(font_height*4), "MsgBox");
-	input_window = gfx_create_window(0, (screen_get_y_size()/2)-(font_height*4), screen_get_x_size(), font_height*4, "InputBox");
-	keypad_window = gfx_create_window(0, screen_get_y_size()/2, screen_get_x_size(), screen_get_y_size()/2, "Keypad");
-	gfx_show_window(datetime_window);
+	info_bar_window = gfx_create_window(0, 0, screen_get_x_size(), font_height*4, "InfoBar");
+	msg_window = gfx_create_window(0, font_height*4, screen_get_x_size(), (screen_get_y_size()/2)-(font_height*4)-(font_height*2 + font_height/2), "MsgBox");
+	input_window = gfx_create_window(0, (screen_get_y_size()/2)-(font_height*2 + font_height/2), screen_get_x_size(), font_height*4, "InputBox");
+	keypad_window = gfx_create_window(0, (screen_get_y_size()/2) + font_height, screen_get_x_size(), (screen_get_y_size()/2) - font_height, "Keypad");
+	gfx_show_window(info_bar_window);
 	gfx_show_window(msg_window);
 	gfx_show_window(input_window);
 	gfx_show_window(keypad_window);
@@ -259,7 +270,7 @@ void display_loop(void)
 
 	uint8_t dirt = 0;
 
-	dirt += display_draw_datetime();
+	dirt += display_draw_info_bar();
 	dirt += display_draw_msg();
 	dirt += display_draw_input();
 	dirt += display_draw_keys();

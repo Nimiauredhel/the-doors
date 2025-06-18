@@ -54,7 +54,7 @@ static const InterfaceKeypadIdx_t phase_keypad_indices[INTERFACE_NUM_PHASES] =
 		IKEYPAD_NONE, // phase OPEN
 		IKEYPAD_NONE, // phase CLOSE
 		IKEYPAD_DIGITS, // phase BELL
-		IKEYPAD_KEYBOARD, // phase CHECKPW_ADMIN
+		IKEYPAD_DIGITS, // phase CHECKPW_ADMIN
 		IKEYPAD_DIGITS, // phase ADMIN_MENU
 		IKEYPAD_DIGITS, // phase ADMIN_SETPW_USER
 		IKEYPAD_DIGITS, // phase ADMIN_SETADDR
@@ -70,7 +70,7 @@ static const char *phase_prompts[INTERFACE_NUM_PHASES] =
 		"Closing\r\nDoor!",
 		"Please Select\r\nClient Number.",
 		"Please\r\nEnter\r\nADMIN\r\nPassword.",
-		"ADMIN MENU\r\n1)open 2)close\r\n3)set door pw\r\n4)debug comms\r\n5)debug sensor\r\n6)set i2c addr\r\n7)set name",
+		"1)open 2)close\r\n3)set door pw\r\n4)debug comms\r\n5)debug sensor\r\n6)set i2c addr\r\n7)set name",
 		"Please\r\nEnter\r\nNEW\r\nPassword.",
 		"Please\r\nEnter\r\nI2C\r\nAddress.",
 		"Please\r\nEnter\r\nDoor\r\nName.",

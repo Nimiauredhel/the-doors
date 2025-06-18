@@ -1,20 +1,20 @@
 #include "gui_elements.h"
 
 #define KEYBOARD_KEY_WIDTH (24)
-#define KEYBOARD_KEY_HEIGHT (30)
+#define KEYBOARD_KEY_HEIGHT (28)
 #define KEYBOARD_ROW1_X (0)
 #define KEYBOARD_ROW2_X (0)
 #define KEYBOARD_ROW3_X (KEYBOARD_KEY_WIDTH/2)
 #define KEYBOARD_ROW4_X (KEYBOARD_KEY_WIDTH/2)
-#define KEYBOARD_Y_START (0)
+#define KEYBOARD_Y_START (6)
 #define KEYBOARD_LABEL_SCALE (2)
 
 #define KEYPAD_KEY_WIDTH (51)
 #define KEYPAD_KEY_HEIGHT (30)
 #define KEYPAD_X_START (25)
 #define KEYPAD_X_GAP (17)
-#define KEYPAD_Y_START (5)
-#define KEYPAD_Y_GAP (10)
+#define KEYPAD_Y_START (6)
+#define KEYPAD_Y_GAP (6)
 #define KEYPAD_LABEL_SCALE (4)
 
 const InterfaceButton_t keypad_buttons[12] =
