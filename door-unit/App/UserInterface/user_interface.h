@@ -29,20 +29,32 @@
 #include "door_control.h"
 #include "hub_comms.h"
 
-extern SPI_HandleTypeDef hspi5;
+#include "gui_elements.h"
+
+#define INTERFACE_NUM_PHASES (11)
+#define INTERFACE_NUM_KEYPADS (2)
 
 typedef enum InterfacePhase
 {
 	IPHASE_NONE = 0,
 	IPHASE_TOP = 1,
-	IPHASE_ADMIN = 2,
-	IPHASE_CHECKPW_USER = 3,
-	IPHASE_CHECKPW_ADMIN = 4,
-	IPHASE_SETPW = 5,
-	IPHASE_OPEN = 6,
-	IPHASE_CLOSE = 7,
-	IPHASE_BELL = 8,
+	IPHASE_CHECKPW_USER = 2,
+	IPHASE_OPEN = 3,
+	IPHASE_CLOSE = 4,
+	IPHASE_BELL = 5,
+	IPHASE_CHECKPW_ADMIN = 6,
+	IPHASE_ADMIN_MENU = 7,
+	IPHASE_ADMIN_SETPW_USER = 8,
+	IPHASE_ADMIN_SETADDR = 9,
+	IPHASE_ADMIN_SETNAME = 10,
 } InterfacePhase_t;
+
+typedef enum InterfaceKeypadIdx
+{
+	IKEYPAD_NONE = -1,
+	IKEYPAD_DIGITS = 0,
+	IKEYPAD_KEYBOARD = 1,
+} InterfaceKeypadIdx_t;
 
 typedef struct InterfaceTouchState
 {
@@ -52,17 +64,7 @@ typedef struct InterfaceTouchState
 	uint16_t current_y;
 } InterfaceTouchState_t;
 
-typedef struct InterfaceButton
-{
-	uint8_t id;
-	uint8_t width;
-	uint8_t height;
-	uint16_t x;
-	uint16_t y;
-	char label[8];
-} InterfaceButton_t;
-
-extern const InterfaceButton_t keypad_buttons[12];
+extern SPI_HandleTypeDef hspi5;
 
 bool interface_is_initialized(void);
 void interface_init(void);
@@ -75,5 +77,6 @@ uint8_t interface_get_input_timer_percent(void);
 const char* interface_get_msg(void);
 const char* interface_get_input(void);
 int8_t interface_get_touched_button_idx(void);
+InterfaceKeypadIdx_t interface_get_current_keypad_idx(void);
 
 #endif /* USER_INTERFACE_H_ */

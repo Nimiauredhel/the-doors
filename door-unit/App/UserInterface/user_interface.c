@@ -8,8 +8,10 @@
 #include "user_interface.h"
 
 #define MAX_CHARS_MENU_INPUT 1
+#define MAX_CHARS_ADDR_INPUT 2
 #define MAX_CHARS_PASS_INPUT 4
 #define MAX_CHARS_ADMIN_PASS_INPUT 8
+#define MAX_CHARS_NAME_INPUT 16
 #define PHASE_QUEUE_SIZE 8
 
 #define TAKE_GUI_MUTEX \
@@ -19,54 +21,59 @@
 	if (is_isr()) xSemaphoreGiveFromISR(gui_lock, 0); \
 	else xSemaphoreGive(gui_lock)
 
-static bool interface_initialized = false;
 static SemaphoreHandle_t gui_lock = NULL;
 static StaticSemaphore_t gui_lock_buffer;
 
 static StaticTimer_t input_timer_buffer = {0};
 static TimerHandle_t input_timer_handle;
+
+static bool interface_initialized = false;
 static uint8_t input_timer_percent = 0;
+static InterfaceKeypadIdx_t keypad_idx = -1;
 
-const InterfaceButton_t keypad_buttons[12] =
-{
-	{ .id = '1', .width = 51, .height = 30, .x = 25, .y = 5, .label = "1\0" },
-	{ .id = '2', .width = 51, .height = 30, .x = 93, .y = 5, .label = "2\0" },
-	{ .id = '3', .width = 51, .height = 30, .x = 160, .y = 5, .label = "3\0" },
-	{ .id = '4', .width = 51, .height = 30, .x = 25, .y = 45, .label = "4\0" },
-	{ .id = '5', .width = 51, .height = 30, .x = 93, .y = 45, .label = "5\0" },
-	{ .id = '6', .width = 51, .height = 30, .x = 160, .y = 45, .label = "6\0" },
-	{ .id = '7', .width = 51, .height = 30, .x = 25, .y = 85, .label = "7\0" },
-	{ .id = '8', .width = 51, .height = 30, .x = 93, .y = 85, .label = "8\0" },
-	{ .id = '9', .width = 51, .height = 30, .x = 160, .y = 85, .label = "9\0" },
-	{ .id = '*', .width = 51, .height = 30, .x = 25, .y = 125, .label = "*\0" },
-	{ .id = '0', .width = 51, .height = 30, .x = 93, .y = 125, .label = "0\0" },
-	{ .id = '#', .width = 51, .height = 30, .x = 160, .y = 125, .label = "#\0" },
-};
-
-static const uint8_t phase_char_limits[9] =
+static const uint8_t phase_char_limits[INTERFACE_NUM_PHASES] =
 {
 		MAX_CHARS_MENU_INPUT, // phase NONE
 		MAX_CHARS_MENU_INPUT, // phase TOP
-		MAX_CHARS_MENU_INPUT, // phase ADMIN
 		MAX_CHARS_PASS_INPUT, // phase CHECKPW_USER
-		MAX_CHARS_ADMIN_PASS_INPUT, // phase CHECKPW_ADMIN
-		MAX_CHARS_PASS_INPUT, // phase SETPW
 		MAX_CHARS_PASS_INPUT, // phase OPEN
 		MAX_CHARS_PASS_INPUT, // phase CLOSE
 		MAX_CHARS_PASS_INPUT, // phase BELL
+		MAX_CHARS_ADMIN_PASS_INPUT, // phase CHECKPW_ADMIN
+		MAX_CHARS_MENU_INPUT, // phase ADMIN_MENU
+		MAX_CHARS_PASS_INPUT, // phase ADMIN_SETPW_USER
+		MAX_CHARS_ADDR_INPUT, // phase ADMIN_SETADDR
+		MAX_CHARS_NAME_INPUT, // phase ADMIN_SETNAME
 };
 
-static const char *phase_prompts[9] =
+static const InterfaceKeypadIdx_t phase_keypad_indices[INTERFACE_NUM_PHASES] =
+{
+		IKEYPAD_NONE, // phase NONE
+		IKEYPAD_DIGITS, // phase TOP
+		IKEYPAD_DIGITS, // phase CHECKPW_USER
+		IKEYPAD_NONE, // phase OPEN
+		IKEYPAD_NONE, // phase CLOSE
+		IKEYPAD_DIGITS, // phase BELL
+		IKEYPAD_KEYBOARD, // phase CHECKPW_ADMIN
+		IKEYPAD_DIGITS, // phase ADMIN_MENU
+		IKEYPAD_DIGITS, // phase ADMIN_SETPW_USER
+		IKEYPAD_DIGITS, // phase ADMIN_SETADDR
+		IKEYPAD_KEYBOARD, // phase ADMIN_SETNAME
+};
+
+static const char *phase_prompts[INTERFACE_NUM_PHASES] =
 {
 		"Unknown\r\nPhase",
 		"",
-		"ADMIN MENU\r\n1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)debug_comms\r\r\n5)debug_sensor",
 		"Please\r\nEnter\r\nPassword.",
-		"Please\r\nEnter\r\nADMIN\r\nPassword.",
-		"Please\r\nEnter\r\nNEW\r\nPassword.",
 		"Opening\r\nDoor!",
 		"Closing\r\nDoor!",
 		"Please Select\r\nClient Number.",
+		"Please\r\nEnter\r\nADMIN\r\nPassword.",
+		"ADMIN MENU\r\n1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)debug_comms\r\r\n5)debug_sensor",
+		"Please\r\nEnter\r\nNEW\r\nPassword.",
+		"Please\r\nEnter\r\nI2C\r\nAddress.",
+		"Please\r\nEnter\r\nDoor\r\nName.",
 };
 
 static const char *imsg_command_redundant = "Command\r\nRedundant.";
@@ -104,18 +111,19 @@ static void interface_set_msg(const char *new_msg)
 
 static char touch_interpret()
 {
-	if (touched
-		&& touch_state.current_y >= keypad_window->y)
+	if (keypad_idx >= 0 && touched && touch_state.current_y >= keypad_window->y)
 	{
+		uint8_t buttons_count = keypads[keypad_idx]->button_count;
+        InterfaceButton_t const *buttons = keypads[keypad_idx]->buttons;
 		uint16_t rel_x = touch_state.current_x - keypad_window->x;
 		uint16_t rel_y = touch_state.current_y - keypad_window->y;
 
-		for (int i = 0; i < 12; i++)
+		for (int i = 0; i < buttons_count; i++)
 		{
-			if (rel_x > keypad_buttons[i].x
-			 && rel_y > keypad_buttons[i].y
-			 && rel_x < keypad_buttons[i].x + keypad_buttons[i].width
-			 && rel_y < keypad_buttons[i].y + keypad_buttons[i].height)
+			if (rel_x > buttons[i].x
+			 && rel_y > buttons[i].y
+			 && rel_x < buttons[i].x + buttons[i].width
+			 && rel_y < buttons[i].y + buttons[i].height)
 			{
 				if (touched_button_idx != i)
 				{
@@ -125,7 +133,7 @@ static char touch_interpret()
 					GIVE_GUI_MUTEX;
 				}
 
-				return keypad_buttons[i].id;
+				return buttons[i].id;
 			}
 		}
 	}
@@ -293,15 +301,25 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 			audio_sfx_touch_up();
 			break;
 		case '\b':
+			audio_sfx_cancel();
+			vTaskDelay(pdMS_TO_TICKS(10));
 			if (input_idx > 0)
 			{
 				TAKE_GUI_MUTEX;
-				input_string[input_idx] = '\0';
 				input_idx--;
+				input_string[input_idx] = '\0';
 				input_is_dirty = true;
 				GIVE_GUI_MUTEX;
 			}
 			break;
+		case '\n':
+			audio_sfx_confirm();
+			vTaskDelay(pdMS_TO_TICKS(10));
+			TAKE_GUI_MUTEX;
+			keypad_is_enabled = false;
+			keypad_is_dirty = true;
+			GIVE_GUI_MUTEX;
+			return input_idx;
 		default:
 			if (input_idx >= max_len)
 			{
@@ -313,7 +331,7 @@ static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)
 			input_idx++;
 			input_is_dirty = true;
 			GIVE_GUI_MUTEX;
-			audio_click_sound();
+			audio_sfx_confirm();
 			if (input_string[input_idx-1] == '*'
 			|| input_string[input_idx-1] == '#')
 			{
@@ -385,10 +403,14 @@ static void phase_push(InterfacePhase_t new_phase)
 
 static void input_evaluate(int8_t input_len)
 {
+
 	if (input_len <= 0)
 	{
 		phase_reset();
+		return;
 	}
+
+	uint8_t num = atoi(input_string);
 
 	switch (phase_queue[phase_queue_index])
 	{
@@ -400,15 +422,14 @@ static void input_evaluate(int8_t input_len)
 			break;
 		case '#':
 			phase_queue[phase_queue_tail] = IPHASE_CHECKPW_ADMIN;
-			phase_push(IPHASE_ADMIN);
+			phase_push(IPHASE_ADMIN_MENU);
 			break;
 		default:
 			phase_reset();
 			break;
 		}
 		break;
-	case IPHASE_ADMIN:
-		uint8_t num = atoi(input_string);
+	case IPHASE_ADMIN_MENU:
 
 		switch (num)
 		{
@@ -440,7 +461,7 @@ static void input_evaluate(int8_t input_len)
 			break;
 		case 3:
 			phase_push(IPHASE_CHECKPW_ADMIN);
-			phase_push(IPHASE_SETPW);
+			phase_push(IPHASE_ADMIN_SETPW_USER);
 			break;
 		case 4:
 			comms_toggle_debug();
@@ -464,7 +485,7 @@ static void input_evaluate(int8_t input_len)
 			break;
 		case '#':
 			phase_queue[phase_queue_tail] = IPHASE_CHECKPW_ADMIN;
-			phase_push(IPHASE_ADMIN);
+			phase_push(IPHASE_ADMIN_MENU);
 			break;
 		default:
 			auth_check_password(input_string, false);
@@ -474,14 +495,16 @@ static void input_evaluate(int8_t input_len)
 	case IPHASE_CHECKPW_ADMIN:
 		auth_check_password(input_string, true);
 		break;
-	case IPHASE_SETPW:
+	case IPHASE_ADMIN_SETPW_USER:
 		auth_set_password(input_string);
 		auth_reset_auth();
+		break;
+	case IPHASE_BELL:
+		event_log_append(PACKET_CAT_REQUEST, PACKET_REQUEST_BELL, num, 0);
 		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:
 	case IPHASE_NONE:
-	case IPHASE_BELL:
 		phase_reset();
 		break;
 	}
@@ -530,6 +553,7 @@ void interface_loop(void)
 	}
 
 	InterfacePhase_t current_phase = phase_queue[phase_queue_index];
+	keypad_idx = phase_keypad_indices[current_phase];
 	phase_just_reset = false;
 
 	switch (current_phase)
@@ -553,7 +577,7 @@ void interface_loop(void)
 			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		}
 		break;
-	case IPHASE_ADMIN:
+	case IPHASE_ADMIN_MENU:
 		if (auth_is_admin_auth())
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
@@ -594,7 +618,7 @@ void interface_loop(void)
 			input_evaluate(touch_scan(phase_char_limits[phase_queue[phase_queue_index]], 5000));
 		}
 		break;
-	case IPHASE_SETPW:
+	case IPHASE_ADMIN_SETPW_USER:
 		if (auth_is_admin_auth())
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);
@@ -700,4 +724,9 @@ int8_t interface_get_touched_button_idx(void)
 	keypad_is_dirty = false;
 	GIVE_GUI_MUTEX;
 	return ret;
+}
+
+InterfaceKeypadIdx_t interface_get_current_keypad_idx(void)
+{
+	return keypad_idx;
 }

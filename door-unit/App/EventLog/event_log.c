@@ -37,12 +37,12 @@ void event_log_clear(void)
 	GIVE_EVENT_LOG_MUTEX;
 }
 
-void event_log_append_minimal(DoorReport_t report)
+void event_log_append_report_minimal(DoorReport_t report)
 {
-	event_log_append(report, 0, 0);
+	event_log_append(PACKET_CAT_REPORT, report, 0, 0);
 }
 
-void event_log_append(DoorReport_t report, uint16_t data_16, uint32_t data_32)
+void event_log_append(uint32_t category, uint32_t subcategory, uint16_t data_16, uint32_t data_32)
 {
 	// TODO: add error code
 	if (event_log_length >= EVENT_LOG_CAPACITY) return;
@@ -54,16 +54,29 @@ void event_log_append(DoorReport_t report, uint16_t data_16, uint32_t data_32)
 
 	DoorPacket_t *packet_ptr = event_log_buffer + event_log_length;
 
-	packet_ptr->header.category = PACKET_CAT_REPORT;
+	packet_ptr->header.category = (DoorPacketCategory_t)category;
 	packet_ptr->header.version = 0;
 	packet_ptr->header.priority = 0;
 	packet_ptr->header.time = packet_encode_time(now_time.Hours, now_time.Minutes, now_time.Seconds);
 	packet_ptr->header.date = packet_encode_date(now_date.Year, now_date.Month, now_date.Date);
 
-	packet_ptr->body.Report.source_id = i2c_io_get_device_id();
-	packet_ptr->body.Report.report_id = report;
-	packet_ptr->body.Report.report_data_16 = data_16;
-	packet_ptr->body.Report.report_data_32 = data_32;
+	switch(packet_ptr->header.category)
+	{
+	case PACKET_CAT_REPORT:
+		packet_ptr->body.Report.source_id = i2c_addr;
+		packet_ptr->body.Report.report_id = (DoorReport_t)subcategory;
+		packet_ptr->body.Report.report_data_16 = data_16;
+		packet_ptr->body.Report.report_data_32 = data_32;
+		break;
+	case PACKET_CAT_REQUEST:
+		packet_ptr->body.Request.request_id = (DoorRequest_t)subcategory;
+		packet_ptr->body.Request.source_id = i2c_addr;
+		packet_ptr->body.Request.destination_id = data_16;
+		packet_ptr->body.Request.request_data_32 = data_32;
+		break;
+	default:
+		break;
+	}
 
 	event_log_length++;
 	GIVE_EVENT_LOG_MUTEX;

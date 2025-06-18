@@ -137,7 +137,7 @@ void date_time_set_from_packet(uint16_t date, uint32_t time)
 	}
 
 	date_time_alarm_reset();
-	event_log_append(PACKET_REPORT_TIME_SET,
+	event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_TIME_SET,
 			packet_encode_date(sDate.Year, sDate.Month, sDate.Date),
 			packet_encode_time(sTime.Hours, sTime.Minutes, sTime.Seconds));
 	date_time_print();

@@ -23,6 +23,7 @@ void audio_sfx_touch_down(void);
 void audio_sfx_touch_hover_in(void);
 void audio_sfx_touch_hover_out(void);
 void audio_sfx_touch_up(void);
-void audio_click_sound(void);
+void audio_sfx_confirm(void);
+void audio_sfx_cancel(void);
 
 #endif

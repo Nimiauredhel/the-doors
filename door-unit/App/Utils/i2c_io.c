@@ -7,6 +7,9 @@
 
 #include "i2c_io.h"
 
+volatile uint8_t i2c_addr = 0x00;
+volatile uint8_t new_i2c_addr = 0x00;
+
 static volatile uint8_t i2c_direction = 0;
 static volatile uint32_t i2c_addr_hit_counter = 0;
 
@@ -83,7 +86,7 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 		break;
 	default:
 		comms_report_internal(COMMS_EVENT_RECEIVED, I2C_REG_UNKNOWN);
-		event_log_append(PACKET_REPORT_ERROR, PACKET_ERROR_WRONG_REGISTER, 0);
+		event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_ERROR, PACKET_ERROR_WRONG_REGISTER, 0);
 		break;
 	}
 
@@ -112,6 +115,16 @@ static void process_i2c_tx(I2C_HandleTypeDef *hi2c)
 {
 	i2c_tx_count = 0;
 	comms_report_internal(COMMS_EVENT_SENT, i2c_tx_register);
+}
+
+static void i2c_io_apply_new_addr(void)
+{
+	HAL_I2C_DeInit(&hi2c1);
+	hi2c1.Init.OwnAddress1 = new_i2c_addr << 1;
+	i2c_addr = new_i2c_addr;
+	HAL_I2C_Init(&hi2c1);
+	bzero(i2c_rx_buff, I2C_RX_BUFF_SIZE);
+	i2c_rx_count = 0;
 }
 
 void HAL_I2C_SlaveTxCpltCallback (I2C_HandleTypeDef * hi2c)
@@ -158,6 +171,11 @@ void HAL_I2C_SlaveRxCpltCallback (I2C_HandleTypeDef * hi2c)
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef * hi2c)
 {
+	if (new_i2c_addr != i2c_addr)
+	{
+		i2c_io_apply_new_addr();
+	}
+
 	HAL_I2C_EnableListen_IT(hi2c);
 }
 
@@ -226,11 +244,18 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c)
 {
+	if (new_i2c_addr != i2c_addr)
+	{
+		i2c_io_apply_new_addr();
+	}
+
 	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 void i2c_io_init(void)
 {
+	i2c_addr = hi2c1.Init.OwnAddress1;
+	new_i2c_addr = hi2c1.Init.OwnAddress1;
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 

@@ -29,6 +29,10 @@
 
 extern I2C_HandleTypeDef hi2c1;
 
+extern volatile uint8_t i2c_addr;
+extern volatile uint8_t new_i2c_addr;
+
+
 void i2c_io_init(void);
 uint16_t i2c_io_get_device_id(void);
 uint32_t i2c_get_addr_hit_counter(void);

@@ -36,7 +36,7 @@ void audio_sfx_touch_up(void)
 	stop_audio();
 }
 
-void audio_click_sound(void)
+void audio_sfx_confirm(void)
 {
 	float mod = 1.0f;
 	uint32_t base = A3;
@@ -45,6 +45,21 @@ void audio_click_sound(void)
 	{
 		set_audio(base * mod, 0.25f);
 		mod -= 0.05f;
+		vTaskDelay(pdMS_TO_TICKS(10));
+	}
+
+	stop_audio();
+}
+
+void audio_sfx_cancel(void)
+{
+	float mod = 1.5f;
+	uint32_t base = A3;
+
+	for (int i = 0; i < 10; i++)
+	{
+		set_audio(base * mod, 0.25f);
+		mod += 0.05f;
 		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 

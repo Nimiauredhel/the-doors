@@ -126,7 +126,7 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		break;
 	case PACKET_REQUEST_PING:
 		serial_print_line("Received PING from hub.", 0);
-		event_log_append_minimal(PACKET_REPORT_PONG);
+		event_log_append_report_minimal(PACKET_REPORT_PONG);
 		break;
 	case PACKET_REQUEST_MAX:
 		serial_print_line("Received MAX command from hub, this makes no sense.", 0);

@@ -126,27 +126,29 @@ static uint8_t display_draw_input(void)
 	return 0;
 }
 
-static uint8_t display_draw_keypad(void)
+static uint8_t display_draw_keys(void)
 {
-	static const uint8_t digit_scale = 4;
-	static const uint8_t digit_width = 8 * digit_scale;
-	static const uint8_t digit_height = 5 * digit_scale;
-
 	static bool fresh = true;
 	static bool prev_enabled = false;
 	static uint8_t prev_timer_percent = 0;
-	static int8_t key_last_states[12] = {-1};
+	static int8_t prev_keypad_idx = -1;
+	static int8_t key_last_states[40] = {-1};
 
-	bool enabled;
-	int8_t touched_button_idx;
-	uint8_t timer_percent;
-
-	enabled = interface_is_keypad_enabled();
+	bool enabled = interface_is_keypad_enabled();
 
 	if (enabled == prev_enabled && !interface_is_keypad_dirty()) return 0;
 
-	touched_button_idx = enabled ? interface_get_touched_button_idx() : -1;
-	timer_percent = enabled ? interface_get_input_timer_percent() : 0;
+	int8_t touched_button_idx = enabled ? interface_get_touched_button_idx() : -1;
+	uint8_t timer_percent = enabled ? interface_get_input_timer_percent() : 0;
+
+	int8_t keypad_idx = interface_get_current_keypad_idx();
+
+	if (enabled != prev_enabled || keypad_idx != prev_keypad_idx)
+	{
+		fresh = true;
+		memset(key_last_states, -1, 40);
+		prev_keypad_idx = keypad_idx;
+	}
 
 	// 160x240
 	gfx_select_window(keypad_window, true);
@@ -163,47 +165,64 @@ static uint8_t display_draw_keypad(void)
 		prev_timer_percent = timer_percent;
 	}
 
-	for (int8_t i = 0; i < 12; i++)
-	{
-		if (!fresh && (enabled == prev_enabled) && key_last_states[i] == (i == touched_button_idx))
-			continue;
+    if (keypad_idx >= 0)
+    {
+        uint8_t button_count = keypads[keypad_idx]->button_count;
+        InterfaceButton_t const *buttons = keypads[keypad_idx]->buttons;
 
-		key_last_states[i] = (i == touched_button_idx);
+        for (int8_t i = 0; i < button_count; i++)
+        {
+            if (!fresh && (enabled == prev_enabled)
+                && (keypad_idx == prev_keypad_idx)
+                && key_last_states[i] == (i == touched_button_idx))
+                continue;
 
-		gfx_fill_rect_single_color(
-				keypad_buttons[i].x,
-				keypad_buttons[i].y,
-				keypad_buttons[i].width,
-				keypad_buttons[i].height,
-				enabled ?
-				i == touched_button_idx ? color_blue_dark : color_grey_light
-				: color_grey_light);
-		gfx_print_string(keypad_buttons[i].label,
-						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2)
-						 +1,
-						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2)
-						 +1,
-						 enabled ?
-						 i == touched_button_idx ? color_black : color_yellow
-						 : color_grey_mid,
-						 digit_scale);
-		gfx_print_string(keypad_buttons[i].label,
-						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2)
-						 -1,
-						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2)
-						 -1,
-						 enabled ?
-						 i == touched_button_idx ? color_black : color_yellow
-						 : color_grey_mid,
-						 digit_scale);
-		gfx_print_string(keypad_buttons[i].label,
-						 keypad_buttons[i].x + ((keypad_buttons[i].width - digit_width)/2),
-						 keypad_buttons[i].y + ((keypad_buttons[i].height - digit_height)/2),
-						 enabled ?
-						 i == touched_button_idx ? color_yellow : color_blue_dark
-						 : color_grey_dark,
-						 digit_scale);
-	}
+			uint8_t label_width = 8 * buttons[i].label_scale * strlen(buttons[i].label);
+			uint8_t label_height = 5 * buttons[i].label_scale;
+
+            key_last_states[i] = (i == touched_button_idx);
+
+            gfx_fill_rect_single_color(
+                    buttons[i].x,
+                    buttons[i].y,
+                    buttons[i].width,
+                    buttons[i].height,
+                    color_grey_dark);
+            gfx_fill_rect_single_color(
+                    buttons[i].x+2,
+                    buttons[i].y+2,
+                    buttons[i].width-4,
+                    buttons[i].height-4,
+                    enabled ?
+                    i == touched_button_idx ? color_blue_dark : color_grey_light
+                    : color_grey_light);
+            gfx_print_string(buttons[i].label,
+                             buttons[i].x + ((buttons[i].width - label_width)/2)
+                             +1,
+                             buttons[i].y + ((buttons[i].height - label_height)/2)
+                             +1,
+                             enabled ?
+                             i == touched_button_idx ? color_black : color_yellow
+                             : color_grey_mid,
+                             buttons[i].label_scale);
+            gfx_print_string(buttons[i].label,
+                             buttons[i].x + ((buttons[i].width - label_width)/2)
+                             -1,
+                             buttons[i].y + ((buttons[i].height - label_height)/2)
+                             -1,
+                             enabled ?
+                             i == touched_button_idx ? color_black : color_yellow
+                             : color_grey_mid,
+                             buttons[i].label_scale);
+            gfx_print_string(buttons[i].label,
+                             buttons[i].x + ((buttons[i].width - label_width)/2),
+                             buttons[i].y + ((buttons[i].height - label_height)/2),
+                             enabled ?
+                             i == touched_button_idx ? color_yellow : color_blue_dark
+                             : color_grey_dark,
+                             buttons[i].label_scale);
+        }
+    }
 
 	fresh = false;
 	prev_enabled = enabled;
@@ -243,7 +262,7 @@ void display_loop(void)
 	dirt += display_draw_datetime();
 	dirt += display_draw_msg();
 	dirt += display_draw_input();
-	dirt += display_draw_keypad();
+	dirt += display_draw_keys();
 
 	if (dirt > 0) gfx_refresh();
 

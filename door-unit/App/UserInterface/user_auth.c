@@ -68,13 +68,13 @@ void auth_check_password(const char *input_str, bool admin)
 			is_user_auth = true;
 		}
 
-		event_log_append(PACKET_REPORT_PASS_CORRECT, in_pass, 0);
+		event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_PASS_CORRECT, in_pass, 0);
 		serial_print_line("Password Accepted.", 0);
 		audio_success_jingle();
 	}
 	else
 	{
-		event_log_append(PACKET_REPORT_PASS_WRONG, in_pass, 0);
+		event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_PASS_WRONG, in_pass, 0);
 		serial_print_line("Password Rejected.", 0);
 		audio_failure_jingle();
 	}
@@ -88,7 +88,7 @@ void auth_set_password(const char *rx_msg)
 		uint16_t in_pass = str_to_pass(rx_msg);
 		serial_print_line("Password Changed.", 0);
 		user_password = in_pass;
-		event_log_append(PACKET_REPORT_PASS_CHANGED, user_password, admin_password);
+		event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_PASS_CHANGED, user_password, admin_password);
 	}
 	else
 	{
