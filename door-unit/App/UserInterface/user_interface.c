@@ -509,8 +509,7 @@ static void input_evaluate(int8_t input_len)
 		event_log_append(PACKET_CAT_REQUEST, PACKET_REQUEST_BELL, num, 0);
 		break;
 	case IPHASE_ADMIN_SETADDR:
-		new_i2c_addr = (uint32_t)num << (uint32_t)1;
-		i2c_io_apply_new_addr();
+		persistence_save_i2c_addr((uint32_t)num << (uint32_t)1);
 		auth_reset_auth();
 		break;
 	case IPHASE_ADMIN_SETNAME:
