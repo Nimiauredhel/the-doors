@@ -14,6 +14,9 @@
 static const char *device_path = "/dev/bone/i2c/2";
 static const uint8_t polling_interval_sec = 1;
 
+static pthread_t i2c_thread;
+static pthread_t ipc_thread;
+
 static int device_fd = -1;
 static int clients_to_doors_shmid = -1; 
 static HubShmLayout_t *clients_to_doors_ptr = NULL; 
@@ -377,7 +380,7 @@ static void ipc_loop(void)
 
 static void i2c_loop(void)
 {
-    static const uint16_t rescan_threshold = 1024;
+    static const uint16_t rescan_threshold = 10;
     static uint16_t rescan_counter = 0;
 
     if (rescan_counter <= 0)
@@ -393,13 +396,14 @@ static void i2c_loop(void)
     poll_slave_event_queue();
 }
 
-static void loop(void)
+static void* i2c_task(void *arg)
 {
-    for(;;)
-    {
-        i2c_loop();
-        ipc_loop();
-    }
+    for(;;) i2c_loop();
+}
+
+static void* ipc_task(void *arg)
+{
+    for(;;) ipc_loop();
 }
 
 static void ipc_init(void)
@@ -483,5 +487,8 @@ int main(void)
     syslog_append(buff);
     ipc_init();
 	i2c_init();
-    loop();
+    pthread_create(&i2c_thread, NULL, i2c_task, NULL);
+    pthread_create(&ipc_thread, NULL, ipc_task, NULL);
+
+    for(;;);
 }
