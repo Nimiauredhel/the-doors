@@ -70,7 +70,7 @@ static const char *phase_prompts[INTERFACE_NUM_PHASES] =
 		"Closing\r\nDoor!",
 		"Please Select\r\nClient Number.",
 		"Please\r\nEnter\r\nADMIN\r\nPassword.",
-		"ADMIN MENU\r\n1)open\r\r\n2)close\r\r\n3)setpw\r\r\n4)debug_comms\r\r\n5)debug_sensor",
+		"ADMIN MENU\r\n1)open 2)close\r\n3)set door pw\r\n4)debug comms\r\n5)debug sensor\r\n6)set i2c addr\r\n7)set name",
 		"Please\r\nEnter\r\nNEW\r\nPassword.",
 		"Please\r\nEnter\r\nI2C\r\nAddress.",
 		"Please\r\nEnter\r\nDoor\r\nName.",
@@ -469,6 +469,12 @@ static void input_evaluate(int8_t input_len)
 		case 5:
 			door_sensor_toggle_debug();
 			break;
+		case 6:
+			phase_push(IPHASE_ADMIN_SETADDR);
+			break;
+		case 7:
+			phase_push(IPHASE_ADMIN_SETNAME);
+			break;
 		default:
 			serial_print_line(imsg_command_unknown, 0);
 			interface_set_msg(imsg_command_unknown);
@@ -501,6 +507,14 @@ static void input_evaluate(int8_t input_len)
 		break;
 	case IPHASE_BELL:
 		event_log_append(PACKET_CAT_REQUEST, PACKET_REQUEST_BELL, num, 0);
+		break;
+	case IPHASE_ADMIN_SETADDR:
+		new_i2c_addr = (uint32_t)num << (uint32_t)1;
+		i2c_io_apply_new_addr();
+		auth_reset_auth();
+		break;
+	case IPHASE_ADMIN_SETNAME:
+		auth_reset_auth();
 		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:
@@ -619,6 +633,8 @@ void interface_loop(void)
 		}
 		break;
 	case IPHASE_ADMIN_SETPW_USER:
+	case IPHASE_ADMIN_SETADDR:
+	case IPHASE_ADMIN_SETNAME:
 		if (auth_is_admin_auth())
 		{
 			interface_set_msg(phase_prompts[phase_queue[phase_queue_index]]);

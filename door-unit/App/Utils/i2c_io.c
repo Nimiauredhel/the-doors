@@ -7,11 +7,13 @@
 
 #include "i2c_io.h"
 
-volatile uint8_t i2c_addr = 0x00;
-volatile uint8_t new_i2c_addr = 0x00;
+volatile uint32_t i2c_addr = 0x00;
+volatile uint32_t new_i2c_addr = 0x00;
 
 static volatile uint8_t i2c_direction = 0;
 static volatile uint32_t i2c_addr_hit_counter = 0;
+
+static volatile bool i2c_enabled = false;
 
 static uint16_t i2c_rx_count = 0;
 static uint16_t i2c_tx_count = 0;
@@ -117,18 +119,28 @@ static void process_i2c_tx(I2C_HandleTypeDef *hi2c)
 	comms_report_internal(COMMS_EVENT_SENT, i2c_tx_register);
 }
 
-static void i2c_io_apply_new_addr(void)
+void i2c_io_apply_new_addr(void)
 {
-	HAL_I2C_DeInit(&hi2c1);
-	hi2c1.Init.OwnAddress1 = new_i2c_addr << 1;
+	i2c_enabled = false;
+	while(HAL_I2C_STATE_BUSY == HAL_I2C_GetState(&hi2c1));
+	while(HAL_OK != HAL_I2C_DisableListen_IT(&hi2c1));
+	while(HAL_OK != HAL_I2C_DeInit(&hi2c1));
+	hi2c1.Init.OwnAddress1 = new_i2c_addr;
 	i2c_addr = new_i2c_addr;
 	HAL_I2C_Init(&hi2c1);
+	while(HAL_OK != HAL_I2C_Init(&hi2c1));
+	while(HAL_OK != HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE));
+	while(HAL_OK != HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0));
 	bzero(i2c_rx_buff, I2C_RX_BUFF_SIZE);
 	i2c_rx_count = 0;
+	i2c_enabled = true;
+	while(HAL_OK != HAL_I2C_EnableListen_IT(&hi2c1));
 }
 
 void HAL_I2C_SlaveTxCpltCallback (I2C_HandleTypeDef * hi2c)
 {
+	if (!i2c_enabled) return;
+
 	i2c_tx_count++;
 
 	if (i2c_tx_count < I2C_TX_BUFF_SIZE)
@@ -150,6 +162,13 @@ void HAL_I2C_SlaveTxCpltCallback (I2C_HandleTypeDef * hi2c)
 
 void HAL_I2C_SlaveRxCpltCallback (I2C_HandleTypeDef * hi2c)
 {
+	if (!i2c_enabled) return;
+
+	if (new_i2c_addr != i2c_addr)
+	{
+		i2c_io_apply_new_addr();
+	}
+
 	i2c_rx_count++;
 
 	if (i2c_rx_count < I2C_RX_BUFF_SIZE)
@@ -171,6 +190,8 @@ void HAL_I2C_SlaveRxCpltCallback (I2C_HandleTypeDef * hi2c)
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef * hi2c)
 {
+	if (!i2c_enabled) return;
+
 	if (new_i2c_addr != i2c_addr)
 	{
 		i2c_io_apply_new_addr();
@@ -181,6 +202,8 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef * hi2c)
 
 extern void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
 {
+	if (!i2c_enabled) return;
+
 	i2c_direction = TransferDirection;
 	i2c_addr_hit_counter = 100;
 
@@ -213,6 +236,8 @@ extern void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirect
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 {
+	if (!i2c_enabled) return;
+
 	uint32_t error_code = HAL_I2C_GetError(hi2c);
 
 	if (error_code == 4)  // AF error
@@ -244,6 +269,8 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c)
 {
+	if (!i2c_enabled) return;
+
 	if (new_i2c_addr != i2c_addr)
 	{
 		i2c_io_apply_new_addr();
@@ -256,6 +283,7 @@ void i2c_io_init(void)
 {
 	i2c_addr = hi2c1.Init.OwnAddress1;
 	new_i2c_addr = hi2c1.Init.OwnAddress1;
+	i2c_enabled = true;
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 
