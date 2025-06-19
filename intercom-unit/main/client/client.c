@@ -183,6 +183,8 @@ int send_request(DoorRequest_t request, uint16_t destination)
 
 void process_request(void)
 {
+    printf("Processing request from server.\n");
+
     switch(request_rx_buff.body.Request.request_id)
     {
         case PACKET_REQUEST_BELL:
@@ -206,8 +208,6 @@ void process_request(void)
 
 int receive_request()
 {
-    printf("Receiving from server.\n");
-
     int ret = recv(client_socket, &request_rx_buff, sizeof(request_rx_buff), 0);
 
     if (ret > 0)
@@ -229,7 +229,6 @@ static void hub_comms(void)
     if (ret > 0) { \
         connection_error_count = 0; \
     } else if (errno == EAGAIN || errno == EWOULDBLOCK) { \
-        printf(" ."); \
     } else { \
         connection_error_count++; \
         if (connection_error_count > connection_error_threshold) { \
@@ -239,6 +238,8 @@ static void hub_comms(void)
             return; \
         } \
     } 
+
+    HANDLE_RET(receive_request());
 
 #undef HANDLE_RET
 }
