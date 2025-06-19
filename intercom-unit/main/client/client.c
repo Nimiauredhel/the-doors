@@ -6,6 +6,9 @@ static struct sockaddr_in server_addr ={0};
 
 static volatile ClientState_t client_state = CLIENTSTATE_NONE;
 
+static DoorPacket_t request_rx_buff = {0};
+static uint8_t data_rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
+
 struct sockaddr_in init_server_socket_address(struct in_addr peer_address_bin, in_port_t peer_port_bin)
 {
     struct sockaddr_in socket_address =
@@ -165,104 +168,90 @@ static void client_init(void)
     wifi_ap_connect(HUB_AP_SSID, HUB_AP_PASS);
 }
 
+int send_request(DoorRequest_t request, uint16_t destination)
+{
+    DoorPacket_t tx_buff =
+    {
+        // TODO: include date/time, source, version, priority etc
+        .header.category = PACKET_CAT_REQUEST,
+        .body.Request.destination_id = destination,
+        .body.Request.request_id = request,
+    };
+
+    return send(client_socket, &tx_buff, sizeof(tx_buff), 0);
+}
+
+void process_request(void)
+{
+    switch(request_rx_buff.body.Request.request_id)
+    {
+        case PACKET_REQUEST_BELL:
+            printf("Received bell, sending back a Door Open request.\n");
+            send_request(PACKET_REQUEST_DOOR_OPEN, request_rx_buff.body.Request.source_id);
+            break;
+        case PACKET_REQUEST_NONE:
+        case PACKET_REQUEST_PING:
+        case PACKET_REQUEST_PHOTO:
+        case PACKET_REQUEST_RESET_ADDRESS:
+        case PACKET_REQUEST_SYNC_PASS_USER:
+        case PACKET_REQUEST_SYNC_PASS_ADMIN:
+        case PACKET_REQUEST_SYNC_TIME:
+        case PACKET_REQUEST_DOOR_OPEN:
+        case PACKET_REQUEST_DOOR_CLOSE:
+        case PACKET_REQUEST_MAX:
+        default:
+            break;
+    }
+}
+
+int receive_request()
+{
+    printf("Receiving from server.\n");
+
+    int ret = recv(client_socket, &request_rx_buff, sizeof(request_rx_buff), 0);
+
+    if (ret > 0)
+    {
+        process_request();
+    }
+
+    explicit_bzero(&request_rx_buff, sizeof(request_rx_buff));
+
+    return ret;
+}
+
 static void hub_comms(void)
 {
     static const uint8_t connection_error_threshold = 10;
     static uint8_t connection_error_count = 0;
 
-    DoorPacket_t packet_buff =
-    {
-        .header.category = PACKET_CAT_REQUEST,
-        .body.Request.destination_id = 16,
-        .body.Request.request_id = PACKET_REQUEST_DOOR_OPEN,
-    };
+#define HANDLE_RET(ret) \
+    if (ret > 0) { \
+        connection_error_count = 0; \
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) { \
+        printf(" ."); \
+    } else { \
+        connection_error_count++; \
+        if (connection_error_count > connection_error_threshold) { \
+            perror("Socket TX/RX fail"); \
+            client_state = CLIENTSTATE_CONNECTING; \
+            vTaskDelay(pdMS_TO_TICKS(500)); \
+            return; \
+        } \
+    } 
 
-    printf("Sending test 'open door' packet to server.\n");
-    int ret = send(client_socket, &packet_buff, sizeof(packet_buff), 0);
-
-    if (ret > 0)
-    {
-        connection_error_count = 0;
-        vTaskDelay(pdMS_TO_TICKS(3000));
-    }
-    else if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
-        printf(" .");
-    }
-    else
-    {
-        connection_error_count++;
-
-        if (connection_error_count > connection_error_threshold)
-        {
-            perror("Failed to send message");
-            client_state = CLIENTSTATE_CONNECTING;
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            return;
-        }
-    }
-
-    packet_buff.body.Request.request_id = PACKET_REQUEST_DOOR_CLOSE;
-
-    printf("Sending test 'close door' packet to server.\n");
-    ret = send(client_socket, &packet_buff, sizeof(packet_buff), 0);
-
-    if (ret > 0)
-    {
-        connection_error_count = 0;
-        vTaskDelay(pdMS_TO_TICKS(3000));
-    }
-    else if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
-        printf(" .");
-    }
-    else
-    {
-        connection_error_count++;
-
-        if (connection_error_count > connection_error_threshold)
-        {
-            perror("Failed to send message");
-            client_state = CLIENTSTATE_CONNECTING;
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            return;
-        }
-    }
-
-    /*
-    printf("Receiving from server.\n");
-    ret = recv(client_socket, rx_buff, sizeof(rx_buff), 0);
-
-    if (ret > 0)
-    {
-        connection_error_count = 0;
-        printf("Received reply: %s\n", rx_buff);
-    }
-    else if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
-        printf(" .");
-    }
-    else
-    {
-        connection_error_count++;
-
-        if (connection_error_count > connection_error_threshold)
-        {
-            perror("Failed to receive reply");
-            client_state = CLIENTSTATE_CONNECTING;
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            return;
-        }
-    }
-    */
+#undef HANDLE_RET
 }
 
 static void client_loop(void)
 {
+    vTaskDelay(pdMS_TO_TICKS(10));
+
     switch(client_state)
     {
     case CLIENTSTATE_NONE:
     case CLIENTSTATE_INIT:
+    default:
         vTaskDelay(pdMS_TO_TICKS(1000));
         break;
     case CLIENTSTATE_CONNECTING:
