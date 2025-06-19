@@ -362,20 +362,26 @@ static void ipc_loop(void)
         sem_post(clients_to_doors_sem);
     }
 
-    if (hub_queue_dequeue(doors_to_clients_queue, &packet_buff) > 0)
+    if (hub_queue_dequeue(doors_to_clients_queue, &packet_buff) >= 0)
     {
         bool sent = false;
 
         while(!sent)
         {
+	    syslog_append("Trying to forward from queue to shm.");
             sem_wait(doors_to_clients_sem);
+	    syslog_append("DTC sem acquired");
             if (doors_to_clients_ptr->state == SHMSTATE_CLEAN)
             {
+	        syslog_append("Clean shm, writing !");
                 memcpy(&doors_to_clients_ptr->content, &packet_buff, sizeof(DoorPacket_t));
                 doors_to_clients_ptr->state = SHMSTATE_DIRTY;
                 sent = true;
             }
+	    else syslog_append("Dirty shm...");
             sem_post(doors_to_clients_sem);
+	    syslog_append("DTC sem released");
+	    sleep(1);
         }
     }
 }
@@ -401,11 +407,13 @@ static void i2c_loop(void)
 static void* i2c_task(void *arg)
 {
     for(;;) i2c_loop();
+    return NULL;
 }
 
 static void* ipc_task(void *arg)
 {
     for(;;) ipc_loop();
+    return NULL;
 }
 
 static void ipc_init(void)

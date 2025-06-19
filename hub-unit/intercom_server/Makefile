@@ -13,19 +13,17 @@ DEBUG_FLAGS= $(STRICT_FLAGS) -g -o0
 default:
 	mkdir $(BUILD_DIR)
 	gcc $(SOURCE) $(DEFAULT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	make post-build
 	make setcap
                                      
 strict:                              
 	mkdir $(BUILD_DIR)
 	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	make post-build
 	make setcap
                     
 debug:              
 	mkdir $(BUILD_DIR)
 	gcc $(SOURCE) $(DEBUG_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	make post-build
+	make setcap
 
 .ONESHELL:
 run:
@@ -47,8 +45,4 @@ clean:
 
 setcap:
 	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
-
-post-build:
-	#cp bash_scripts/* $(BUILD_DIR)
-	#echo exe_name=$(EXE_NAME) > $(BUILD_DIR)exe_name.sh
 

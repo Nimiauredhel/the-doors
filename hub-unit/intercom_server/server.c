@@ -6,6 +6,9 @@ static struct sockaddr_in server_addr;
 static uint8_t client_count = 0;
 static int8_t next_slot_idx = 0;
 
+static pthread_t listen_thread_handle;
+static pthread_t ipc_thread_handle;
+
 static pthread_mutex_t slots_mutex;
 static ClientData_t client_slots[CLIENT_SLOTS];
 
@@ -90,25 +93,41 @@ static void ipc_init(void)
 
 static void forward_door_to_client_request(DoorPacket_t *request)
 {
+    char log_buff[129] = {0};
+
     // temporarily hard-coded to forward to our one client
     // TODO: use destination index
+    syslog_append("Forwarding to first active client...");
     pthread_mutex_lock(&slots_mutex);
-    if (client_slots[0].slot_state == SLOTSTATE_ACTIVE)
+
+    for(int i = 0; i < CLIENT_SLOTS; i++)
     {
-        // TODO: check return value
-        hub_queue_enqueue(client_slots[0].outbox, request);
+         if (client_slots[i].slot_state == SLOTSTATE_ACTIVE)
+         {
+	      sprintf(log_buff, "Active client found for request: %s", inet_ntoa(client_slots[i].client_addr.sin_addr));
+	      syslog_append(log_buff);
+              // TODO: check return value
+              hub_queue_enqueue(client_slots[i].outbox, request);
+              pthread_mutex_unlock(&slots_mutex);
+              return;
+         }
     }
-    pthread_mutex_lock(&slots_mutex);
+
+    pthread_mutex_unlock(&slots_mutex);
 }
 
 static void ipc_loop(void)
 {
+    char log_buff[128] = {0};
     DoorPacket_t packet_buff = {0};
 
     sem_wait(doors_to_clients_sem);
 
     if (doors_to_clients_ptr->state == SHMSTATE_DIRTY)
     {
+	// TODO: add details (request, src, dest)
+	sprintf(log_buff, "Forwarding request from door to client.");
+	syslog_append(log_buff);
         memcpy(&packet_buff, &doors_to_clients_ptr->content, sizeof(DoorPacket_t));
         doors_to_clients_ptr->state = SHMSTATE_CLEAN;
         sem_post(doors_to_clients_sem);
@@ -119,7 +138,7 @@ static void ipc_loop(void)
         sem_post(doors_to_clients_sem);
     }
 
-    if (hub_queue_dequeue(clients_to_doors_queue, &packet_buff) > 0)
+    if (hub_queue_dequeue(clients_to_doors_queue, &packet_buff) >= 0)
     {
         bool sent = false;
 
@@ -264,31 +283,36 @@ static void check_client_slots(void)
 
 static void connection_check_outbox(ClientData_t *data)
 {
-    char log_buff[64] = {0};
+    char log_buff[128] = {0};
     DoorPacket_t packet_buff = {0};
     uint16_t remaining;
     int ret;
+    //sprintf(log_buff, "Checking outbox for client %s", inet_ntoa(data->client_addr.sin_addr));
+    //syslog_append(log_buff);
 
     while(hub_queue_dequeue(data->outbox, &packet_buff) >= 0)
     {
-		ret = sendto(data->client_socket, &packet_buff, sizeof(DoorPacket_t), 0, (struct sockaddr *)&data->client_addr, data->client_addr_len);
+	sprintf(log_buff, "Sending packet to client %s", inet_ntoa(data->client_addr.sin_addr));
+	syslog_append(log_buff);
+
+	ret = sendto(data->client_socket, &packet_buff, sizeof(DoorPacket_t), 0, (struct sockaddr *)&data->client_addr, data->client_addr_len);
 
         if (ret > 0)
         {
-			perror("Sent Door Packet to client socket.");
-			sprintf(log_buff, "Sent reply to client socket.");
-			syslog_append(log_buff);
+		perror("Sent Door Packet to client socket.");
+		sprintf(log_buff, "Sent Door Packet to client socket.");
+		syslog_append(log_buff);
         }
         else if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
             sleep(1);
         }
         else
-		{
-			perror("Failed to send Door Packet to client socket.");
-			sprintf(log_buff, "Failed to send Door Packet to client socket.");
-			syslog_append(log_buff);
-		}
+	{
+		perror("Failed to send Door Packet to client socket.");
+		sprintf(log_buff, "Failed to send Door Packet to client socket.");
+		syslog_append(log_buff);
+	}
     }
 }
 
@@ -341,43 +365,49 @@ static void connection_handle_incoming_packet(DoorPacket_t *packet)
 
 static void connection_loop(ClientData_t *data)
 {
-    static const uint8_t error_threshold = 30;
-
-    static uint8_t error_counter = 0;
+	static const uint8_t error_threshold = 6;
+	static uint8_t error_counter = 0;
 
 	int ret;
 	char log_buff[128] = {0};
 	DoorPacket_t packet_buff = {0};
 
+	sprintf(log_buff, "Started task for client %s", inet_ntoa(data->client_addr.sin_addr));
+	syslog_append(log_buff);
+
 	for(;;)
 	{
-        ret = 0;
-        explicit_bzero(log_buff, sizeof(log_buff));
-        explicit_bzero(&packet_buff, sizeof(packet_buff));
+		connection_check_outbox(data);
+
+		ret = 0;
+		explicit_bzero(log_buff, sizeof(log_buff));
+		explicit_bzero(&packet_buff, sizeof(packet_buff));
 
 		ret = recvfrom(data->client_socket, &packet_buff, sizeof(packet_buff), 0, (struct sockaddr*)&data->client_addr, &data->client_addr_len);
 
-        if (ret > 0)
-        {
-            error_counter = 0;
-            sprintf(log_buff, "Received packet from client");
-            syslog_append(log_buff);
-            connection_handle_incoming_packet(&packet_buff);
-        }
-        else if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
-            sleep(1);
-        }
-        else
+		if (ret > 0)
 		{
-            error_counter++;
-			perror("Failed to receive on client socket.");
-			sprintf(log_buff, "Failed to receive on client socket.");
-			syslog_append(log_buff);
+		    error_counter = 0;
+		    sprintf(log_buff, "Received packet from client %s", inet_ntoa(data->client_addr.sin_addr));
+		    syslog_append(log_buff);
+		    connection_handle_incoming_packet(&packet_buff);
+		}
+		else if (errno == EAGAIN || errno == EWOULDBLOCK)
+		{
+		}
+		else
+		{
+		    error_counter++;
+		    perror("Failed to receive on client socket.");
+		    sprintf(log_buff, "Failed to receive on client socket.");
+		    syslog_append(log_buff);
 
-            if (error_counter > error_threshold) break;
+		    if (error_counter > error_threshold) break;
 		}
 	}
+
+	sprintf(log_buff, "Releasing client %s", inet_ntoa(data->client_addr.sin_addr));
+	syslog_append(log_buff);
 }
 
 void *connection_task(void *arg)
@@ -397,6 +427,7 @@ void *connection_task(void *arg)
     close(data->client_socket);
     hub_queue_destroy(data->outbox);
     data->slot_state = SLOTSTATE_GARBAGE;
+    client_count--;
     pthread_mutex_unlock(&slots_mutex);
 
     return NULL;
@@ -415,12 +446,13 @@ static void server_loop(void)
     struct sockaddr_in new_client_addr;
     socklen_t new_client_addr_len = sizeof(new_client_addr);
     int new_client_socket = -1;
+    static const struct timeval socket_timeout = { .tv_sec = 1, .tv_usec = 0 };
 
     check_client_slots();
 
     if (next_slot_idx < 0 || client_count >= CLIENT_SLOTS)
     {
-        sleep(2);
+        sleep(1);
         return;
     }
 
@@ -435,23 +467,68 @@ static void server_loop(void)
     }
     else
     {
+	bool new = true;
         pthread_mutex_lock(&slots_mutex);
-        client_slots[next_slot_idx].slot_state = SLOTSTATE_TAKEN;
-        client_slots[next_slot_idx].client_socket = new_client_socket;
-        client_slots[next_slot_idx].client_addr = new_client_addr;
-        client_slots[next_slot_idx].client_addr_len = new_client_addr_len;
-        client_count++;
-        pthread_create(&client_slots[next_slot_idx].client_thread_handle, NULL, connection_task, &client_slots[next_slot_idx]);
-        pthread_mutex_unlock(&slots_mutex);
+
+	for (int i = 0; i < CLIENT_SLOTS; i++)
+	{
+		if (client_slots[i].slot_state == SLOTSTATE_ACTIVE || client_slots[i].slot_state == SLOTSTATE_TAKEN)
+		{
+			if (client_slots[i].client_addr.sin_addr.s_addr == new_client_addr.sin_addr.s_addr)
+			{
+				new = false;
+				sprintf(buff, "Client reconnected: %s", inet_ntoa(client_slots[i].client_addr.sin_addr));
+				syslog_append(buff);
+				break;
+			}
+		}
+	}
+
+	if (new)
+	{
+		client_slots[next_slot_idx].slot_state = SLOTSTATE_TAKEN;
+		client_slots[next_slot_idx].client_socket = new_client_socket;
+		client_slots[next_slot_idx].client_addr = new_client_addr;
+		client_slots[next_slot_idx].client_addr_len = new_client_addr_len;
+		client_count++;
+		pthread_create(&client_slots[next_slot_idx].client_thread_handle, NULL, connection_task, &client_slots[next_slot_idx]);
+		pthread_mutex_unlock(&slots_mutex);
+
+	        if(0 > setsockopt(new_client_socket, SOL_SOCKET, SO_RCVTIMEO,  &socket_timeout, sizeof(socket_timeout)))
+	        {
+		    perror("Failed to set socket timeout");
+		    // TODO: figure out how to actually handle this
+	        }
+
+		sprintf(buff, "New client connected: %s", inet_ntoa(client_slots[next_slot_idx].client_addr.sin_addr));
+		syslog_append(buff);
+	}
     }
+}
+
+void* listen_task(void *arg)
+{
+    for(;;)
+    {
+        server_loop();
+    }
+    return NULL;
+}
+
+void* ipc_task(void *arg)
+{
+    for(;;)
+    {
+        ipc_loop();
+    }
+    return NULL;
 }
 
 void server_start(void)
 {
     server_init();
+    pthread_create(&listen_thread_handle, NULL, listen_task, NULL);
+    pthread_create(&ipc_thread_handle, NULL, ipc_task, NULL);
 
-    for(;;)
-    {
-        server_loop();
-    }
+    for(;;);
 }

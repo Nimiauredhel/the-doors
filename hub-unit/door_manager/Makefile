@@ -14,13 +14,11 @@ default:
 	mkdir $(BUILD_DIR)
 	gcc $(SOURCE) $(DEFAULT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make post-build
-	make setcap
                                      
 strict:                              
 	mkdir $(BUILD_DIR)
 	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make post-build
-	make setcap
                     
 debug:              
 	mkdir $(BUILD_DIR)
@@ -30,10 +28,6 @@ debug:
 .ONESHELL:
 run:
 	 cd $(BUILD_DIR); ./$(EXE_NAME) $(ARGS)
-
-.ONESHELL:
-run-tui:
-	cd $(BUILD_DIR); bash start.sh
 
 andrun:
 	make default
@@ -49,10 +43,6 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f compile_commands.json
 
-setcap:
-	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
-
 post-build:
-	#cp bash_scripts/* $(BUILD_DIR)
-	#echo exe_name=$(EXE_NAME) > $(BUILD_DIR)exe_name.sh
+	cp i2c2_init.sh $(BUILD_DIR)
 

@@ -37,6 +37,7 @@ HubQueue_t *hub_queue_create(uint16_t capacity)
     queue_ptr->tail_idx = 0;
     queue_ptr->length = 0;
     pthread_mutex_init(&queue_ptr->mutex, NULL);
+    syslog_append("hub queue created");
 
     return queue_ptr;
 }
@@ -46,6 +47,7 @@ void hub_queue_destroy(HubQueue_t *queue)
     pthread_mutex_unlock(&queue->mutex);
     pthread_mutex_destroy(&queue->mutex);
     free(queue);
+    syslog_append("hub queue destroyed");
 }
 
 int hub_queue_enqueue(HubQueue_t *queue, DoorPacket_t *src)
@@ -64,6 +66,7 @@ int hub_queue_enqueue(HubQueue_t *queue, DoorPacket_t *src)
     int ret = queue->length;
 
     pthread_mutex_unlock(&queue->mutex);
+    syslog_append("hub queue enqueued");
     return ret;
 }
 
@@ -82,5 +85,6 @@ int hub_queue_dequeue(HubQueue_t *queue, DoorPacket_t *dst)
     int len = queue->length;
 
     pthread_mutex_unlock(&queue->mutex);
+    syslog_append("hub queue dequeued");
     return len;
 }
