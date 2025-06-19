@@ -1,11 +1,11 @@
 #include "gui_elements.h"
 
-#define KEY_WIDTH (32)
-#define KEY_HEIGHT (21)
+#define KEY_WIDTH (30)
+#define KEY_HEIGHT (20)
 #define ROW1_X (0)
-#define ROW2_X (0)
+#define ROW2_X (KEY_WIDTH/4)
 #define ROW3_X (KEY_WIDTH/2)
-#define ROW4_X (KEY_WIDTH/2)
+#define ROW4_X (KEY_WIDTH)
 #define KEY_Y (0)
 
 const InterfaceButton_t touch_keyboard[40] =
@@ -52,6 +52,6 @@ const InterfaceButton_t touch_keyboard[40] =
     { ',', 2, KEY_WIDTH, KEY_HEIGHT, ROW4_X+KEY_WIDTH*7, KEY_Y+KEY_HEIGHT*3, "," },
     { '.', 2, KEY_WIDTH, KEY_HEIGHT, ROW4_X+KEY_WIDTH*8, KEY_Y+KEY_HEIGHT*3, "." },
 
-    { '\b', 1, KEY_WIDTH*2, KEY_HEIGHT, KEY_WIDTH*3, KEY_Y+KEY_HEIGHT*4, "DEL" },
-    { '\n', 1, KEY_WIDTH*2, KEY_HEIGHT, KEY_WIDTH*5, KEY_Y+KEY_HEIGHT*4, "ENTER" },
+    { '\b', 3, KEY_WIDTH+(KEY_WIDTH/2), KEY_HEIGHT+(KEY_HEIGHT/2), KEY_WIDTH*3, KEY_Y+KEY_HEIGHT*4, "\b" },
+    { '\n', 3, KEY_WIDTH+(KEY_WIDTH/2), KEY_HEIGHT+(KEY_HEIGHT/2), KEY_WIDTH*5, KEY_Y+KEY_HEIGHT*4, "\x06" },
 };
