@@ -12,6 +12,7 @@
 #include "gfx.h"
 #include "audio.h"
 #include "utils.h"
+#include "client.h"
 
 #include "gui_defs.h"
 #include "gui_gfx.h"

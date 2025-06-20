@@ -542,20 +542,20 @@ static void gfx_draw_binary_byte(uint8_t byte, uint16_t x_origin, uint16_t y_ori
     }
 }
 
-void gfx_draw_binary_sprite_adhoc(uint16_t height_pixels, uint8_t width_bytes, uint8_t *pixel_mask, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale)
+void gfx_draw_binary_sprite_adhoc(uint16_t height_pixels, uint8_t width_bytes, const uint8_t *pixel_mask, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale)
 {
     // line by line (possibly naive approach)
 
-    for (uint8_t xb = 0; xb < width_bytes; xb++)
+    for (uint16_t y = 0; y < height_pixels; y++)
     {
-        for (uint16_t y = 0; y < height_pixels; y++)
+        for (uint8_t xb = 0; xb < width_bytes; xb++)
         {
-			gfx_draw_binary_byte(pixel_mask[y + (xb * height_pixels)], x_origin + scale * (xb * 8), y_origin + (y * scale), color, scale);
+			gfx_draw_binary_byte(pixel_mask[xb +(y * width_bytes)], x_origin + scale * (xb * 8), y_origin + (y * scale), color, scale);
         }
     }
 }
 
-void gfx_draw_binary_sprite(BinarySprite_t *sprite, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale)
+void gfx_draw_binary_sprite(const BinarySprite_t *sprite, uint16_t x_origin, uint16_t y_origin, const Color565_t color, uint8_t scale)
 {
 	gfx_draw_binary_sprite_adhoc(sprite->height_pixels, sprite->width_bytes, sprite->pixel_mask, x_origin, y_origin, color, scale);
 }

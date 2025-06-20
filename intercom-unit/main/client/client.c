@@ -5,6 +5,7 @@ static struct sockaddr_in client_addr = {0};
 static struct sockaddr_in server_addr ={0};
 
 static volatile ClientState_t client_state = CLIENTSTATE_NONE;
+static volatile ClientState_t client_state_out = CLIENTSTATE_NONE;
 
 static DoorPacket_t request_rx_buff = {0};
 static uint8_t data_rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
@@ -248,6 +249,8 @@ static void client_loop(void)
 {
     vTaskDelay(pdMS_TO_TICKS(10));
 
+    client_state_out = client_state;
+
     switch(client_state)
     {
     case CLIENTSTATE_NONE:
@@ -262,6 +265,11 @@ static void client_loop(void)
         hub_comms();
         break;
     }
+}
+
+ClientState_t client_get_state(void)
+{
+    return client_state_out;
 }
 
 void client_task(void *arg)

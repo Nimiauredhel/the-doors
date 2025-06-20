@@ -21,6 +21,7 @@ typedef enum ClientState
 
 } ClientState_t;
 
+ClientState_t client_get_state(void);
 void client_task(void *arg);
 
 #endif

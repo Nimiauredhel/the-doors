@@ -1,6 +1,8 @@
 #include "gui_gfx.h"
 
-static uint8_t info_window_buffer[sizeof(GfxWindow_t) + (320*120*2)];
+static uint8_t status_bar_buffer[sizeof(GfxWindow_t) + (320*20*2)];
+static uint8_t info_window_buffer[sizeof(GfxWindow_t) + (320*100*2)];
+static GfxWindow_t *status_bar = NULL;
 static GfxWindow_t *info_window = NULL;
 static GfxWindow_t *input_window = NULL;
 
@@ -23,11 +25,17 @@ static void gui_gfx_draw_keyboard(int8_t touched_button_idx)
 
 void gui_gfx_init(void)
 {
-    info_window = gfx_create_window_nonalloc(0, 0, 320, 120, "Info", (GfxWindow_t *)&info_window_buffer);
+    status_bar = gfx_create_window_nonalloc(0, 0, 320, 20, "Info", (GfxWindow_t *)&status_bar_buffer);
+    gfx_show_window(status_bar);
+    info_window = gfx_create_window_nonalloc(0, 20, 320, 100, "Info", (GfxWindow_t *)&info_window_buffer);
     gfx_show_window(info_window);
     input_window = gfx_create_window(0, 120, 320, 120, "Input");
     gfx_show_window(input_window);
 
+    gfx_select_window(status_bar, true);
+    gfx_fill_screen(color_black);
+    gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_green, 1);
+    gfx_unselect_window(status_bar);
     gfx_select_window(info_window, true);
     gfx_fill_screen(color_magenta);
     gui_gfx_draw_logo();
@@ -41,6 +49,31 @@ void gui_gfx_init(void)
 void gui_gfx_loop(void)
 {
     static int8_t last_touched_button_idx = -5;
+    static ClientState_t last_client_state = -1;
+
+    if (last_client_state != client_get_state())
+    {
+        last_client_state = client_get_state();
+        gfx_select_window(status_bar, true);
+        gfx_fill_screen(color_black);
+        switch(last_client_state)
+        {
+            case CLIENTSTATE_NONE:
+            default:
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_blue, 1);
+                break;
+            case CLIENTSTATE_INIT:
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_red, 1);
+                break;
+            case CLIENTSTATE_CONNECTING:
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_yellow, 1);
+                break;
+            case CLIENTSTATE_CONNECTED:
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_green, 1);
+                break;
+        }
+        gfx_unselect_window(status_bar);
+    }
 
     if (gui_get_touched_button_idx() != last_touched_button_idx)
     {
