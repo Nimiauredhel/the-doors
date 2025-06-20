@@ -35,8 +35,8 @@ void set_datetime(uint16_t hour, uint16_t min, uint16_t sec, uint16_t day, uint1
         .tm_min = min,
         .tm_hour = hour,
         .tm_mday = day,
-        .tm_mon = month,
-        .tm_year = year,
+        .tm_mon = month+1,
+        .tm_year = year + 1900,
     };
 
     struct timespec new_ts =

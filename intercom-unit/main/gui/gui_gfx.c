@@ -62,10 +62,10 @@ void gui_gfx_loop(void)
         gfx_fill_screen(color_black);
 
         last_datetime = datetime;
-        sprintf(datetime_buff, "%02u:%02u:%02u %02u/%02u/%02u",
+        sprintf(datetime_buff, "%02u:%02u:%02u %02u/%02u/%04u",
                 last_datetime.tm_hour, last_datetime.tm_min, last_datetime.tm_sec,
                 last_datetime.tm_mday, last_datetime.tm_mon, last_datetime.tm_year);
-        gfx_print_string(datetime_buff, 48, 2, color_cyan, 2);
+        gfx_print_string(datetime_buff, 144, 4, color_cyan, 1);
 
         last_client_state = client_get_state();
 

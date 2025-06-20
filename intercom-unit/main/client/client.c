@@ -128,6 +128,7 @@ static void connect_to_hub_server(void)
     connection_error_count = 0;
     client_state = CLIENTSTATE_CONNECTED;
     printf("Successfully connected to Hub Intercom Server.\n");
+    vTaskDelay(pdMS_TO_TICKS(1000));
     send_request(PACKET_REQUEST_SYNC_TIME, 0);
 }
 
