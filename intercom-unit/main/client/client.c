@@ -10,7 +10,24 @@ static volatile ClientState_t client_state_out = CLIENTSTATE_NONE;
 static DoorPacket_t request_rx_buff = {0};
 static uint8_t data_rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
 
-struct sockaddr_in init_server_socket_address(struct in_addr peer_address_bin, in_port_t peer_port_bin)
+int send_request(DoorRequest_t request, uint16_t destination)
+{
+    struct tm datetime = get_datetime();
+
+    DoorPacket_t tx_buff =
+    {
+        // TODO: include source, version, priority etc
+        .header.time = packet_encode_time(datetime.tm_hour, datetime.tm_min, datetime.tm_sec),
+        .header.date = packet_encode_date(datetime.tm_year, datetime.tm_mon, datetime.tm_mday),
+        .header.category = PACKET_CAT_REQUEST,
+        .body.Request.destination_id = destination,
+        .body.Request.request_id = request,
+    };
+
+    return send(client_socket, &tx_buff, sizeof(tx_buff), 0);
+}
+
+static struct sockaddr_in init_server_socket_address(struct in_addr peer_address_bin, in_port_t peer_port_bin)
 {
     struct sockaddr_in socket_address =
     {
@@ -111,6 +128,7 @@ static void connect_to_hub_server(void)
     connection_error_count = 0;
     client_state = CLIENTSTATE_CONNECTED;
     printf("Successfully connected to Hub Intercom Server.\n");
+    send_request(PACKET_REQUEST_SYNC_TIME, 0);
 }
 
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -169,25 +187,20 @@ static void client_init(void)
     wifi_ap_connect(HUB_AP_SSID, HUB_AP_PASS);
 }
 
-int send_request(DoorRequest_t request, uint16_t destination)
-{
-    DoorPacket_t tx_buff =
-    {
-        // TODO: include date/time, source, version, priority etc
-        .header.category = PACKET_CAT_REQUEST,
-        .body.Request.destination_id = destination,
-        .body.Request.request_id = request,
-    };
-
-    return send(client_socket, &tx_buff, sizeof(tx_buff), 0);
-}
-
-void process_request(void)
+static void process_request(void)
 {
     printf("Processing request from server.\n");
 
     switch(request_rx_buff.body.Request.request_id)
     {
+        case PACKET_REQUEST_SYNC_TIME:
+            set_datetime(packet_decode_hour(request_rx_buff.header.time),
+                        packet_decode_minutes(request_rx_buff.header.time),
+                        packet_decode_seconds(request_rx_buff.header.time),
+                        packet_decode_day(request_rx_buff.header.date),
+                        packet_decode_month(request_rx_buff.header.date),
+                        packet_decode_year(request_rx_buff.header.date));
+            break;
         case PACKET_REQUEST_BELL:
             printf("Received bell, sending back a Door Open request.\n");
             client_state = CLIENTSTATE_BELL;
@@ -201,7 +214,6 @@ void process_request(void)
         case PACKET_REQUEST_RESET_ADDRESS:
         case PACKET_REQUEST_SYNC_PASS_USER:
         case PACKET_REQUEST_SYNC_PASS_ADMIN:
-        case PACKET_REQUEST_SYNC_TIME:
         case PACKET_REQUEST_DOOR_OPEN:
         case PACKET_REQUEST_DOOR_CLOSE:
         case PACKET_REQUEST_MAX:
@@ -210,7 +222,7 @@ void process_request(void)
     }
 }
 
-int receive_request()
+static int receive_request()
 {
     int ret = recv(client_socket, &request_rx_buff, sizeof(request_rx_buff), 0);
 

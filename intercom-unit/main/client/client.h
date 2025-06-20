@@ -4,6 +4,7 @@
 #include "common.h"
 #include "networking_common.h"
 #include "wifi.h"
+#include "utils.h"
 #include "packet_defs.h"
 #include "packet_utils.h"
 
@@ -21,6 +22,7 @@ typedef enum ClientState
     CLIENTSTATE_BELL = 4,
 } ClientState_t;
 
+int send_request(DoorRequest_t request, uint16_t destination);
 ClientState_t client_get_state(void);
 void client_task(void *arg);
 
