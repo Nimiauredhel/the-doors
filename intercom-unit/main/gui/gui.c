@@ -52,6 +52,7 @@ static void gui_loop(void)
     gui_touch_update();
     touched_button_idx = gui_check_button_touch(touch_keyboard, 40, 0, -120);
     gui_gfx_loop();
+    if (client_get_state() == CLIENTSTATE_BELL) audio_still_open_reminder();
     vTaskDelay(pdMS_TO_TICKS(32));
 }
 

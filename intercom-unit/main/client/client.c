@@ -190,6 +190,9 @@ void process_request(void)
     {
         case PACKET_REQUEST_BELL:
             printf("Received bell, sending back a Door Open request.\n");
+            client_state = CLIENTSTATE_BELL;
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            client_state = CLIENTSTATE_CONNECTED;
             send_request(PACKET_REQUEST_DOOR_OPEN, request_rx_buff.body.Request.source_id);
             break;
         case PACKET_REQUEST_NONE:
@@ -262,6 +265,7 @@ static void client_loop(void)
         connect_to_hub_server();
         break;
     case CLIENTSTATE_CONNECTED:
+    case CLIENTSTATE_BELL:
         hub_comms();
         break;
     }

@@ -69,6 +69,7 @@ void gui_gfx_loop(void)
                 gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_yellow, 1);
                 break;
             case CLIENTSTATE_CONNECTED:
+            case CLIENTSTATE_BELL:
                 gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_green, 1);
                 break;
         }

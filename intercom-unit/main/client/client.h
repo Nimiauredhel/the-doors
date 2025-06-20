@@ -18,7 +18,7 @@ typedef enum ClientState
     CLIENTSTATE_INIT = 1,
     CLIENTSTATE_CONNECTING = 2,
     CLIENTSTATE_CONNECTED = 3,
-
+    CLIENTSTATE_BELL = 4,
 } ClientState_t;
 
 ClientState_t client_get_state(void);
