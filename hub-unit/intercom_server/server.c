@@ -91,6 +91,21 @@ static void ipc_init(void)
     syslog_append("IPC Initialization Complete");
 }
 
+static void send_request(DoorRequest_t request, ClientData_t *client)
+{
+	struct tm datetime = get_datetime();
+
+	DoorPacket_t packet =
+	{
+	    .header.time = packet_encode_time(datetime.tm_hour, datetime.tm_min, datetime.tm_sec),
+	    .header.date = packet_encode_date(datetime.tm_year, datetime.tm_mon, datetime.tm_mday),
+	    .header.category = PACKET_CAT_REQUEST,
+	    .body.Request.request_id = request,
+	};
+
+	hub_queue_enqueue(client->outbox, &packet);
+}
+
 static void forward_door_to_client_request(DoorPacket_t *request)
 {
     char log_buff[129] = {0};
@@ -337,7 +352,7 @@ static void forward_client_to_door_request(DoorPacket_t *request)
     }
 }
 
-static void connection_handle_incoming_packet(DoorPacket_t *packet)
+static void connection_handle_incoming_packet(DoorPacket_t *packet, ClientData_t *client)
 {
     char log_buff[64] = {0};
 
@@ -351,8 +366,16 @@ static void connection_handle_incoming_packet(DoorPacket_t *packet)
         handle_report_packet(packet);
         break;
     case PACKET_CAT_REQUEST:
-        syslog_append("Forwarding request to door");
-        forward_client_to_door_request(packet);
+	switch(packet->body.Request.request_id)
+	{
+	    case(PACKET_REQUEST_SYNC_TIME):
+		send_request(PACKET_REQUEST_SYNC_TIME, client);
+		break;
+	    default:
+		syslog_append("Forwarding request to door");
+		forward_client_to_door_request(packet);
+		break;
+	}
         break;
     case PACKET_CAT_NONE:
     case PACKET_CAT_DATA:
@@ -390,7 +413,7 @@ static void connection_loop(ClientData_t *data)
 		    error_counter = 0;
 		    sprintf(log_buff, "Received packet from client %s", inet_ntoa(data->client_addr.sin_addr));
 		    syslog_append(log_buff);
-		    connection_handle_incoming_packet(&packet_buff);
+		    connection_handle_incoming_packet(&packet_buff, data);
 		}
 		else if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
@@ -423,8 +446,8 @@ void *connection_task(void *arg)
     connection_loop(data);
 
     // cleanup
-    pthread_mutex_lock(&slots_mutex);
     close(data->client_socket);
+    pthread_mutex_lock(&slots_mutex);
     hub_queue_destroy(data->outbox);
     data->slot_state = SLOTSTATE_GARBAGE;
     client_count--;
@@ -474,13 +497,16 @@ static void server_loop(void)
 	{
 		if (client_slots[i].slot_state == SLOTSTATE_ACTIVE || client_slots[i].slot_state == SLOTSTATE_TAKEN)
 		{
+			/*
 			if (client_slots[i].client_addr.sin_addr.s_addr == new_client_addr.sin_addr.s_addr)
 			{
 				new = false;
 				sprintf(buff, "Client reconnected: %s", inet_ntoa(client_slots[i].client_addr.sin_addr));
 				syslog_append(buff);
+				send_request(PACKET_REQUEST_SYNC_TIME, &client_slots[i]);
 				break;
 			}
+			*/
 		}
 	}
 
@@ -502,6 +528,7 @@ static void server_loop(void)
 
 		sprintf(buff, "New client connected: %s", inet_ntoa(client_slots[next_slot_idx].client_addr.sin_addr));
 		syslog_append(buff);
+		increment_next_client_slot();
 	}
     }
 }
