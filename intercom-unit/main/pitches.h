@@ -9,6 +9,7 @@
 #define INC_PITCHES_H_
 
 #include "hal/ledc_types.h"
+#include "soc/soc.h"
 
 // assuming base clock frequency is that of the clock source
 #define TCLOCK_HZ REF_CLK_FREQ 
