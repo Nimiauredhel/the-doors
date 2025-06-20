@@ -34,7 +34,7 @@ void gui_gfx_init(void)
 
     gfx_select_window(status_bar, true);
     gfx_fill_screen(color_black);
-    gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_green, 1);
+    gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_grey_mid, 1);
     gfx_unselect_window(status_bar);
     gfx_select_window(info_window, true);
     gfx_fill_screen(color_magenta);
@@ -50,27 +50,44 @@ void gui_gfx_loop(void)
 {
     static int8_t last_touched_button_idx = -5;
     static ClientState_t last_client_state = -1;
+    static struct tm last_datetime = {0};
+    static char datetime_buff[64] = {0};
 
-    if (last_client_state != client_get_state())
+    struct tm datetime = get_datetime();
+
+    if (last_client_state != client_get_state()
+        || datetime.tm_sec != last_datetime.tm_sec)
     {
-        last_client_state = client_get_state();
         gfx_select_window(status_bar, true);
         gfx_fill_screen(color_black);
+
+        last_datetime = datetime;
+        sprintf(datetime_buff, "%02u:%02u:%02u %02u/%02u/%02u",
+                last_datetime.tm_hour, last_datetime.tm_min, last_datetime.tm_sec,
+                last_datetime.tm_mday, last_datetime.tm_mon, last_datetime.tm_year);
+        gfx_print_string(datetime_buff, 48, 2, color_cyan, 2);
+
+        last_client_state = client_get_state();
+
         switch(last_client_state)
         {
             case CLIENTSTATE_NONE:
             default:
-                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_blue, 1);
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_grey_mid, 1);
                 break;
             case CLIENTSTATE_INIT:
-                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_red, 1);
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_red_dark, 1);
                 break;
             case CLIENTSTATE_CONNECTING:
-                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_yellow, 1);
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_red, 1);
                 break;
             case CLIENTSTATE_CONNECTED:
+                gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_green, 1);
+                gfx_draw_binary_sprite(&icon_bell, 24, 2, color_grey_light, 1);
+                break;
             case CLIENTSTATE_BELL:
                 gfx_draw_binary_sprite(&icon_wifi, 4, 4, color_green, 1);
+                gfx_draw_binary_sprite(&icon_bell, 24, 2, color_yellow, 1);
                 break;
         }
         gfx_unselect_window(status_bar);

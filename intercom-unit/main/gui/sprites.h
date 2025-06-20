@@ -4,5 +4,6 @@
 #include "gfx.h"
 
 extern const BinarySprite_t icon_wifi;
+extern const BinarySprite_t icon_bell;
 
 #endif

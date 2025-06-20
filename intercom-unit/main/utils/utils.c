@@ -26,3 +26,13 @@ uint16_t map_uint16(uint16_t src_min, uint16_t src_max, uint16_t dst_min, uint16
     //return (dst_min + ((dst_max - dst_min) / (src_max - src_min)) * (val - src_min));
     //return dst_min + ((dst_max - dst_min) * (val - src_min)) / (src_max - src_min);
 }
+
+struct tm get_datetime(void)
+{
+    time_t rawtime;
+    struct tm *timeinfo;
+    time (&rawtime);
+    timeinfo = localtime (&rawtime);
+    return *timeinfo;
+}
+

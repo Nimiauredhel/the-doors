@@ -143,6 +143,12 @@ extern const Color565_t color_blue;
 extern const Color565_t color_cyan;
 extern const Color565_t color_magenta;
 extern const Color565_t color_yellow;
+extern const Color565_t color_grey_dark;
+extern const Color565_t color_grey_mid;
+extern const Color565_t color_grey_light;
+extern const Color565_t color_red_dark;
+extern const Color565_t color_green_dark;
+extern const Color565_t color_blue_dark;
 
 extern const BinarySpriteSheet_t default_font;
 

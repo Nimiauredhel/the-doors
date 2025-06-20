@@ -12,14 +12,20 @@
 static const bool invert = true;
 
 // RGB565 2 byte format: [RrrrrGgg][gggBbbbb]
-const Color565_t color_black = { 0b00000000, 0b00000000 };
-const Color565_t color_white = { 0b11111111, 0b11111111 };
-const Color565_t color_red = { 0b11111000, 0b00000000 };
-const Color565_t color_green = { 0b00000111, 0b11100000 };
-const Color565_t color_blue = { 0b00000000, 0b00011111 };
-const Color565_t color_cyan = { 0b00000111, 0b11111111 };
-const Color565_t color_magenta = { 0b11111000, 0b00011111 };
-const Color565_t color_yellow = { 0b11111111, 0b11100000 };
+const Color565_t color_black =      { 0b00000000, 0b00000000 };
+const Color565_t color_white =      { 0b11111111, 0b11111111 };
+const Color565_t color_red =        { 0b11111000, 0b00000000 };
+const Color565_t color_green =      { 0b00000111, 0b11100000 };
+const Color565_t color_blue =       { 0b00000000, 0b00011111 };
+const Color565_t color_cyan =       { 0b00000111, 0b11111111 };
+const Color565_t color_magenta =    { 0b11111000, 0b00011111 };
+const Color565_t color_yellow =     { 0b11111111, 0b11100000 };
+const Color565_t color_grey_dark =  { 0b01111011, 0b11101111 };
+const Color565_t color_grey_mid =   { 0b11011111, 0b01111011 };
+const Color565_t color_grey_light = { 0b11110111, 0b11011110 };
+const Color565_t color_red_dark =   { 0b01111000, 0b00000000 };
+const Color565_t color_green_dark = { 0b00000011, 0b11100000 };
+const Color565_t color_blue_dark =  { 0b00000000, 0b00001111 };
 
 const BinarySpriteSheet_t default_font =
 {
