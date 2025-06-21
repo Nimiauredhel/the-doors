@@ -10,7 +10,14 @@ static volatile ClientState_t client_state_out = CLIENTSTATE_NONE;
 static DoorPacket_t request_rx_buff = {0};
 static uint8_t data_rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
 
-int send_request(DoorRequest_t request, uint16_t destination)
+esp_netif_ip_info_t client_get_ip_info(void)
+{
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(esp_netif_get_default_netif(), &ip_info);
+    return ip_info;
+}
+
+int client_send_request(DoorRequest_t request, uint16_t destination)
 {
     struct tm datetime = get_datetime();
 
@@ -129,7 +136,7 @@ static void connect_to_hub_server(void)
     client_state = CLIENTSTATE_CONNECTED;
     printf("Successfully connected to Hub Intercom Server.\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
-    send_request(PACKET_REQUEST_SYNC_TIME, 0);
+    client_send_request(PACKET_REQUEST_SYNC_TIME, 0);
 }
 
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -150,8 +157,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         printf("got ip: " IPSTR " \n", IP2STR(&event->ip_info.ip));
 
-        esp_netif_ip_info_t ip_info;
-        esp_netif_get_ip_info(esp_netif_get_default_netif(), &ip_info);
+        esp_netif_ip_info_t ip_info = client_get_ip_info();
         printf("My IP: " IPSTR "\n", IP2STR(&ip_info.ip));
         printf("My GW: " IPSTR "\n", IP2STR(&ip_info.gw));
         printf("My NETMASK: " IPSTR "\n", IP2STR(&ip_info.netmask));
@@ -207,7 +213,7 @@ static void process_request(void)
             client_state = CLIENTSTATE_BELL;
             vTaskDelay(pdMS_TO_TICKS(3000));
             client_state = CLIENTSTATE_CONNECTED;
-            send_request(PACKET_REQUEST_DOOR_OPEN, request_rx_buff.body.Request.source_id);
+            client_send_request(PACKET_REQUEST_DOOR_OPEN, request_rx_buff.body.Request.source_id);
             break;
         case PACKET_REQUEST_NONE:
         case PACKET_REQUEST_PING:

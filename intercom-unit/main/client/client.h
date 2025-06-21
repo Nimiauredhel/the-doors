@@ -22,7 +22,8 @@ typedef enum ClientState
     CLIENTSTATE_BELL = 4,
 } ClientState_t;
 
-int send_request(DoorRequest_t request, uint16_t destination);
+esp_netif_ip_info_t client_get_ip_info(void);
+int client_send_request(DoorRequest_t request, uint16_t destination);
 ClientState_t client_get_state(void);
 void client_task(void *arg);
 
