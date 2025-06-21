@@ -48,8 +48,17 @@ void gui_gfx_init(void)
 
 void gui_gfx_loop(void)
 {
-    static const uint8_t status_row1_y = 6;
-    static const uint8_t status_row2_y = 20;
+    static const uint8_t status_row1_text_y = 6;
+    static const uint8_t status_row1_icon_y = 2;
+    static const uint8_t status_row2_text_y = 20;
+    static const uint8_t status_col1_x = 4;
+    static const uint8_t status_col2_x = 24;
+    static const uint8_t status_col3_x = 48;
+    static const uint8_t status_col4_x = 72;
+    static const uint8_t status_col5_x = 96;
+    static const uint8_t status_col6_x = 120;
+    static const uint8_t status_col7_x = 144;
+    static const uint8_t status_col8_x = 166;
 
     static int8_t last_touched_button_idx = -5;
     static ClientState_t last_client_state = -1;
@@ -65,13 +74,13 @@ void gui_gfx_loop(void)
     {
         gfx_select_window(status_bar, true);
         gfx_fill_screen(color_black);
-        gfx_print_string("Client Name", 48, status_row1_y, color_blue, 1);
+        gfx_print_string("Client Name", status_col3_x, status_row1_text_y, color_blue, 1);
 
         esp_netif_get_mac(esp_netif_get_default_netif(), mac);
         sprintf(gui_text_buff, "%02x:%02x:%02x:%02x:%02x:%02x",
           mac[0], mac[1], mac[2],
           mac[3], mac[4], mac[5]);
-        gfx_print_string(gui_text_buff, 4, status_row2_y, color_blue, 1);
+        gfx_print_string(gui_text_buff, status_col1_x, status_row2_text_y, color_blue, 1);
 
 
         last_client_state = client_get_state();
@@ -80,32 +89,32 @@ void gui_gfx_loop(void)
         {
             case CLIENTSTATE_NONE:
             default:
-                gfx_draw_binary_sprite(&icon_wifi, 4, status_row1_y-2, color_grey_mid, 1);
+                gfx_draw_binary_sprite(&icon_wifi, status_col1_x, status_row1_icon_y, color_grey_mid, 1);
                 break;
             case CLIENTSTATE_INIT:
-                gfx_draw_binary_sprite(&icon_wifi, 4, status_row1_y-2, color_red_dark, 1);
+                gfx_draw_binary_sprite(&icon_wifi, status_col1_x, status_row1_icon_y, color_red_dark, 1);
                 break;
             case CLIENTSTATE_CONNECTING:
-                gfx_draw_binary_sprite(&icon_wifi, 4, status_row1_y-2, color_red, 1);
+                gfx_draw_binary_sprite(&icon_wifi, status_col1_x, status_row1_icon_y, color_red, 1);
                 break;
             case CLIENTSTATE_CONNECTED:
-                gfx_draw_binary_sprite(&icon_wifi, 4, status_row1_y-2, color_green, 1);
-                gfx_draw_binary_sprite(&icon_bell, 24, status_row1_y-4, color_grey_light, 1);
+                gfx_draw_binary_sprite(&icon_wifi, status_col1_x, status_row1_icon_y, color_green, 1);
+                gfx_draw_binary_sprite(&icon_bell, status_col2_x, status_row1_icon_y-2, color_grey_light, 1);
 
                 last_datetime = datetime;
                 sprintf(gui_text_buff, "%02u:%02u:%02u %02u/%02u/%04u",
                         last_datetime.tm_hour, last_datetime.tm_min, last_datetime.tm_sec,
                         last_datetime.tm_mday, last_datetime.tm_mon, last_datetime.tm_year);
-                gfx_print_string(gui_text_buff, 160, status_row1_y, color_cyan, 1);
+                gfx_print_string(gui_text_buff, status_col8_x, status_row1_text_y, color_cyan, 1);
 
                 ip_info = client_get_ip_info();
                 sprintf(gui_text_buff, IPSTR, IP2STR(&ip_info.ip));
-                gfx_print_string(gui_text_buff, 160, status_row2_y, color_cyan, 1);
+                gfx_print_string(gui_text_buff, status_col8_x, status_row2_text_y, color_cyan, 1);
 
                 break;
             case CLIENTSTATE_BELL:
-                gfx_draw_binary_sprite(&icon_wifi, 4, status_row1_y-2, color_green, 1);
-                gfx_draw_binary_sprite(&icon_bell, 24, status_row1_y-4, color_yellow, 1);
+                gfx_draw_binary_sprite(&icon_wifi, status_col1_x, status_row1_icon_y, color_green, 1);
+                gfx_draw_binary_sprite(&icon_bell, status_col2_x, status_row1_icon_y-2, color_yellow, 1);
                 break;
         }
         gfx_unselect_window(status_bar);
