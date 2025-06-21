@@ -38,7 +38,9 @@ void gui_gfx_init(void)
     gfx_unselect_window(status_bar);
     gfx_select_window(info_window, true);
     gfx_fill_screen(color_magenta);
-    gui_gfx_draw_logo();
+    //gui_gfx_draw_logo();
+    gfx_draw_binary_sprite(&icon_door, 32, 8, color_black, 2);
+    gfx_draw_binary_sprite(&icon_open, 96, 8, color_black, 2);
     gfx_unselect_window(info_window);
     gfx_select_window(input_window, true);
     gfx_fill_screen(color_cyan);

@@ -5,5 +5,7 @@
 
 extern const BinarySprite_t icon_wifi;
 extern const BinarySprite_t icon_bell;
+extern const BinarySprite_t icon_door;
+extern const BinarySprite_t icon_open;
 
 #endif
