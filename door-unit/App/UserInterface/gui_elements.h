@@ -20,6 +20,6 @@ typedef struct InterfaceInputElement
 	const InterfaceButton_t *buttons;
 } InterfaceInputElement_t;
 
-extern const InterfaceInputElement_t* keypads[2];
+extern const InterfaceInputElement_t* input_layouts[2];
 
 #endif

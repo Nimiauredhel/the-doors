@@ -3,6 +3,8 @@
 
 #include "gui.h"
 
-extern const InterfaceButton_t touch_keyboard[40];
+#define NUM_LAYOUTS (3)
+
+extern const InterfaceInputElement_t *input_layouts[NUM_LAYOUTS];
 
 #endif

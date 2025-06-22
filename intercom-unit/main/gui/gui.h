@@ -18,6 +18,7 @@
 #include "gui_gfx.h"
 #include "gui_touch.h"
 
+const InterfaceInputElement_t* gui_get_current_input_layout(void);
 int8_t gui_get_touched_button_idx(void);
 void gui_task(void *arg);
 

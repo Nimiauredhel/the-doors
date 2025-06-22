@@ -13,18 +13,46 @@ static void gui_gfx_draw_logo(void)
     gfx_print_string("DOORS", 9, 38, color_black, 8);
 }
 
-static void gui_gfx_draw_keyboard(int8_t touched_button_idx)
+static void gui_gfx_draw_input_layout(const InterfaceInputElement_t *layout, int8_t touched_button_idx)
 {
-    for (int i = 0; i < 40; i++)
+    static const Color565_t *color_bg_neutral = &color_grey_dark;
+    static const Color565_t *color_bg_pressed = &color_black;
+    static const Color565_t *color_bg_disabled = &color_grey_light;
+    static const Color565_t *color_border = &color_blue;
+    static const Color565_t *color_label_neutral = &color_green;
+    static const Color565_t *color_label_pressed = &color_black;
+    static const Color565_t *color_label_disabled = &color_grey_mid;
+    static const Color565_t *color_icon_neutral = &color_white;
+    static const Color565_t *color_icon_pressed = &color_blue;
+    static const Color565_t *color_icon_disabled = &color_grey_dark;
+
+    if (layout == NULL) return;
+
+    for (int i = 0; i < layout->button_count; i++)
     {
-        gfx_fill_rect_single_color(touch_keyboard[i].x, touch_keyboard[i].y, touch_keyboard[i].width, touch_keyboard[i].height, color_blue);
-        gfx_fill_rect_single_color(touch_keyboard[i].x+2, touch_keyboard[i].y+2, touch_keyboard[i].width-2, touch_keyboard[i].height-2, touched_button_idx == i ? color_blue : color_white);
-        gfx_print_string((char *)touch_keyboard[i].label, touch_keyboard[i].x+12, touch_keyboard[i].y+7,  touched_button_idx == i ? color_yellow : color_black, touch_keyboard[i].label_scale);
+        gfx_fill_rect_single_color(layout->buttons[i].x, layout->buttons[i].y, layout->buttons[i].width, layout->buttons[i].height, *color_border);
+        gfx_fill_rect_single_color(layout->buttons[i].x+1, layout->buttons[i].y+1, layout->buttons[i].width-2, layout->buttons[i].height-2, 
+                    touched_button_idx == i ? *color_bg_pressed : *color_bg_neutral);
+
+
+        if(layout->buttons[i].icon != NULL)
+        {
+            gfx_draw_binary_sprite(layout->buttons[i].icon,
+                    layout->buttons[i].x+(layout->buttons[i].width/2)-((layout->buttons[i].icon->width_bytes*8*layout->buttons[i].label_scale)/2),
+                    layout->buttons[i].y+((layout->buttons[i].height/2)-((layout->buttons[i].icon->height_pixels*layout->buttons[i].label_scale)/2)),
+                    touched_button_idx == i ? *color_icon_pressed : *color_icon_neutral, layout->buttons[i].label_scale);
+        }
+
+        gfx_print_string((char *)layout->buttons[i].label,
+                layout->buttons[i].x+((layout->buttons[i].width/2)-(strlen(layout->buttons[i].label)*5*layout->buttons[i].label_scale)/2),
+                layout->buttons[i].y+((layout->buttons[i].height/2)-(6*layout->buttons[i].label_scale)),
+                touched_button_idx == i ? *color_label_pressed : *color_label_neutral, layout->buttons[i].label_scale);
     }
 }
 
 void gui_gfx_init(void)
 {
+    printf("%u\n", icon_open.width_bytes);
     status_bar = gfx_create_window_nonalloc(0, 0, 320, 32, "Status", (GfxWindow_t *)&status_bar_buffer);
     gfx_show_window(status_bar);
     info_window = gfx_create_window_nonalloc(0, 32, 320, 88, "Info", (GfxWindow_t *)&info_window_buffer);
@@ -38,13 +66,11 @@ void gui_gfx_init(void)
     gfx_unselect_window(status_bar);
     gfx_select_window(info_window, true);
     gfx_fill_screen(color_magenta);
-    //gui_gfx_draw_logo();
-    gfx_draw_binary_sprite(&icon_door, 32, 8, color_black, 2);
-    gfx_draw_binary_sprite(&icon_open, 96, 8, color_black, 2);
+    gui_gfx_draw_logo();
     gfx_unselect_window(info_window);
     gfx_select_window(input_window, true);
     gfx_fill_screen(color_cyan);
-    gui_gfx_draw_keyboard(-1);
+    gui_gfx_draw_input_layout(gui_get_current_input_layout(), -1);
     gfx_unselect_window(input_window);
 }
 
@@ -127,7 +153,7 @@ void gui_gfx_loop(void)
         last_touched_button_idx = gui_get_touched_button_idx();
         gfx_select_window(input_window, true);
         gfx_fill_screen(color_cyan);
-        gui_gfx_draw_keyboard(last_touched_button_idx);
+        gui_gfx_draw_input_layout(gui_get_current_input_layout(), last_touched_button_idx);
         gfx_unselect_window(input_window);
     }
 }
