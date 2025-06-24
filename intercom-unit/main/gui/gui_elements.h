@@ -5,6 +5,6 @@
 
 #define NUM_LAYOUTS (3)
 
-extern InterfaceInputElement_t *input_layouts[NUM_LAYOUTS];
+extern InterfaceInputElement_t input_layouts[NUM_LAYOUTS];
 
 #endif

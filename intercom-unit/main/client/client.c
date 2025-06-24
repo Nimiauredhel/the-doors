@@ -7,8 +7,15 @@ static struct sockaddr_in server_addr ={0};
 static volatile ClientState_t client_state = CLIENTSTATE_NONE;
 static volatile ClientState_t client_state_out = CLIENTSTATE_NONE;
 
+static volatile int8_t current_bell_idx = -1;
+
 static DoorPacket_t request_rx_buff = {0};
 static uint8_t data_rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
+
+int8_t client_get_current_bell_idx(void)
+{
+    return current_bell_idx;
+}
 
 esp_netif_ip_info_t client_get_ip_info(void)
 {
@@ -209,11 +216,12 @@ static void process_request(void)
                         packet_decode_year(request_rx_buff.header.date));
             break;
         case PACKET_REQUEST_BELL:
-            printf("Received bell, sending back a Door Open request.\n");
+            current_bell_idx = (int8_t)request_rx_buff.body.Request.source_id;
+            printf("Received bell from door id %d.\n", current_bell_idx);
             client_state = CLIENTSTATE_BELL;
-            vTaskDelay(pdMS_TO_TICKS(3000));
+            vTaskDelay(pdMS_TO_TICKS(5000));
             client_state = CLIENTSTATE_CONNECTED;
-            client_send_request(PACKET_REQUEST_DOOR_OPEN, request_rx_buff.body.Request.source_id);
+            current_bell_idx = -1;
             break;
         case PACKET_REQUEST_NONE:
         case PACKET_REQUEST_PING:

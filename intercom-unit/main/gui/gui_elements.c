@@ -95,13 +95,10 @@ const InterfaceButton_t door_menu_buttons[3] =
     { IACTION_CAMERA, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL3_X, BUTTON_ROW1_Y, "", &icon_bell },
 };
 
-const InterfaceInputElement_t keyboard = { 40, keyboard_buttons };
-const InterfaceInputElement_t door_list = { 8, door_list_buttons };
-const InterfaceInputElement_t door_menu = { 3, door_menu_buttons };
 
-InterfaceInputElement_t *input_layouts[NUM_LAYOUTS] =
+InterfaceInputElement_t input_layouts[NUM_LAYOUTS] =
 {
-    &keyboard,
-    &door_list,
-    &door_menu,
+    { ILAYOUT_KEYBOARD, 40, keyboard_buttons },
+    { ILAYOUT_DOOR_LIST, 8, door_list_buttons },
+    { ILAYOUT_DOOR_ACTIONS, 3, door_menu_buttons },
 };

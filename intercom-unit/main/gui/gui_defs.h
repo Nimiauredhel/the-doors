@@ -55,6 +55,7 @@ typedef struct InterfaceButton
 
 typedef struct InterfaceInputElement
 {
+    const InterfaceLayout_t id;
 	const uint8_t button_count;
 	const InterfaceButton_t *buttons;
 } InterfaceInputElement_t;

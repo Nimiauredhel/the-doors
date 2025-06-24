@@ -136,7 +136,7 @@ static void gui_loop(void)
 InterfaceInputElement_t* gui_get_current_input_layout(void)
 {
     if (input_layout_idx < 0 || input_layout_idx >= NUM_LAYOUTS) return NULL;
-    return input_layouts[input_layout_idx];
+    return &input_layouts[input_layout_idx];
 }
 
 int8_t gui_get_touched_button_idx(void)
