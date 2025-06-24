@@ -117,6 +117,20 @@ typedef struct DoorPacket
 	DoorPacketHeader_t header;
 	DoorPacketBody_t body;
 } DoorPacket_t;
+
+typedef struct DoorInfo
+{
+    uint16_t index;
+    bool active;
+    char name[32];
+} DoorInfo_t;
+
+typedef struct ClientInfo
+{
+    uint16_t index;
+    bool active;
+    char name[32];
+} ClientInfo_t;
 #pragma pack(pop)
 
 #endif /* PACKET_DEFS_H_ */
