@@ -27,18 +27,18 @@ typedef enum InterfaceLayout
 typedef enum InterfaceActions
 {
     IACTION_NONE          = 0,
-    IACTION_RESET         = 1,
-    IACTION_BACK          = 2,
-    IACTION_OPEN          = 3,
-    IACTION_CAMERA        = 4,
-    IACTION_SELECT_DOOR_0 = 128,
-    IACTION_SELECT_DOOR_1 = 129,
-    IACTION_SELECT_DOOR_2 = 130,
-    IACTION_SELECT_DOOR_3 = 131,
-    IACTION_SELECT_DOOR_4 = 132,
-    IACTION_SELECT_DOOR_5 = 133,
-    IACTION_SELECT_DOOR_6 = 134,
-    IACTION_SELECT_DOOR_7 = 135,
+    IACTION_SELECT_DOOR_1 = 1,
+    IACTION_SELECT_DOOR_2 = 2,
+    IACTION_SELECT_DOOR_3 = 3,
+    IACTION_SELECT_DOOR_4 = 4,
+    IACTION_SELECT_DOOR_5 = 5,
+    IACTION_SELECT_DOOR_6 = 6,
+    IACTION_SELECT_DOOR_7 = 7,
+    IACTION_SELECT_DOOR_8 = 8,
+    IACTION_RESET         = 27,
+    IACTION_BACK          = 28,
+    IACTION_OPEN          = 29,
+    IACTION_CAMERA        = 30,
 } InterfaceAction_t;
 
 typedef struct InterfaceButton

@@ -1,7 +1,46 @@
 #include "gui.h"
 
-static int8_t input_layout_idx = 2;
+static const uint16_t gui_loop_delay_ms = 32;
+
+static volatile InterfaceLayout_t input_layout_idx = ILAYOUT_DOOR_LIST;
+static int8_t prev_touched_button_idx = -1;
 static int8_t touched_button_idx = -1;
+static uint8_t selected_door_idx = 0;
+
+static const uint8_t touch_release_threshold = 5;
+static uint8_t touch_release_counter = 0;
+
+static void gui_handle_button_touch(const InterfaceInputElement_t *layout)
+{
+    InterfaceAction_t action = prev_touched_button_idx < 0 ? IACTION_NONE :  layout->buttons[prev_touched_button_idx].id;
+
+    switch(action)
+    {
+    case IACTION_OPEN:
+        client_send_request(PACKET_REQUEST_DOOR_OPEN, selected_door_idx);
+        input_layout_idx = ILAYOUT_DOOR_LIST;
+        break;
+    case IACTION_BACK:
+        input_layout_idx = ILAYOUT_DOOR_LIST;
+        break;
+    case IACTION_SELECT_DOOR_1:
+    case IACTION_SELECT_DOOR_2:
+    case IACTION_SELECT_DOOR_3:
+    case IACTION_SELECT_DOOR_4:
+    case IACTION_SELECT_DOOR_5:
+    case IACTION_SELECT_DOOR_6:
+    case IACTION_SELECT_DOOR_7:
+    case IACTION_SELECT_DOOR_8:
+        selected_door_idx = action - 1;
+        input_layout_idx = ILAYOUT_DOOR_ACTIONS;
+      break;
+    case IACTION_NONE:
+    case IACTION_RESET:
+    case IACTION_CAMERA:
+    default:
+        break;
+    }
+}
 
 static int8_t gui_check_button_touch(const InterfaceInputElement_t *layout, const uint8_t button_count, int16_t x_offset, int16_t y_offset)
 {
@@ -50,14 +89,48 @@ static void gui_init(void)
 
 static void gui_loop(void)
 {
+    static int8_t prev_touched_button_result = -1;
+
     gui_touch_update();
-    touched_button_idx = gui_check_button_touch(gui_get_current_input_layout(), 40, 0, -120);
+    const InterfaceInputElement_t *layout = gui_get_current_input_layout();
+    int8_t touched_button_result = gui_check_button_touch(layout, 40, 0, -120);
+
+    //printf("%d : %d\n", touched_button_result, touched_button_idx);
+
+    if (touched_button_result < 0 && touched_button_idx >= 0)
+    {
+        if (prev_touched_button_result < 0
+            && touch_release_counter >= touch_release_threshold)
+        {
+            touch_release_counter = 0;
+            prev_touched_button_idx = touched_button_idx;
+            touched_button_idx = touched_button_result;
+
+            if (touched_button_idx != prev_touched_button_idx)
+            {
+                gui_handle_button_touch(layout);
+            }
+        }
+        else
+        {
+            touch_release_counter++;
+        }
+    }
+    else
+    {
+        prev_touched_button_idx = touched_button_idx;
+        touched_button_idx = touched_button_result;
+        touch_release_counter = 0;
+    }
+
+    prev_touched_button_result = touched_button_result;
+
     gui_gfx_loop();
     if (client_get_state() == CLIENTSTATE_BELL) audio_still_open_reminder();
-    vTaskDelay(pdMS_TO_TICKS(32));
+    vTaskDelay(pdMS_TO_TICKS(gui_loop_delay_ms));
 }
 
-const InterfaceInputElement_t* gui_get_current_input_layout(void)
+InterfaceInputElement_t* gui_get_current_input_layout(void)
 {
     if (input_layout_idx < 0 || input_layout_idx >= NUM_LAYOUTS) return NULL;
     return input_layouts[input_layout_idx];

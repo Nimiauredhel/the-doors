@@ -77,15 +77,15 @@ const InterfaceButton_t keyboard_buttons[40] =
 
 const InterfaceButton_t door_list_buttons[8] =
 {
-    { IACTION_SELECT_DOOR_0, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL1_X, BUTTON_ROW1_Y, "1", &icon_door },
-    { IACTION_SELECT_DOOR_1, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL2_X, BUTTON_ROW1_Y, "2", &icon_door },
-    { IACTION_SELECT_DOOR_2, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL3_X, BUTTON_ROW1_Y, "3", &icon_door },
-    { IACTION_SELECT_DOOR_3, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL4_X, BUTTON_ROW1_Y, "4", &icon_door },
+    { IACTION_SELECT_DOOR_1, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL1_X, BUTTON_ROW1_Y, "1", &icon_door },
+    { IACTION_SELECT_DOOR_2, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL2_X, BUTTON_ROW1_Y, "2", &icon_door },
+    { IACTION_SELECT_DOOR_3, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL3_X, BUTTON_ROW1_Y, "3", &icon_door },
+    { IACTION_SELECT_DOOR_4, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL4_X, BUTTON_ROW1_Y, "4", &icon_door },
 
-    { IACTION_SELECT_DOOR_4, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL1_X, BUTTON_ROW2_Y, "5", &icon_door },
-    { IACTION_SELECT_DOOR_5, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL2_X, BUTTON_ROW2_Y, "6", &icon_door },
-    { IACTION_SELECT_DOOR_6, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL3_X, BUTTON_ROW2_Y, "7", &icon_door },
-    { IACTION_SELECT_DOOR_7, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL4_X, BUTTON_ROW2_Y, "8", &icon_door },
+    { IACTION_SELECT_DOOR_5, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL1_X, BUTTON_ROW2_Y, "5", &icon_door },
+    { IACTION_SELECT_DOOR_6, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL2_X, BUTTON_ROW2_Y, "6", &icon_door },
+    { IACTION_SELECT_DOOR_7, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL3_X, BUTTON_ROW2_Y, "7", &icon_door },
+    { IACTION_SELECT_DOOR_8, 2, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COL4_X, BUTTON_ROW2_Y, "8", &icon_door },
 };
 
 const InterfaceButton_t door_menu_buttons[3] =
@@ -99,7 +99,7 @@ const InterfaceInputElement_t keyboard = { 40, keyboard_buttons };
 const InterfaceInputElement_t door_list = { 8, door_list_buttons };
 const InterfaceInputElement_t door_menu = { 3, door_menu_buttons };
 
-const InterfaceInputElement_t *input_layouts[NUM_LAYOUTS] =
+InterfaceInputElement_t *input_layouts[NUM_LAYOUTS] =
 {
     &keyboard,
     &door_list,

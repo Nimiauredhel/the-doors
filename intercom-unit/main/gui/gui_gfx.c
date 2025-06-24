@@ -13,7 +13,7 @@ static void gui_gfx_draw_logo(void)
     gfx_print_string("DOORS", 9, 38, color_black, 8);
 }
 
-static void gui_gfx_draw_input_layout(const InterfaceInputElement_t *layout, int8_t touched_button_idx)
+static void gui_gfx_draw_input_layout(InterfaceInputElement_t *layout, int8_t touched_button_idx)
 {
     static const Color565_t *color_bg_neutral = &color_grey_dark;
     static const Color565_t *color_bg_pressed = &color_black;
@@ -88,6 +88,7 @@ void gui_gfx_loop(void)
     static const uint8_t status_col7_x = 144;
     static const uint8_t status_col8_x = 166;
 
+    static InterfaceInputElement_t *prev_layout = NULL;
     static int8_t last_touched_button_idx = -5;
     static ClientState_t last_client_state = -1;
     static struct tm last_datetime = {0};
@@ -148,12 +149,18 @@ void gui_gfx_loop(void)
         gfx_unselect_window(status_bar);
     }
 
-    if (gui_get_touched_button_idx() != last_touched_button_idx)
+    int8_t button_idx = gui_get_touched_button_idx();
+    InterfaceInputElement_t *layout = gui_get_current_input_layout();
+
+    if (button_idx != last_touched_button_idx
+        || layout != prev_layout)
     {
-        last_touched_button_idx = gui_get_touched_button_idx();
         gfx_select_window(input_window, true);
         gfx_fill_screen(color_cyan);
-        gui_gfx_draw_input_layout(gui_get_current_input_layout(), last_touched_button_idx);
+        gui_gfx_draw_input_layout(layout, button_idx);
         gfx_unselect_window(input_window);
     }
+
+    last_touched_button_idx = button_idx;
+    prev_layout = layout;
 }
