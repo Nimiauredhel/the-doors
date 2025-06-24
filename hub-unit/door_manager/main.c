@@ -251,10 +251,10 @@ static void poll_slave_event_queue(void)
         if (bytes_read <= 0 || queue_length <= 0) continue;
     //		printf("Reported %u new events in slave queue! Reading...\n", queue_length);
 
-        for (int i = 0; i < queue_length; i++)
+        for (int j = 0; j < queue_length; j++)
         {
             bzero(rx_buff, sizeof(rx_buff));
-            i2c_master_read(I2C_REG_EVENT_HEAD | (i << 1), sizeof(DoorPacket_t));
+            i2c_master_read(I2C_REG_EVENT_HEAD | (j << 1), sizeof(DoorPacket_t));
 
             memcpy(&packet_buff, rx_buff, sizeof(DoorPacket_t));
 
