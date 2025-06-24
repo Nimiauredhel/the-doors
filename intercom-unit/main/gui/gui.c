@@ -60,7 +60,6 @@ static int8_t gui_check_button_touch(const InterfaceInputElement_t *layout, cons
                 if (i != prev_result)
                 {
                     prev_result = i;
-                    audio_sfx_touch_down();
                 }
 
                 return i;
@@ -71,7 +70,6 @@ static int8_t gui_check_button_touch(const InterfaceInputElement_t *layout, cons
     if (prev_result >= 0)
     {
         prev_result = -1;
-        audio_sfx_touch_up();
     }
 
     return -1;
@@ -108,6 +106,7 @@ static void gui_loop(void)
 
             if (touched_button_idx != prev_touched_button_idx)
             {
+                audio_sfx_touch_up();
                 gui_handle_button_touch(layout);
             }
         }
@@ -120,6 +119,10 @@ static void gui_loop(void)
     {
         prev_touched_button_idx = touched_button_idx;
         touched_button_idx = touched_button_result;
+        if (touched_button_idx >= 0 && touched_button_idx != prev_touched_button_idx)
+        {
+            audio_sfx_touch_down();
+        }
         touch_release_counter = 0;
     }
 
