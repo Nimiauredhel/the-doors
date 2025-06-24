@@ -268,6 +268,9 @@ static void poll_slave_event_queue(void)
                     packet_decode_seconds(packet_buff.header.time));
                     */
 
+	    // setting the source id field to the door manager's index
+	    packet_buff.body.Request.source_id = i;
+
             switch(packet_buff.header.category)
             {
             case PACKET_CAT_REPORT:
