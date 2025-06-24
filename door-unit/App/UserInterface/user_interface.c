@@ -113,8 +113,8 @@ static char touch_interpret()
 {
 	if (keypad_idx >= 0 && touched && touch_state.current_y >= keypad_window->y)
 	{
-		uint8_t buttons_count = keypads[keypad_idx]->button_count;
-        InterfaceButton_t const *buttons = keypads[keypad_idx]->buttons;
+		uint8_t buttons_count = input_layouts[keypad_idx]->button_count;
+        InterfaceButton_t const *buttons = input_layouts[keypad_idx]->buttons;
 		uint16_t rel_x = touch_state.current_x - keypad_window->x;
 		uint16_t rel_y = touch_state.current_y - keypad_window->y;
 
@@ -403,7 +403,6 @@ static void phase_push(InterfacePhase_t new_phase)
 
 static void input_evaluate(int8_t input_len)
 {
-
 	if (input_len <= 0)
 	{
 		phase_reset();
@@ -515,6 +514,7 @@ static void input_evaluate(int8_t input_len)
 	case IPHASE_ADMIN_SETNAME:
 		persistence_save_name(input_string);
 		auth_reset_auth();
+		comms_send_info();
 		break;
 	case IPHASE_OPEN:
 	case IPHASE_CLOSE:

@@ -33,6 +33,7 @@ extern volatile uint32_t i2c_addr;
 extern volatile uint32_t new_i2c_addr;
 
 
+void i2c_send_data(DoorDataType_t data_type, const uint8_t *src, uint16_t len);
 void i2c_io_init(void);
 void i2c_io_apply_new_addr(void);
 uint16_t i2c_io_get_device_id(void);

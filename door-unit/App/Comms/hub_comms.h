@@ -47,5 +47,6 @@ void comms_loop(void);
 void comms_enqueue_command(DoorPacket_t *cmd_ptr);
 void comms_report_internal(CommsEventType_t action, I2CRegisterDefinition_t subject);
 void comms_toggle_debug(void);
+void comms_send_info(void);
 
 #endif /* HUB_COMMS_H_ */

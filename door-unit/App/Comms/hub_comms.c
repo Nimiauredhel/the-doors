@@ -174,6 +174,7 @@ void comms_init(void)
 	//randomize_i2c_address();
 	i2c_io_init();
 	serial_print_line("Initialized I2C listening to hub unit.", 0);
+	comms_send_info();
 }
 
 void comms_loop(void)
@@ -223,4 +224,20 @@ void comms_report_internal(CommsEventType_t action, I2CRegisterDefinition_t subj
 void comms_toggle_debug(void)
 {
 	comms_debug_enabled = !comms_debug_enabled;
+}
+
+void comms_send_info(void)
+{
+	uint8_t door_info[sizeof(DoorPacket_t) + sizeof (DoorInfo_t)] = {0};
+
+	((DoorPacket_t*)&door_info)->header.category = PACKET_CAT_DATA;
+	((DoorPacket_t*)&door_info)->body.Data.data_type = PACKET_DATA_DOOR_INFO;
+	((DoorPacket_t*)&door_info)->body.Data.source_id = i2c_io_get_device_id();
+	((DoorPacket_t*)&door_info)->body.Data.data_length = sizeof(DoorInfo_t);
+
+	((DoorInfo_t *)door_info+sizeof(DoorPacket_t))->active = true;
+	persistence_get_name(((DoorInfo_t *)door_info+sizeof(DoorPacket_t))->name);
+	((DoorInfo_t *)door_info+sizeof(DoorPacket_t))->index = ((DoorPacket_t *)door_info)->body.Data.source_id;
+
+	i2c_send_data(PACKET_DATA_DOOR_INFO, door_info, sizeof(door_info));
 }

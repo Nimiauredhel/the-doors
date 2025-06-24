@@ -178,8 +178,8 @@ static uint8_t display_draw_keys(void)
 
     if (keypad_idx >= 0)
     {
-        uint8_t button_count = keypads[keypad_idx]->button_count;
-        InterfaceButton_t const *buttons = keypads[keypad_idx]->buttons;
+        uint8_t button_count = input_layouts[keypad_idx]->button_count;
+        InterfaceButton_t const *buttons = input_layouts[keypad_idx]->buttons;
 
         for (int8_t i = 0; i < button_count; i++)
         {

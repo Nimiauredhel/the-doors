@@ -84,4 +84,4 @@ const InterfaceButton_t keyboard_buttons[40] =
 const InterfaceInputElement_t keypad = { 12, keypad_buttons };
 const InterfaceInputElement_t keyboard = { 40, keyboard_buttons };
 
-const InterfaceInputElement_t* keypads[2] = { &keypad, &keyboard };
+const InterfaceInputElement_t* input_layouts[2] = { &keypad, &keyboard };

@@ -9,11 +9,12 @@
 #define PACKET_DEFS_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // max size of data segment containing: door info, client info
-#define DOOR_DATA_BYTES_SMALL 32
+#define DOOR_DATA_BYTES_SMALL (32)
 // max size of data segment containing: image
-#define DOOR_DATA_BYTES_LARGE 160
+#define DOOR_DATA_BYTES_LARGE (76800)
 
 typedef enum DoorPacketCategory
 {
