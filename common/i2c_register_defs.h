@@ -8,10 +8,10 @@
 #ifndef I2C_REGISTER_DEFS_H_
 #define I2C_REGISTER_DEFS_H_
 
-#define I2C_REGISTER_DEF_COUNT 16
+#define I2C_REGISTER_DEF_COUNT (16)
 
-#define I2C_MIN_ADDRESS 16
-#define I2C_MAX_ADDRESS 116
+#define I2C_MIN_ADDRESS (16)
+#define I2C_MAX_ADDRESS (116)
 
 typedef enum I2CRegisterDefinition
 {

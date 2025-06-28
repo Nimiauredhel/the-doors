@@ -2,13 +2,13 @@ sudo systemctl stop doors_hub
 sudo mkdir /usr/bin/doors_hub
 
 cd hub_control
-make
+make strict
 
 cd ../door_manager
-make
+make strict
 
 cd ../intercom_server
-make
+make strict
 
 cd ..
 
