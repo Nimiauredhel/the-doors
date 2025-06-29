@@ -1,5 +1,6 @@
 [Unit]
 Description=DOORS Daemon
+After=syslog.service dbus-org.freedesktop.timesync1.service dbus-org.freedesktop.network1.service
 
 [Service]
 Type=forking

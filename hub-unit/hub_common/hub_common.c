@@ -24,7 +24,7 @@ void initialize_signal_handler(void)
 {
     syslog_append("Initializing signal handler");
 
-    struct sigaction new_sigaction;
+    struct sigaction new_sigaction = {0};
     new_sigaction.sa_handler = signal_handler;
 
     sigaction(SIGHUP, &new_sigaction, NULL);
@@ -45,6 +45,7 @@ void initialize_random_seed(void)
  */
 void signal_handler(int signum)
 {
+    // TODO: use global bool to request processes to terminate gracefully
     switch (signum)
     {
         case SIGHUP:

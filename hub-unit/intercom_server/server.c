@@ -133,16 +133,17 @@ static void forward_door_to_client_request(DoorPacket_t *request)
 
 static void ipc_loop(void)
 {
-    char log_buff[128] = {0};
-    DoorPacket_t packet_buff = {0};
+    static char log_buff[128] = {0};
+    static DoorPacket_t packet_buff = {0};
 
     sem_wait(doors_to_clients_sem);
 
     if (doors_to_clients_ptr->state == SHMSTATE_DIRTY)
     {
-	// TODO: add details (request, src, dest)
-	sprintf(log_buff, "Forwarding request from door to client.");
-	syslog_append(log_buff);
+        // TODO: add details (request, src, dest)
+        sprintf(log_buff, "Forwarding request from door to client.");
+        syslog_append(log_buff);
+        bzero(&packet_buff, sizeof(packet_buff));
         memcpy(&packet_buff, &doors_to_clients_ptr->content, sizeof(DoorPacket_t));
         doors_to_clients_ptr->state = SHMSTATE_CLEAN;
         sem_post(doors_to_clients_sem);
@@ -151,22 +152,30 @@ static void ipc_loop(void)
     else
     {
         sem_post(doors_to_clients_sem);
+        sleep(1);
     }
 
     if (hub_queue_dequeue(clients_to_doors_queue, &packet_buff) >= 0)
     {
         bool sent = false;
 
+        sprintf(log_buff, "Forwarding request from client to door.");
+        syslog_append(log_buff);
+
         while(!sent)
         {
             sem_wait(clients_to_doors_sem);
+
             if (clients_to_doors_ptr->state == SHMSTATE_CLEAN)
             {
+                bzero(&packet_buff, sizeof(packet_buff));
                 memcpy(&clients_to_doors_ptr->content, &packet_buff, sizeof(DoorPacket_t));
                 clients_to_doors_ptr->state = SHMSTATE_DIRTY;
                 sent = true;
             }
+
             sem_post(clients_to_doors_sem);
+            sleep(1);
         }
     }
 }
@@ -555,7 +564,9 @@ void server_start(void)
 {
     server_init();
     pthread_create(&listen_thread_handle, NULL, listen_task, NULL);
-    pthread_create(&ipc_thread_handle, NULL, ipc_task, NULL);
+    // not creating a second thread since main thread is doing nothing
+    //pthread_create(&ipc_thread_handle, NULL, ipc_task, NULL);
+    ipc_task(NULL);
 
     for(;;);
 }
