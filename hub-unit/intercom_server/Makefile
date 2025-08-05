@@ -11,17 +11,17 @@ STRICT_FLAGS= $(DEFAULT_FLAGS) -Wall -pedantic -Wextra
 DEBUG_FLAGS= $(STRICT_FLAGS) -g -o0
 
 default:
-	mkdir $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 	gcc $(SOURCE) $(DEFAULT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make setcap
                                      
 strict:                              
-	mkdir $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make setcap
                     
 debug:              
-	mkdir $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 	gcc $(SOURCE) $(DEBUG_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	make setcap
 
