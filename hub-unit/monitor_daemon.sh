@@ -1,1 +1,1 @@
-journalctl -f | grep "Hub"
+journalctl -f | grep "DOORS"

@@ -7,12 +7,12 @@ static pthread_t ipc_thread;
 
 int main(void)
 {
-    char buff[64] = {0};
+    char log_buff[128] = {0};
 
-    syslog_init("Hub Door Manager");
+    syslog_init("DOORS Door Manager");
+    snprintf(log_buff, sizeof(log_buff), "Starting Door Manager, PID %u", getpid());
+    syslog_append(log_buff);
     initialize_signal_handler();
-    sprintf(buff, "Starting Door Manager, PID %u", getpid());
-    syslog_append(buff);
     common_init();
     ipc_init();
     i2c_init();

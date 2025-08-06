@@ -96,29 +96,30 @@ static void ipc_init(void)
 
 static void launch_process(uint8_t index)
 {
-    char buff[128] = {0};
+    char log_buff[128] = {0};
     pid_t pid = fork();
 
     if (pid < 0)
     {
-        syslog_append("Failed to fork");
         perror("Failed to fork");
+        syslog_append("Failed to fork");
         exit(EXIT_FAILURE);
     }
 
     if (pid == 0)
     {
         int exec_ret = execl(processes[index].exe_name, processes[index].exe_name, NULL);
-        sprintf(buff, "Failed to execute process: %s", strerror(exec_ret));
-        syslog_append(buff);
+
         perror("Failed to execute process");
+        snprintf(log_buff, sizeof(log_buff), "Failed to execute process: %s", strerror(exec_ret));
+        syslog_append(log_buff);
         exit(EXIT_FAILURE);
     }
     else
     {
         processes[index].pid = pid;
-        sprintf(buff, "Successfully launched program %s with PID %d.", processes[index].exe_name, processes[index].pid);
-        syslog_append(buff);
+        snprintf(log_buff, sizeof(log_buff), "Successfully launched program %s with PID %d.", processes[index].exe_name, processes[index].pid);
+        syslog_append(log_buff);
     }
 }
 
@@ -127,7 +128,7 @@ static void control_loop(void)
     static const uint16_t delay_secs = 15;
     static uint64_t runtime_secs = 0;
     
-    char syslog_buff[128] = {0};
+    char log_buff[128] = {0};
     int status;
     int ret;
 
@@ -136,8 +137,8 @@ static void control_loop(void)
         sleep(delay_secs);
         runtime_secs += delay_secs;
 
-        snprintf(syslog_buff, 128, "Still alive, runtime: %lu seconds", runtime_secs);
-        syslog_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Still alive, runtime: %lu seconds", runtime_secs);
+        syslog_append(log_buff);
 
         for (int i = 0; i < NUM_PROCESSES; i++)
         {
@@ -145,14 +146,14 @@ static void control_loop(void)
 
             if (ret != 0)
             {
-                snprintf(syslog_buff, 128, "Program %s (PID %d) stopped with signal %d - relaunching.", processes[i].exe_name, processes[i].pid, WSTOPSIG(status));
-                syslog_append(syslog_buff);
+                snprintf(log_buff, sizeof(log_buff), "Program %s (PID %d) stopped with signal %d - relaunching.", processes[i].exe_name, processes[i].pid, WSTOPSIG(status));
+                syslog_append(log_buff);
                 launch_process(i);
             }
             else
             {
-                snprintf(syslog_buff, 128, "Program %s (PID %d) still running.", processes[i].exe_name, processes[i].pid);
-                syslog_append(syslog_buff);
+                snprintf(log_buff, sizeof(log_buff), "Program %s (PID %d) still running.", processes[i].exe_name, processes[i].pid);
+                syslog_append(log_buff);
             }
         }
     }
@@ -160,7 +161,7 @@ static void control_loop(void)
 
 int main(void)
 {
-    syslog_init("Hub Control");
+    syslog_init("DOORS Hub Control");
     initialize_signal_handler();
 
     // daemonize

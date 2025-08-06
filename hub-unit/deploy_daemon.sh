@@ -1,6 +1,4 @@
-sudo systemctl stop doors_hub
-
-sh rebuild_modules.sh
+sudo cp doors_hub.service /etc/systemd/system/doors_hub.service
 
 sudo systemctl daemon-reload
 sudo systemctl start doors_hub
