@@ -8,13 +8,20 @@ typedef struct HubProcess
     char *exe_name;
 } HubProcess_t;
 
+static const struct mq_attr hub_mq_attributes =
+{
+    .mq_flags = 0,
+    .mq_maxmsg = MQ_MSG_COUNT_MAX,
+    .mq_msgsize = MQ_MSG_SIZE_MAX,
+    .mq_curmsgs = 0,
+};
+
 static HubProcess_t processes[] =
 {
     {-1, "/usr/bin/doors_hub/door_manager"},
     {-1, "/usr/bin/doors_hub/intercom_server"},
  //   {-1, "/usr/bin/doors_hub/db_service"},
 };
-
 
 static void daemon_init(void)
 {
@@ -34,64 +41,43 @@ static void daemon_init(void)
 
 static void ipc_init(void)
 {
-    int ret;
-    int sem_val;
-    sem_t *sem_ptr;
-    HubShmLayout_t *shm_ptr;
+    mqd_t mq_handle;
 
-    ret = shmget(CLIENTS_TO_DOORS_SHM_KEY, SHM_PACKET_TOTAL_SIZE, IPC_CREAT | 0666);
+    mq_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
 
-    if (ret < 0)
+    if (mq_handle < 0)
     {
-        perror("Failed to get shm with key 324");
-        syslog_append("Failed to get shm with key 324");
-        exit(EXIT_FAILURE);
+        if (errno == EEXIST)
+        {
+            syslog_append("Queue 'doors to clients' already exists.");
+        }
+        else
+        {
+            perror("Failed to open or create 'doors to clients' queue");
+            syslog_append("Failed to open or create 'doors to clients' queue");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    shm_ptr = shmat(ret, NULL, 0);
-    bzero(shm_ptr, sizeof(HubShmLayout_t));
-    shm_ptr->state = SHMSTATE_CLEAN;
-    shmdt(shm_ptr);
+    mq_close(mq_handle);
 
-    ret = shmget(DOORS_TO_CLIENTS_SHM_KEY, SHM_PACKET_TOTAL_SIZE, IPC_CREAT | 0666);
+    mq_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
 
-    if (ret < 0)
+    if (mq_handle < 0)
     {
-        perror("Failed to get shm with key 423");
-        syslog_append("Failed to get shm with key 423");
-        exit(EXIT_FAILURE);
+        if (errno == EEXIST)
+        {
+            syslog_append("Queue 'clients to doors' already exists.");
+        }
+        else
+        {
+            perror("Failed to open or create 'clients to doors' queue");
+            syslog_append("Failed to open or create 'clients to doors' queue");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    shm_ptr = shmat(ret, NULL, 0);
-    bzero(shm_ptr, sizeof(HubShmLayout_t));
-    shm_ptr->state = SHMSTATE_CLEAN;
-    shmdt(shm_ptr);
-
-    sem_ptr = sem_open(CLIENTS_TO_DOORS_SHM_SEM, O_CREAT, 0600, 0);
-
-    if (sem_ptr == SEM_FAILED)
-    {
-        perror("Failed to open sem for shm 324");
-        syslog_append("Failed to open sem for shm 324");
-        exit(EXIT_FAILURE);
-    }
-
-    sem_getvalue(sem_ptr, &sem_val);
-    if (sem_val == 0) sem_post(sem_ptr);
-    sem_close(sem_ptr);
-
-    sem_ptr = sem_open(DOORS_TO_CLIENTS_SHM_SEM, O_CREAT, 0600, 0);
-
-    if (sem_ptr == SEM_FAILED)
-    {
-        perror("Failed to open sem for shm 423");
-        syslog_append("Failed to open sem for shm 423");
-        exit(EXIT_FAILURE);
-    }
-
-    sem_getvalue(sem_ptr, &sem_val);
-    if (sem_val == 0) sem_post(sem_ptr);
-    sem_close(sem_ptr);
+    mq_close(mq_handle);
 }
 
 static void launch_process(uint8_t index)

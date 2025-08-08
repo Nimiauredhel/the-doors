@@ -12,12 +12,8 @@ static pthread_t ipc_thread_handle;
 static pthread_mutex_t slots_mutex;
 static ClientData_t client_slots[CLIENT_SLOTS];
 
-static int clients_to_doors_shmid = -1; 
-static HubShmLayout_t *clients_to_doors_ptr = NULL; 
-static sem_t *clients_to_doors_sem = NULL; 
-static int doors_to_clients_shmid = -1; 
-static HubShmLayout_t *doors_to_clients_ptr = NULL; 
-static sem_t *doors_to_clients_sem = NULL; 
+static mqd_t ipc_inbox_handle;
+static mqd_t ipc_outbox_handle;
 
 static HubQueue_t *clients_to_doors_queue = NULL;
 
@@ -25,68 +21,27 @@ static void ipc_init(void)
 {
     syslog_append("Initializing IPC");
 
-    clients_to_doors_shmid = shmget(CLIENTS_TO_DOORS_SHM_KEY, SHM_PACKET_TOTAL_SIZE, IPC_CREAT | 0666);
+    ipc_outbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_WRONLY);
 
-    if (clients_to_doors_shmid < 0)
+    if (ipc_outbox_handle < 0)
     {
-        perror("Failed to get shm with key 324");
-        syslog_append("Failed to get shm with key 324");
+        perror("Failed to open outbox queue");
+        syslog_append("Failed to open outbox queue");
         exit(EXIT_FAILURE);
     }
 
-    doors_to_clients_shmid = shmget(DOORS_TO_CLIENTS_SHM_KEY, SHM_PACKET_TOTAL_SIZE, IPC_CREAT | 0666);
+    syslog_append("Opened outbox queue");
 
-    if (doors_to_clients_shmid < 0)
+    ipc_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_RDONLY);
+
+    if (ipc_outbox_handle < 0)
     {
-        perror("Failed to get shm with key 423");
-        syslog_append("Failed to get shm with key 423");
+        perror("Failed to open inbox queue");
+        syslog_append("Failed to open inbox queue");
         exit(EXIT_FAILURE);
     }
 
-    clients_to_doors_sem = sem_open(CLIENTS_TO_DOORS_SHM_SEM, O_CREAT, 0600, 0);
-
-    if (clients_to_doors_sem == SEM_FAILED)
-    {
-        perror("Failed to open sem for shm 324");
-        syslog_append("Failed to open sem for shm 324");
-        exit(EXIT_FAILURE);
-    }
-
-    doors_to_clients_sem = sem_open(DOORS_TO_CLIENTS_SHM_SEM, O_CREAT, 0600, 0);
-
-    if (doors_to_clients_sem == SEM_FAILED)
-    {
-        perror("Failed to open sem for shm 423");
-        syslog_append("Failed to open sem for shm 423");
-        exit(EXIT_FAILURE);
-    }
-
-    clients_to_doors_ptr = (HubShmLayout_t *)shmat(clients_to_doors_shmid, NULL, 0);
-
-    if (clients_to_doors_ptr == NULL)
-    {
-        perror("Failed to acquire pointer for shm 324");
-        syslog_append("Failed to acquire pointer for shm 324");
-        exit(EXIT_FAILURE);
-    }
-
-    doors_to_clients_ptr = (HubShmLayout_t *)shmat(doors_to_clients_shmid, NULL, 0);
-
-    if (doors_to_clients_ptr == NULL)
-    {
-        perror("Failed to acquire pointer for shm 423");
-        syslog_append("Failed to acquire pointer for shm 423");
-        exit(EXIT_FAILURE);
-    }
-
-    clients_to_doors_queue = hub_queue_create(128);
-
-    if (clients_to_doors_queue == NULL)
-    {
-        perror("Failed to create Clients to Doors Queue");
-        syslog_append("Failed to create Clients to Doors Queue");
-        exit(EXIT_FAILURE);
-    }
+    syslog_append("Opened inbox queue");
 
     syslog_append("IPC Initialization Complete");
 }
@@ -134,51 +89,34 @@ static void forward_door_to_client_request(DoorPacket_t *request)
 
 static void ipc_loop(void)
 {
+    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
+    static ssize_t bytes_transmitted = 0;
     static char log_buff[128] = {0};
-    static DoorPacket_t packet_buff = {0};
 
-    sem_wait(doors_to_clients_sem);
+    bytes_transmitted = mq_receive(ipc_inbox_handle, msg_buff, sizeof(msg_buff), NULL);
 
-    if (doors_to_clients_ptr->state == SHMSTATE_DIRTY)
+    if (bytes_transmitted <= 0)
     {
-        // TODO: add details (request, src, dest)
-        snprintf(log_buff, sizeof(log_buff), "Forwarding request from door to client.");
+        snprintf(log_buff, sizeof(log_buff), "Failed to receive from inbox: %s", strerror(errno));
         syslog_append(log_buff);
-
-        bzero(&packet_buff, sizeof(packet_buff));
-        memcpy(&packet_buff, &doors_to_clients_ptr->content, sizeof(DoorPacket_t));
-
-        doors_to_clients_ptr->state = SHMSTATE_CLEAN;
-        sem_post(doors_to_clients_sem);
-
-        forward_door_to_client_request(&packet_buff);
     }
     else
     {
-        sem_post(doors_to_clients_sem);
-        sleep(1);
+        forward_door_to_client_request((DoorPacket_t *)&msg_buff);
     }
 
-    if (hub_queue_dequeue(clients_to_doors_queue, &packet_buff) >= 0)
+    if (hub_queue_dequeue(clients_to_doors_queue, (DoorPacket_t *)&msg_buff) >= 0)
     {
-        bool sent = false;
+        syslog_append("Forwarding from internal queue to outbox.");
 
-        snprintf(log_buff, sizeof(log_buff), "Forwarding request from client to door.");
-        syslog_append(log_buff);
-
-        while(!sent)
+        for(;;)
         {
-            sem_wait(clients_to_doors_sem);
+            bytes_transmitted = mq_send(ipc_outbox_handle, msg_buff, sizeof(msg_buff), 0);
 
-            if (clients_to_doors_ptr->state == SHMSTATE_CLEAN)
-            {
-                bzero(&packet_buff, sizeof(packet_buff));
-                memcpy(&clients_to_doors_ptr->content, &packet_buff, sizeof(DoorPacket_t));
-                clients_to_doors_ptr->state = SHMSTATE_DIRTY;
-                sent = true;
-            }
+            if (bytes_transmitted >= 0) break;
 
-            sem_post(clients_to_doors_sem);
+            snprintf(log_buff, sizeof(log_buff), "Failed forwarding to outbox: %s", strerror(errno));
+            syslog_append(log_buff);
             sleep(1);
         }
     }
@@ -358,18 +296,23 @@ static void connection_check_outbox(ClientData_t *data)
 
 static void forward_client_to_door_request(DoorPacket_t *request)
 {
-    bool sent = false;
+    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
+    static ssize_t bytes_transmitted = 0;
+    static char log_buff[128] = {0};
 
-    while(!sent)
+    syslog_append("Forwarding from internal queue to outbox.");
+
+    memcpy(msg_buff, request, sizeof(*request));
+
+    for(;;)
     {
-        sem_wait(clients_to_doors_sem);
-        if (clients_to_doors_ptr->state == SHMSTATE_CLEAN)
-        {
-            memcpy(&clients_to_doors_ptr->content, request, sizeof(DoorPacket_t));
-            clients_to_doors_ptr->state = SHMSTATE_DIRTY;
-            sent = true;
-        }
-        sem_post(clients_to_doors_sem);
+        bytes_transmitted = mq_send(ipc_outbox_handle, msg_buff, sizeof(msg_buff), 0);
+
+        if (bytes_transmitted >= 0) break;
+
+        snprintf(log_buff, sizeof(log_buff), "Failed forwarding to outbox: %s", strerror(errno));
+        syslog_append(log_buff);
+        sleep(1);
     }
 }
 
