@@ -21,7 +21,7 @@ static void ipc_init(void)
 {
     syslog_append("Initializing IPC");
 
-    ipc_outbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_WRONLY);
+    ipc_outbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_WRONLY);
 
     if (ipc_outbox_handle < 0)
     {
@@ -32,7 +32,7 @@ static void ipc_init(void)
 
     syslog_append("Opened outbox queue");
 
-    ipc_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_RDONLY);
+    ipc_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_RDONLY);
 
     if (ipc_outbox_handle < 0)
     {
