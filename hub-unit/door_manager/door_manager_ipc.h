@@ -6,8 +6,9 @@
 #include "door_manager_common.h"
 #include "door_manager_i2c.h"
 
-void ipc_terminate(void);
-void* ipc_task(void *arg);
+void* ipc_in_task(void *arg);
+void* ipc_out_task(void *arg);
 void ipc_init(void);
+void ipc_deinit(void);
 
 #endif

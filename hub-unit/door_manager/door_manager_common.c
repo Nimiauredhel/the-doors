@@ -6,7 +6,6 @@ static const char door_list_path[16] = "./door_list";
 static DoorInfo_t door_list[TARGET_ADDR_MAX_COUNT] = {0};
 
 HubQueue_t *doors_to_clients_queue;
-HubQueue_t *clients_to_doors_queue;
 
 static void load_door_list(void)
 {
@@ -49,31 +48,17 @@ void common_init(void)
         common_terminate(EXIT_FAILURE);
     }
 
-    clients_to_doors_queue = hub_queue_create(128);
-
-    if (clients_to_doors_queue == NULL)
-    {
-        perror("Failed to create Clients to Doors Queue");
-        syslog_append("Failed to create Clients to Doors Queue");
-        common_terminate(EXIT_FAILURE);
-    }
-
     syslog_append("Done initializing common resources.");
 }
 
 void common_terminate(int ret)
 {
-    ipc_terminate();
+    ipc_deinit();
     i2c_terminate();
 
     if (doors_to_clients_queue != NULL)
     {
         hub_queue_destroy(doors_to_clients_queue);
-    }
-
-    if (clients_to_doors_queue != NULL)
-    {
-        hub_queue_destroy(clients_to_doors_queue);
     }
 
     exit(ret);

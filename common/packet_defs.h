@@ -22,7 +22,7 @@ typedef enum DoorPacketCategory
 	PACKET_CAT_REPORT = 1,
 	PACKET_CAT_REQUEST = 2,
 	PACKET_CAT_DATA = 3,
-	PACKET_CAT_MAX = UINT32_MAX,
+	PACKET_CAT_MAX = INT32_MAX,
 } DoorPacketCategory_t;
 
 typedef enum DoorReport
@@ -43,7 +43,7 @@ typedef enum DoorReport
 	PACKET_REPORT_ADMIN_PASS_CORRECT = 13,
 	PACKET_REPORT_ADMIN_PASS_WRONG = 14,
 	PACKET_REPORT_PONG = 15,
-	PACKET_REPORT_MAX = UINT32_MAX,
+	PACKET_REPORT_MAX = INT32_MAX,
 } DoorReport_t;
 
 typedef enum DoorRequest
@@ -60,7 +60,7 @@ typedef enum DoorRequest
 	PACKET_REQUEST_PING = 15,
 	PACKET_REQUEST_RESET_UNIT = 16,
 	PACKET_REQUEST_FORCE_ADMIN = 16,
-	PACKET_REQUEST_MAX = UINT32_MAX,
+	PACKET_REQUEST_MAX = INT32_MAX,
 } DoorRequest_t;
 
 typedef enum DoorDataType
@@ -69,7 +69,7 @@ typedef enum DoorDataType
 	PACKET_DATA_DOOR_INFO = 1,
 	PACKET_DATA_CLIENT_INFO = 2,
 	PACKET_DATA_IMAGE = 3,
-	PACKET_DATA_MAX = UINT32_MAX,
+	PACKET_DATA_MAX = INT32_MAX,
 } DoorDataType_t;
 
 typedef enum DoorErrorType
@@ -77,7 +77,7 @@ typedef enum DoorErrorType
 	PACKET_ERROR_NONE = 0,
 	PACKET_ERROR_WRONG_REGISTER = 1,
 	PACKET_ERROR_INVALID_PACKET = 2,
-	PACKET_ERROR_MAX = UINT32_MAX,
+	PACKET_ERROR_MAX = INT32_MAX,
 } DoorErrorType_t;
 
 #pragma pack(push, 4)

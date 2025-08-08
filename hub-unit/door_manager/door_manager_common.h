@@ -13,7 +13,6 @@
 #define TARGET_ADDR_MAX_COUNT (I2C_MAX_ADDRESS - I2C_MIN_ADDRESS)
 
 extern HubQueue_t *doors_to_clients_queue;
-extern HubQueue_t *clients_to_doors_queue;
 
 void common_init(void);
 void common_terminate(int ret);
