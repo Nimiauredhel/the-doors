@@ -44,6 +44,10 @@ static void ipc_out_loop(void)
             sleep(1);
         }
     }
+    else
+    {
+        sleep(1);
+    }
 }
 
 void* ipc_in_task(void *arg)

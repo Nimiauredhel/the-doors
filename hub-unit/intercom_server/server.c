@@ -128,6 +128,10 @@ static void ipc_out_loop(void)
             sleep(1);
         }
     }
+    else
+    {
+        sleep(1);
+    }
 }
 
 static void init_server_socket(void)
