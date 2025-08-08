@@ -447,6 +447,7 @@ void *connection_task(void *arg)
 
 static void server_init(void)
 {
+    clients_to_doors_queue = hub_queue_create(128);
     ipc_init();
     init_server_socket();
     init_client_slots();
