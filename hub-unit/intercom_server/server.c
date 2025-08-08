@@ -7,7 +7,7 @@ static uint8_t client_count = 0;
 static int8_t next_slot_idx = 0;
 
 static pthread_t listen_thread_handle;
-static pthread_t ipc_thread_handle;
+static pthread_t ipc_out_thread_handle;
 
 static pthread_mutex_t slots_mutex;
 static ClientData_t client_slots[CLIENT_SLOTS];
@@ -87,7 +87,7 @@ static void forward_door_to_client_request(DoorPacket_t *request)
     pthread_mutex_unlock(&slots_mutex);
 }
 
-static void ipc_loop(void)
+static void ipc_in_loop(void)
 {
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
@@ -99,11 +99,19 @@ static void ipc_loop(void)
     {
         snprintf(log_buff, sizeof(log_buff), "Failed to receive from inbox: %s", strerror(errno));
         syslog_append(log_buff);
+        sleep(1);
     }
     else
     {
         forward_door_to_client_request((DoorPacket_t *)&msg_buff);
     }
+}
+
+static void ipc_out_loop(void)
+{
+    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
+    static ssize_t bytes_transmitted = 0;
+    static char log_buff[128] = {0};
 
     if (hub_queue_dequeue(clients_to_doors_queue, (DoorPacket_t *)&msg_buff) >= 0)
     {
@@ -530,11 +538,20 @@ void* listen_task(void *arg)
     return NULL;
 }
 
-void* ipc_task(void *arg)
+void* ipc_in_task(void *arg)
 {
     for(;;)
     {
-        ipc_loop();
+        ipc_in_loop();
+    }
+    return NULL;
+}
+
+void* ipc_out_task(void *arg)
+{
+    for(;;)
+    {
+        ipc_out_loop();
     }
     return NULL;
 }
@@ -542,10 +559,12 @@ void* ipc_task(void *arg)
 void server_start(void)
 {
     server_init();
+
     pthread_create(&listen_thread_handle, NULL, listen_task, NULL);
-    // not creating a second thread since main thread is doing nothing
-    //pthread_create(&ipc_thread_handle, NULL, ipc_task, NULL);
-    ipc_task(NULL);
+    pthread_create(&ipc_out_thread_handle, NULL, ipc_out_task, NULL);
+
+    // not creating a new thread since main thread is doing nothing
+    ipc_in_task(NULL);
 
     for(;;);
 }

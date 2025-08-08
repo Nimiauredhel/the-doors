@@ -3,7 +3,7 @@
 static mqd_t ipc_inbox_handle;
 static mqd_t ipc_outbox_handle;
 
-static void ipc_loop(void)
+static void ipc_in_loop(void)
 {
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
@@ -15,11 +15,19 @@ static void ipc_loop(void)
     {
         snprintf(log_buff, sizeof(log_buff), "Failed to receive from inbox: %s", strerror(errno));
         syslog_append(log_buff);
+        sleep(1);
     }
     else
     {
         i2c_forward_request((DoorPacket_t *)msg_buff);
     }
+}
+
+static void ipc_out_loop(void)
+{
+    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
+    static ssize_t bytes_transmitted = 0;
+    static char log_buff[128] = {0};
 
     if (hub_queue_dequeue(doors_to_clients_queue, (DoorPacket_t *)&msg_buff) >= 0)
     {
@@ -38,15 +46,15 @@ static void ipc_loop(void)
     }
 }
 
-void ipc_terminate(void)
+void* ipc_in_task(void *arg)
 {
-    mq_close(ipc_inbox_handle);
-    mq_close(ipc_outbox_handle);
+    for(;;) ipc_in_loop();
+    return NULL;
 }
 
-void* ipc_task(void *arg)
+void* ipc_out_task(void *arg)
 {
-    for(;;) ipc_loop();
+    for(;;) ipc_out_loop();
     return NULL;
 }
 
@@ -78,4 +86,10 @@ void ipc_init(void)
 
     syslog_append("IPC Initialization Complete");
 
+}
+
+void ipc_deinit(void)
+{
+    mq_close(ipc_inbox_handle);
+    mq_close(ipc_outbox_handle);
 }
