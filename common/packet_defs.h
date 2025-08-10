@@ -12,7 +12,7 @@
 #include <stdbool.h>
 
 // max size of data segment containing: door info, client info
-#define DOOR_DATA_BYTES_SMALL (32)
+#define DOOR_DATA_BYTES_SMALL (sizeof(ClientInfo_t))
 // max size of data segment containing: image
 #define DOOR_DATA_BYTES_LARGE (76800)
 
@@ -124,16 +124,17 @@ typedef struct DoorPacket
 typedef struct DoorInfo
 {
     uint16_t index;
-    bool active;
+    uint8_t i2c_address;
     char name[32];
 } DoorInfo_t;
 
 typedef struct ClientInfo
 {
     uint16_t index;
-    bool active;
+    uint8_t mac_address[6];
     char name[32];
 } ClientInfo_t;
+
 #pragma pack(pop)
 
 #endif /* PACKET_DEFS_H_ */
