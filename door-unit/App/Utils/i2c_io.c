@@ -237,7 +237,7 @@ void i2c_send_data(DoorDataType_t data_type, const uint8_t *src, uint16_t len)
 	while(data_dirty) vTaskDelay(pdMS_TO_TICKS(100));
 	memcpy(register_definition_to_pointer(I2C_REG_DATA, 0), src, len);
 	data_dirty = true;
-	event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_DATA_READY, data_type, sizeof(DoorPacketBody_t) + sizeof(DoorInfo_t));
+	event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_DATA_READY, data_type, len);
 }
 
 void i2c_io_init(void)

@@ -11,6 +11,9 @@
 #define PRIORITY_COMMAND_QUEUE_CAPACITY 8
 #define COMMS_DEBUG_LOG_CAPACITY 32
 
+#define COMMS_LOOP_DELAY_MS (50)
+#define COMMS_SEND_INFO_INTERVAL_MS (5000)
+
 #define TAKE_COMMAND_QUEUE_MUTEX \
 	if (is_isr()) xSemaphoreTakeFromISR(command_queues_lock, 0); \
 	else xSemaphoreTake(command_queues_lock, portMAX_DELAY)
@@ -179,9 +182,19 @@ void comms_init(void)
 
 void comms_loop(void)
 {
-	vTaskDelay(pdMS_TO_TICKS(50));
+	static uint16_t send_info_counter_ms = 0;
+
+	vTaskDelay(pdMS_TO_TICKS(COMMS_LOOP_DELAY_MS));
+	send_info_counter_ms += COMMS_LOOP_DELAY_MS;
+
 	comms_check_command_queue();
 	comms_debug_output();
+
+	if (send_info_counter_ms >= COMMS_SEND_INFO_INTERVAL_MS)
+	{
+		send_info_counter_ms = 0;
+		comms_send_info();
+	}
 }
 
 void comms_enqueue_command(DoorPacket_t *cmd_ptr)
@@ -228,15 +241,18 @@ void comms_toggle_debug(void)
 
 void comms_send_info(void)
 {
-	uint8_t door_info[sizeof(DoorPacket_t) + sizeof (DoorInfo_t)] = {0};
+	uint8_t packet_buff[sizeof(DoorPacket_t) + sizeof(DoorInfo_t)] = {0};
+	DoorPacket_t *packet_ptr = (DoorPacket_t *)packet_buff;
+	DoorInfo_t *info_ptr = (DoorInfo_t *)(packet_buff + sizeof(DoorPacket_t));
 
-	((DoorPacket_t*)&door_info)->header.category = PACKET_CAT_DATA;
-	((DoorPacket_t*)&door_info)->body.Data.data_type = PACKET_DATA_DOOR_INFO;
-	((DoorPacket_t*)&door_info)->body.Data.source_id = i2c_io_get_device_id();
-	((DoorPacket_t*)&door_info)->body.Data.data_length = sizeof(DoorInfo_t);
+	packet_ptr->header.category = PACKET_CAT_DATA;
+	packet_ptr->body.Data.data_type = PACKET_DATA_DOOR_INFO;
+	packet_ptr->body.Data.source_id = i2c_io_get_device_id();
+	packet_ptr->body.Data.data_length = sizeof(DoorInfo_t);
 
-	persistence_get_name(((DoorInfo_t *)door_info+sizeof(DoorPacket_t))->name);
-	((DoorInfo_t *)door_info+sizeof(DoorPacket_t))->index = ((DoorPacket_t *)door_info)->body.Data.source_id;
+	persistence_get_name(info_ptr->name);
+	info_ptr->index = 12;
+	info_ptr->i2c_address = persistence_get_i2c_addr() >> 1;
 
-	i2c_send_data(PACKET_DATA_DOOR_INFO, door_info, sizeof(door_info));
+	i2c_send_data(PACKET_DATA_DOOR_INFO, packet_buff, sizeof(packet_buff));
 }
