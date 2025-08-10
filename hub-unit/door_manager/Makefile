@@ -6,7 +6,7 @@ BUILD_DIR=../build/
 EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
 INC=-I../../common -I../hub_common
 LIBS=-lpthread -li2c -lrt
-DEFAULT_FLAGS=-std=c99
+DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
 STRICT_FLAGS=$(DEFAULT_FLAGS) -Wall -pedantic -Wextra
 DEBUG_FLAGS=$(STRICT_FLAGS) -g -o0
 

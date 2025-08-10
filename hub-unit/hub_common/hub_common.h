@@ -1,10 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -12,18 +8,24 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
 #include <syslog.h>
+
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
+
 #include <signal.h>
 #include <pthread.h>
+
 #include <mqueue.h>
+#include <semaphore.h>
 
 #include "../../common/packet_defs.h"
 #include "../../common/packet_utils.h"
@@ -34,6 +36,31 @@
 #define DOORS_TO_CLIENTS_QUEUE_NAME "/mq_doors_to_clients"
 #define MQ_MSG_SIZE_MAX (sizeof(DoorPacket_t) + DOOR_DATA_BYTES_SMALL)
 #define MQ_MSG_COUNT_MAX (10)
+
+#define DOOR_STATES_SHM_NAME "DOORS_DOOR_STATES_SHM"
+#define CLIENT_STATES_SHM_NAME "DOORS_CLIENT_STATES_SHM"
+
+#define DOOR_STATES_SEM_NAME "DOORS_DOOR_STATES_SEM"
+#define CLIENT_STATES_SEM_NAME "DOORS_CLIENT_STATES_SEM"
+
+#define HUB_MAX_DOOR_COUNT (32)
+#define HUB_MAX_CLIENT_COUNT (128)
+
+typedef struct HubDoorStates
+{
+    bool slot_used[HUB_MAX_CLIENT_COUNT];
+    time_t last_seen[HUB_MAX_DOOR_COUNT];
+    uint8_t i2c_addresses[HUB_MAX_DOOR_COUNT];
+    char name[HUB_MAX_DOOR_COUNT][UNIT_NAME_MAX_LEN];
+} HubDoorStates_t;
+
+typedef struct HubClientStates
+{
+    bool slot_used[HUB_MAX_CLIENT_COUNT];
+    time_t last_seen[HUB_MAX_CLIENT_COUNT];
+    uint8_t mac_addresses[HUB_MAX_CLIENT_COUNT][6];
+    char name[HUB_MAX_CLIENT_COUNT][UNIT_NAME_MAX_LEN];
+} HubClientStates_t;
 
 void syslog_init(char *self_label);
 void syslog_append(char *msg);

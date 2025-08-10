@@ -1,39 +1,6 @@
 #include "door_manager_common.h"
 
-static const char door_passes_path[16] = "./door_passes";
-static const char door_list_path[16] = "./door_list";
-
-static DoorInfo_t door_list[TARGET_ADDR_MAX_COUNT] = {0};
-
 HubQueue_t *doors_to_clients_queue;
-
-static void load_door_list(void)
-{
-    FILE *door_list_stream = fopen(door_list_path, "r");
-
-    if (door_list_stream == NULL)
-    {
-        door_list_stream = fopen(door_list_path, "w+");
-    }
-
-    // TODO: actually read file to data structure
-
-    fclose(door_list_stream);
-}
-
-static void load_door_passes(void)
-{
-    FILE *door_passes_stream = fopen(door_passes_path, "r");
-
-    if (door_passes_stream == NULL)
-    {
-        door_passes_stream = fopen(door_passes_path, "w+");
-    }
-
-    // TODO: actually read file to data structure
-
-    fclose(door_passes_stream);
-}
 
 void common_init(void)
 {

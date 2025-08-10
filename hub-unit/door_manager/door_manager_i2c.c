@@ -11,7 +11,8 @@ static uint8_t target_addr_list[TARGET_ADDR_MAX_COUNT] = {0};
 static uint8_t target_addr_last_count = 0;
 
 static uint8_t rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
-static DoorPacket_t *packet_ptr = (DoorPacket_t *)&rx_buff;
+static DoorPacket_t *rx_packet_ptr = (DoorPacket_t *)&rx_buff;
+static void *rx_data_ptr = rx_buff + sizeof(DoorPacket_t);
 
 static void i2c_set_target(uint8_t addr)
 {
@@ -40,18 +41,55 @@ static void read_data_from_door(uint16_t length)
 
 static void process_data_from_door(void)
 {
-    char debug_buff[32] = {0};
     char syslog_buff[128] = {0};
 
-    DoorDataType_t data_type = packet_ptr->body.Data.data_type;
-    void *data_ptr = packet_ptr + sizeof(DoorPacket_t);
+    DoorDataType_t data_type = rx_packet_ptr->body.Data.data_type;
+    DoorInfo_t *door_info_ptr = (DoorInfo_t *)rx_data_ptr;
 
     switch(data_type)
     {
     case PACKET_DATA_DOOR_INFO:
-        sprintf(syslog_buff, "Received door info, door name: %s.",  ((DoorInfo_t *)data_ptr)->name);
-        ((DoorInfo_t *)data_ptr)->index = packet_ptr->body.Data.source_id;
-        //hub_queue_enqueue(doors_to_clients_queue, packet_ptr);
+        snprintf(syslog_buff, sizeof(syslog_buff), "Received door info, name: %s, address: %u, index: %u.",  door_info_ptr->name, door_info_ptr->i2c_address, door_info_ptr->index);
+        syslog_append(syslog_buff);
+
+        if (door_info_ptr->index >= HUB_MAX_DOOR_COUNT)
+        {
+            sprintf(syslog_buff, "Received index out of bounds.");
+            syslog_append(syslog_buff);
+        }
+        else
+        {
+            HubDoorStates_t *door_states_ptr = ipc_acquire_door_states_ptr();
+
+            if (door_states_ptr->slot_used[door_info_ptr->index])
+            {
+                if (door_states_ptr->i2c_addresses[door_info_ptr->index] == door_info_ptr->i2c_address)
+                {
+                    sprintf(syslog_buff, "Received index & address match stored state, updating name & last seen.");
+                    syslog_append(syslog_buff);
+                }
+                else
+                {
+                    sprintf(syslog_buff, "Received index & address mismatch stored state, updating all.");
+                    syslog_append(syslog_buff);
+
+                    door_states_ptr->i2c_addresses[door_info_ptr->index] = door_info_ptr->i2c_address;
+                }
+            }
+            else
+            {
+                sprintf(syslog_buff, "Door index unused, storing all received data.");
+                syslog_append(syslog_buff);
+
+                door_states_ptr->slot_used[door_info_ptr->index] = true;
+                door_states_ptr->i2c_addresses[door_info_ptr->index] = door_info_ptr->i2c_address;
+            }
+
+            door_states_ptr->last_seen[door_info_ptr->index] = time(NULL);
+            strncpy(door_states_ptr->name[door_info_ptr->index], door_info_ptr->name, UNIT_NAME_MAX_LEN);
+
+            ipc_release_door_states_ptr();
+        }
 	break;
     case PACKET_DATA_NONE:
     case PACKET_DATA_CLIENT_INFO:
@@ -61,7 +99,6 @@ static void process_data_from_door(void)
         break;
     }
 
-    syslog_append(syslog_buff);
 }
 
 static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
@@ -84,93 +121,100 @@ static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uin
 
 static void process_report(void)
 {
-	uint16_t idx_temp;
 	char debug_buff[32] = {0};
 	char syslog_buff[128] = {0};
 
-    DoorReport_t report_type = packet_ptr->body.Report.report_id;
+    DoorReport_t report_type = rx_packet_ptr->body.Report.report_id;
 
     switch(report_type)
     {
     case PACKET_REPORT_NONE:
          sprintf(syslog_buff, "Door event NONE.");
+         syslog_append(syslog_buff);
          break;
     case PACKET_REPORT_DOOR_OPENED:
          sprintf(syslog_buff, "Door Opened");
+         syslog_append(syslog_buff);
          break;
     case PACKET_REPORT_DOOR_CLOSED:
          sprintf(syslog_buff, "Door Closed");
+         syslog_append(syslog_buff);
          break;
     case PACKET_REPORT_DOOR_BLOCKED:
-        sprintf(syslog_buff, "Door Blocked for %u seconds",
-        packet_ptr->body.Report.report_data_32);
+        sprintf(syslog_buff, "Door Blocked for %u seconds", rx_packet_ptr->body.Report.report_data_32);
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_PASS_CORRECT:
         bzero(debug_buff, sizeof(debug_buff));
-        door_pw_to_str(packet_ptr->body.Report.report_data_16, debug_buff);
+        door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
         sprintf(syslog_buff, "Correct Password Entered: %s.", debug_buff);
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_PASS_WRONG:
         bzero(debug_buff, sizeof(debug_buff));
-        door_pw_to_str(packet_ptr->body.Report.report_data_16, debug_buff);
+        door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
         sprintf(syslog_buff, "Wrong Password Entered: %s.", debug_buff);
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_PASS_CHANGED:
         bzero(debug_buff, sizeof(debug_buff));
-        door_pw_to_str(packet_ptr->body.Report.report_data_16, debug_buff);
+        door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
         debug_buff[4] = '-';
         debug_buff[5] = '>';
-        door_pw_to_str(packet_ptr->body.Report.report_data_32, debug_buff+6);
+        door_pw_to_str(rx_packet_ptr->body.Report.report_data_32, debug_buff+6);
         sprintf(syslog_buff, "Password Changed. %s", debug_buff);
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_QUERY_RESULT:
-        sprintf(syslog_buff, "Query Result [%u][%u]", packet_ptr->body.Report.report_data_16, packet_ptr->body.Report.report_data_32);
+        sprintf(syslog_buff, "Query Result [%u][%u]", rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_DATA_READY:
-        sprintf(syslog_buff, "Data Ready.");
-	idx_temp = packet_ptr->body.Report.source_id;
-	read_data_from_door(sizeof(DoorPacket_t) + packet_ptr->body.Data.data_length);
-	packet_ptr->body.Data.source_id = idx_temp;
-	process_data_from_door();
+        snprintf(syslog_buff, sizeof(syslog_buff), "Data Ready from source [%u], data size [%u].",
+                rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
+        syslog_append(syslog_buff);
+        read_data_from_door(rx_packet_ptr->body.Report.report_data_32);
+        process_data_from_door();
         break;
     case PACKET_REPORT_ERROR:
-        sprintf(syslog_buff, "Error Code [%u][%u]", packet_ptr->body.Report.report_data_16, packet_ptr->body.Report.report_data_32);
+        sprintf(syslog_buff, "Error Code [%u][%u]", rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_TIME_SET:
         sprintf(syslog_buff, "Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
-        packet_ptr->body.Report.report_data_16,
-        packet_ptr->body.Report.report_data_32,
-        packet_decode_day(packet_ptr->body.Report.report_data_16),
-        packet_decode_month(packet_ptr->body.Report.report_data_16),
-        packet_decode_year(packet_ptr->body.Report.report_data_16),
-        packet_decode_hour(packet_ptr->body.Report.report_data_32),
-        packet_decode_minutes(packet_ptr->body.Report.report_data_32),
-        packet_decode_seconds(packet_ptr->body.Report.report_data_32));
+        rx_packet_ptr->body.Report.report_data_16,
+        rx_packet_ptr->body.Report.report_data_32,
+        packet_decode_day(rx_packet_ptr->body.Report.report_data_16),
+        packet_decode_month(rx_packet_ptr->body.Report.report_data_16),
+        packet_decode_year(rx_packet_ptr->body.Report.report_data_16),
+        packet_decode_hour(rx_packet_ptr->body.Report.report_data_32),
+        packet_decode_minutes(rx_packet_ptr->body.Report.report_data_32),
+        packet_decode_seconds(rx_packet_ptr->body.Report.report_data_32));
+        syslog_append(syslog_buff);
         break;
     case PACKET_REPORT_FRESH_BOOT:
         sprintf(syslog_buff, "Fresh Boot. Sending time sync!");
+        syslog_append(syslog_buff);
         send_request_to_door(PACKET_REQUEST_SYNC_TIME, 0, 1);
         break;
     default:
         sprintf(syslog_buff, "Unknown Door Event");
+        syslog_append(syslog_buff);
         break;
     }
-
-    syslog_append(syslog_buff);
 }
 
 static void process_request_from_door(void)
 {
-	char debug_buff[32] = {0};
 	char syslog_buff[128] = {0};
 
-    DoorRequest_t request_type = packet_ptr->body.Request.request_id;
+    DoorRequest_t request_type = rx_packet_ptr->body.Request.request_id;
 
     switch(request_type)
     {
     case PACKET_REQUEST_BELL:
-        sprintf(syslog_buff, "Forwarding bell from door %u to client %u.", packet_ptr->body.Request.source_id, packet_ptr->body.Request.destination_id);
-        hub_queue_enqueue(doors_to_clients_queue, packet_ptr);
+        sprintf(syslog_buff, "Forwarding bell from door %u to client %u.", rx_packet_ptr->body.Request.source_id, rx_packet_ptr->body.Request.destination_id);
+        hub_queue_enqueue(doors_to_clients_queue, rx_packet_ptr);
         break;
     case PACKET_REQUEST_SYNC_TIME:
         break;
@@ -197,7 +241,6 @@ static void poll_slave_event_queue(void)
 {
 	static const uint8_t zero = 0;
 
-	char debug_buff[32] = {0};
 	char syslog_buff[128] = {0};
 
 	//syslog_append("Starting polling");
@@ -237,19 +280,19 @@ static void poll_slave_event_queue(void)
                     */
 
 
-            switch(packet_ptr->header.category)
+            switch(rx_packet_ptr->header.category)
             {
             case PACKET_CAT_REPORT:
-	        packet_ptr->body.Report.source_id = i;
+                rx_packet_ptr->body.Report.source_id = i;
                 process_report();
                 break;
             case PACKET_CAT_REQUEST:
-	        packet_ptr->body.Request.source_id = i;
+                rx_packet_ptr->body.Request.source_id = i;
                 process_request_from_door();
                 break;
             case PACKET_CAT_DATA:
-		// shouldn't happen
-	        packet_ptr->body.Data.source_id = i;
+                // shouldn't happen
+                rx_packet_ptr->body.Data.source_id = i;
                 process_data_from_door();
                 break;
             case PACKET_CAT_NONE:
@@ -354,7 +397,7 @@ void i2c_init(void)
 {
 	char buff[64] = {0};
 
-	system("sh i2c_init.sh");
+	system("sh i2c2_init.sh");
 
 	sprintf(buff, "Opening I2C device at path %s", device_path);
 	syslog_append(buff);

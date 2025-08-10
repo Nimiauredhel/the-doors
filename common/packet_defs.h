@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// max length of unit (door, client) name
+#define UNIT_NAME_MAX_LEN (32)
 // max size of data segment containing: door info, client info
 #define DOOR_DATA_BYTES_SMALL (sizeof(ClientInfo_t))
 // max size of data segment containing: image
@@ -125,14 +127,14 @@ typedef struct DoorInfo
 {
     uint16_t index;
     uint8_t i2c_address;
-    char name[32];
+    char name[UNIT_NAME_MAX_LEN];
 } DoorInfo_t;
 
 typedef struct ClientInfo
 {
     uint16_t index;
     uint8_t mac_address[6];
-    char name[32];
+    char name[UNIT_NAME_MAX_LEN];
 } ClientInfo_t;
 
 #pragma pack(pop)
