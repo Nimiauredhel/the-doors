@@ -102,6 +102,9 @@ void ipc_init(void)
 
     syslog_append("Opened inbox queue");
 
+    /// door states shm:
+    /// TODO: this whole section is duplicated across modules and should be extracted
+
     ipc_door_states_sem_ptr = sem_open(DOOR_STATES_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
 
     if (ipc_door_states_sem_ptr == NULL)

@@ -7,6 +7,9 @@ static mqd_t ipc_outbox_handle;
 
 static HubQueue_t *clients_to_doors_queue = NULL;
 
+static sem_t *ipc_door_states_sem_ptr;
+static void *ipc_door_states_shm_ptr;
+
 static void ipc_in_loop(void)
 {
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
@@ -54,7 +57,18 @@ static void ipc_out_loop(void)
     }
 }
 
-void forward_client_to_door_request(DoorPacket_t *request)
+HubDoorStates_t *ipc_acquire_door_states_ptr(void)
+{
+    sem_wait(ipc_door_states_sem_ptr);
+    return (HubDoorStates_t *)ipc_door_states_sem_ptr;
+}
+
+void ipc_release_door_states_ptr(void)
+{
+    sem_post(ipc_door_states_sem_ptr);
+}
+
+void ipc_forward_client_to_door_request(DoorPacket_t *request)
 {
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
@@ -103,6 +117,50 @@ void ipc_init(void)
     }
 
     syslog_append("Opened inbox queue");
+
+    /// door states shm:
+    /// TODO: this whole section is duplicated across modules and should be extracted
+
+    ipc_door_states_sem_ptr = sem_open(DOOR_STATES_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
+
+    if (ipc_door_states_sem_ptr == NULL)
+    {
+        syslog_append("Failed to open door states semaphore.");
+        exit(EXIT_FAILURE);
+    }
+
+    syslog_append("Opened door states semaphore.");
+
+    if (0 > sem_init(ipc_door_states_sem_ptr, 1, 0))
+    {
+        syslog_append("Failed to initialize door states semaphore.");
+        exit(EXIT_FAILURE);
+    }
+
+    syslog_append("Initialized door states semaphore.");
+
+    sem_post(ipc_door_states_sem_ptr);
+
+    int shm_fd;
+
+    shm_fd = shm_open(DOOR_STATES_SHM_NAME, O_CREAT | O_RDWR, 0666);
+
+    if (shm_fd <= 0)
+    {
+        syslog_append("Failed to open door states shm.");
+        exit(EXIT_FAILURE);
+    }
+
+    ftruncate(shm_fd, sizeof(HubDoorStates_t));
+    ipc_door_states_shm_ptr = mmap(0, sizeof(HubDoorStates_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+    if (ipc_door_states_shm_ptr == NULL)
+    {
+        syslog_append("Failed to map door states shm.");
+        exit(EXIT_FAILURE);
+    }
+
+    syslog_append("Mapped door states shm.");
 
     syslog_append("IPC Initialization Complete");
 }

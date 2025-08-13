@@ -241,7 +241,7 @@ static void handle_request_packet(DoorPacket_t *packet, ClientData_t *client)
             break;
 	    default:
             syslog_append("Forwarding request to door.");
-            forward_client_to_door_request(packet);
+            ipc_forward_client_to_door_request(packet);
             break;
 	}
 }
