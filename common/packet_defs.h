@@ -126,7 +126,6 @@ typedef struct DoorPacket
 typedef struct DoorInfo
 {
     uint16_t index;
-    uint8_t i2c_address;
     char name[UNIT_NAME_MAX_LEN];
 } DoorInfo_t;
 
