@@ -20,34 +20,13 @@ static uint8_t i2c_tx_buff[I2C_TX_BUFF_SIZE] = {0};
 static uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
 
 static volatile bool data_dirty = false;
+static uint16_t data_len = 0;
+static uint16_t data_offset = 0;
+
 static DoorPacket_t i2c_query_result_register = {0};
 static uint8_t i2c_data_register[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE];
 
-uint32_t i2c_get_addr_hit_counter(void)
-{
-	uint32_t ret = i2c_addr_hit_counter;
-	if (i2c_addr_hit_counter > 0) i2c_addr_hit_counter -= 1;
-	return ret;
-}
-
-/*
-static uint16_t register_definition_to_packet_size(I2CRegisterDefinition_t reg_def)
-{
-	switch (reg_def)
-	{
-	case I2C_REG_EVENT_COUNT:
-		return 2;
-	case I2C_REG_DATA:
-		// TODO: implement actual data size
-		return sizeof(DoorPacket_t);
-	case I2C_REG_EVENT_HEAD:
-	case I2C_REG_QUERY_RESULT:
-	case I2C_REG_HUB_COMMAND:
-	default:
-		return sizeof(DoorPacket_t);
-	}
-}
-*/
+/// static functions
 
 static uint8_t* register_definition_to_pointer(I2CRegisterDefinition_t reg_def, uint8_t offset)
 {
@@ -63,7 +42,8 @@ static uint8_t* register_definition_to_pointer(I2CRegisterDefinition_t reg_def, 
 	case I2C_REG_HUB_COMMAND:
 		return NULL;
 	case I2C_REG_DATA:
-		return (uint8_t *)&i2c_data_register;
+		offset = data_offset;
+		return (uint8_t *)(&i2c_data_register)+offset;
 	default:
 		return NULL;
 	}
@@ -112,10 +92,56 @@ static void process_i2c_rx(I2C_HandleTypeDef *hi2c)
 
 static void process_i2c_tx(I2C_HandleTypeDef *hi2c)
 {
+	if (i2c_tx_register == I2C_REG_DATA)
+	{
+		if (i2c_tx_count > 0)
+		{
+			data_offset += i2c_tx_count-1;
+
+			if (data_offset >= data_len)
+			{
+				data_offset = 0;
+				data_len = 0;
+				data_dirty = false;
+			}
+		}
+	}
+
 	i2c_tx_count = 0;
 	comms_report_internal(COMMS_EVENT_SENT, i2c_tx_register);
-	if (i2c_tx_register == I2C_REG_DATA) data_dirty = false;
 }
+
+/// exposed functions
+
+uint32_t i2c_get_addr_hit_counter(void)
+{
+	uint32_t ret = i2c_addr_hit_counter;
+	if (i2c_addr_hit_counter > 0) i2c_addr_hit_counter -= 1;
+	return ret;
+}
+
+void i2c_send_data(DoorDataType_t data_type, const uint8_t *src, uint16_t len)
+{
+	while(data_dirty) vTaskDelay(pdMS_TO_TICKS(100));
+	bzero(i2c_data_register, sizeof(i2c_data_register));
+	memcpy(i2c_data_register, src, len);
+	data_offset = 0;
+	data_len = len;
+	data_dirty = true;
+	event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_DATA_READY, data_type, len);
+}
+
+void i2c_io_init(void)
+{
+	HAL_I2C_EnableListen_IT(&hi2c1);
+}
+
+uint16_t i2c_io_get_device_id(void)
+{
+	return hi2c1.Init.OwnAddress1;
+}
+
+/// I2C callbacks
 
 void HAL_I2C_SlaveTxCpltCallback (I2C_HandleTypeDef * hi2c)
 {
@@ -230,22 +256,4 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c)
 {
 	HAL_I2C_EnableListen_IT(hi2c);
-}
-
-void i2c_send_data(DoorDataType_t data_type, const uint8_t *src, uint16_t len)
-{
-	while(data_dirty) vTaskDelay(pdMS_TO_TICKS(100));
-	memcpy(register_definition_to_pointer(I2C_REG_DATA, 0), src, len);
-	data_dirty = true;
-	event_log_append(PACKET_CAT_REPORT, PACKET_REPORT_DATA_READY, data_type, len);
-}
-
-void i2c_io_init(void)
-{
-	HAL_I2C_EnableListen_IT(&hi2c1);
-}
-
-uint16_t i2c_io_get_device_id(void)
-{
-	return hi2c1.Init.OwnAddress1;
 }
