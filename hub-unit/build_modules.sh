@@ -1,13 +1,13 @@
 # build the hub control (parent) module
 cd hub_control
-make strict
+make -j4 strict
 
 # build the child modules
 cd ../door_manager
-make strict
+make -j4 strict
 
 cd ../intercom_server
-make strict
+make -j4 strict
 
 # return to top folder 
 cd ..

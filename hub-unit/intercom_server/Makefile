@@ -13,25 +13,25 @@ DEBUG_FLAGS=$(STRICT_FLAGS) -g -o0
 default:
 	mkdir -p $(BUILD_DIR)
 	gcc $(SOURCE) $(DEFAULT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	make setcap
+	$(MAKE) setcap
                                      
 strict:                              
 	mkdir -p $(BUILD_DIR)
 	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	make setcap
+	$(MAKE) setcap
                     
 debug:              
 	mkdir -p $(BUILD_DIR)
 	gcc $(SOURCE) $(DEBUG_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	make setcap
+	$(MAKE) setcap
 
 .ONESHELL:
 run:
 	 cd $(BUILD_DIR); ./$(EXE_NAME) $(ARGS)
 
 andrun:
-	make default
-	make run
+	$(MAKE) default
+	$(MAKE) run
 
 gdb:
 	cd $(BUILD_DIR); gdb ./$(EXE_NAME) $(ARGS)
