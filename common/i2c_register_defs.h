@@ -13,6 +13,10 @@
 #define I2C_MIN_ADDRESS (16)
 #define I2C_MAX_ADDRESS (116)
 
+#define I2C_ADDRESS_COUNT (I2C_MAX_ADDRESS - I2C_MIN_ADDRESS)
+#define I2C_ADDR_TO_INDEX(addr) (addr - I2C_MIN_ADDRESS)
+#define INDEX_TO_I2C_ADDR(idx) (idx + I2C_MIN_ADDRESS)
+
 typedef enum I2CRegisterDefinition
 {
 	I2C_REG_EVENT_COUNT = 0,
