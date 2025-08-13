@@ -510,6 +510,7 @@ static void input_evaluate(int8_t input_len)
 	case IPHASE_ADMIN_SETADDR:
 		persistence_save_i2c_addr((uint32_t)num << (uint32_t)1);
 		auth_reset_auth();
+		comms_send_info();
 		break;
 	case IPHASE_ADMIN_SETNAME:
 		persistence_save_name(input_string);

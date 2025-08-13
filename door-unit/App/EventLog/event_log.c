@@ -63,14 +63,14 @@ void event_log_append(uint32_t category, uint32_t subcategory, uint16_t data_16,
 	switch(packet_ptr->header.category)
 	{
 	case PACKET_CAT_REPORT:
-		packet_ptr->body.Report.source_id = persistence_get_i2c_addr();
+		packet_ptr->body.Report.source_id = I2C_ADDR_TO_INDEX(persistence_get_i2c_addr() >> 1);
 		packet_ptr->body.Report.report_id = (DoorReport_t)subcategory;
 		packet_ptr->body.Report.report_data_16 = data_16;
 		packet_ptr->body.Report.report_data_32 = data_32;
 		break;
 	case PACKET_CAT_REQUEST:
 		packet_ptr->body.Request.request_id = (DoorRequest_t)subcategory;
-		packet_ptr->body.Request.source_id = persistence_get_i2c_addr();
+		packet_ptr->body.Request.source_id = I2C_ADDR_TO_INDEX(persistence_get_i2c_addr() >> 1);
 		packet_ptr->body.Request.destination_id = data_16;
 		packet_ptr->body.Request.request_data_32 = data_32;
 		break;

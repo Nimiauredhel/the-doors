@@ -23,8 +23,8 @@ static volatile bool data_dirty = false;
 static uint16_t data_len = 0;
 static uint16_t data_offset = 0;
 
-static DoorPacket_t i2c_query_result_register = {0};
 static uint8_t i2c_data_register[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE];
+static DoorPacket_t i2c_query_result_register = {0};
 
 /// static functions
 
@@ -134,11 +134,6 @@ void i2c_send_data(DoorDataType_t data_type, const uint8_t *src, uint16_t len)
 void i2c_io_init(void)
 {
 	HAL_I2C_EnableListen_IT(&hi2c1);
-}
-
-uint16_t i2c_io_get_device_id(void)
-{
-	return hi2c1.Init.OwnAddress1;
 }
 
 /// I2C callbacks
