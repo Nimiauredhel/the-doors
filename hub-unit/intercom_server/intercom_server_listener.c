@@ -1,4 +1,6 @@
-#include "server.h"
+#include "intercom_server_common.h"
+#include "intercom_server_listener.h"
+#include "intercom_server_ipc.h"
 
 static int server_socket = -1;
 static struct sockaddr_in server_addr;
@@ -6,47 +8,10 @@ static struct sockaddr_in server_addr;
 static uint8_t client_count = 0;
 static int8_t next_slot_idx = 0;
 
-static pthread_t listen_thread_handle;
-static pthread_t ipc_out_thread_handle;
-
 static pthread_mutex_t slots_mutex;
 static ClientData_t client_slots[CLIENT_SLOTS];
 
-static mqd_t ipc_inbox_handle;
-static mqd_t ipc_outbox_handle;
-
-static HubQueue_t *clients_to_doors_queue = NULL;
-
-static void ipc_init(void)
-{
-    syslog_append("Initializing IPC");
-
-    ipc_outbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_WRONLY);
-
-    if (ipc_outbox_handle < 0)
-    {
-        perror("Failed to open outbox queue");
-        syslog_append("Failed to open outbox queue");
-        exit(EXIT_FAILURE);
-    }
-
-    syslog_append("Opened outbox queue");
-
-    ipc_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_RDONLY);
-
-    if (ipc_outbox_handle < 0)
-    {
-        perror("Failed to open inbox queue");
-        syslog_append("Failed to open inbox queue");
-        exit(EXIT_FAILURE);
-    }
-
-    syslog_append("Opened inbox queue");
-
-    syslog_append("IPC Initialization Complete");
-}
-
-static void send_request(DoorRequest_t request, ClientData_t *client)
+void send_request(DoorRequest_t request, ClientData_t *client)
 {
 	struct tm datetime = get_datetime();
 
@@ -61,7 +26,7 @@ static void send_request(DoorRequest_t request, ClientData_t *client)
 	hub_queue_enqueue(client->outbox, &packet);
 }
 
-static void forward_door_to_client_request(DoorPacket_t *request)
+void forward_door_to_client_request(DoorPacket_t *request)
 {
     char log_buff[128] = {0};
 
@@ -85,53 +50,6 @@ static void forward_door_to_client_request(DoorPacket_t *request)
     }
 
     pthread_mutex_unlock(&slots_mutex);
-}
-
-static void ipc_in_loop(void)
-{
-    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
-    static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
-
-    bytes_transmitted = mq_receive(ipc_inbox_handle, msg_buff, sizeof(msg_buff), NULL);
-
-    if (bytes_transmitted <= 0)
-    {
-        snprintf(log_buff, sizeof(log_buff), "Failed to receive from inbox: %s", strerror(errno));
-        syslog_append(log_buff);
-        sleep(1);
-    }
-    else
-    {
-        forward_door_to_client_request((DoorPacket_t *)&msg_buff);
-    }
-}
-
-static void ipc_out_loop(void)
-{
-    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
-    static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
-
-    if (hub_queue_dequeue(clients_to_doors_queue, (DoorPacket_t *)&msg_buff) >= 0)
-    {
-        syslog_append("Forwarding from internal queue to outbox.");
-
-        for(;;)
-        {
-            bytes_transmitted = mq_send(ipc_outbox_handle, msg_buff, sizeof(msg_buff), 0);
-
-            if (bytes_transmitted >= 0) break;
-
-            snprintf(log_buff, sizeof(log_buff), "Failed forwarding to outbox: %s", strerror(errno));
-            syslog_append(log_buff);
-            sleep(1);
-        }
-    }
-    else
-    {
-        sleep(1);
-    }
 }
 
 static void init_server_socket(void)
@@ -306,28 +224,6 @@ static void connection_check_outbox(ClientData_t *data)
     }
 }
 
-static void forward_client_to_door_request(DoorPacket_t *request)
-{
-    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
-    static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
-
-    syslog_append("Forwarding from internal queue to outbox.");
-
-    memcpy(msg_buff, request, sizeof(*request));
-
-    for(;;)
-    {
-        bytes_transmitted = mq_send(ipc_outbox_handle, msg_buff, sizeof(msg_buff), 0);
-
-        if (bytes_transmitted >= 0) break;
-
-        snprintf(log_buff, sizeof(log_buff), "Failed forwarding to outbox: %s", strerror(errno));
-        syslog_append(log_buff);
-        sleep(1);
-    }
-}
-
 static void handle_report_packet(DoorPacket_t *packet, ClientData_t *client)
 {
     syslog_append("Handling report packet (unimplemented)");
@@ -449,19 +345,11 @@ void *connection_task(void *arg)
     return NULL;
 }
 
-static void server_init(void)
-{
-    clients_to_doors_queue = hub_queue_create(128);
-    ipc_init();
-    init_server_socket();
-    init_client_slots();
-}
-
-static void server_loop(void)
+static void listen_loop(void)
 {
     static const struct timeval socket_timeout = { .tv_sec = 1, .tv_usec = 0 };
 
-    char log_buff[128] = {0};
+    char syslog_buff[128] = {0};
 
     struct sockaddr_in new_client_addr;
     socklen_t new_client_addr_len = sizeof(new_client_addr);
@@ -481,8 +369,8 @@ static void server_loop(void)
     {
         perror("Failed to accept request on socket.");
 
-        snprintf(log_buff, sizeof(log_buff), "Failed to accept request on socket.");
-        syslog_append(log_buff);
+        snprintf(syslog_buff, sizeof(syslog_buff), "Failed to accept request on socket.");
+        syslog_append(syslog_buff);
 
         sleep(1);
     }
@@ -526,50 +414,25 @@ static void server_loop(void)
                 // TODO: figure out how to actually handle this
             }
 
-            snprintf(log_buff, sizeof(log_buff), "New client connected: %s", inet_ntoa(client_slots[next_slot_idx].client_addr.sin_addr));
-            syslog_append(log_buff);
+            snprintf(syslog_buff, sizeof(syslog_buff), "New client connected: %s", inet_ntoa(client_slots[next_slot_idx].client_addr.sin_addr));
+            syslog_append(syslog_buff);
 
             increment_next_client_slot();
         }
     }
 }
 
-void* listen_task(void *arg)
+void listener_init(void)
+{
+    init_server_socket();
+    init_client_slots();
+}
+
+void* listener_task(void *arg)
 {
     for(;;)
     {
-        server_loop();
+        listen_loop();
     }
     return NULL;
-}
-
-void* ipc_in_task(void *arg)
-{
-    for(;;)
-    {
-        ipc_in_loop();
-    }
-    return NULL;
-}
-
-void* ipc_out_task(void *arg)
-{
-    for(;;)
-    {
-        ipc_out_loop();
-    }
-    return NULL;
-}
-
-void server_start(void)
-{
-    server_init();
-
-    pthread_create(&listen_thread_handle, NULL, listen_task, NULL);
-    pthread_create(&ipc_out_thread_handle, NULL, ipc_out_task, NULL);
-
-    // not creating a new thread since main thread is doing nothing
-    ipc_in_task(NULL);
-
-    for(;;);
 }

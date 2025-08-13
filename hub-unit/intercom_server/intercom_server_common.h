@@ -1,5 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef INTERCOM_SERVER_COMMON_H
+#define INTERCOM_SERVER_COMMON_H
 
 #include "hub_common.h"
 #include "networking_common.h"
@@ -17,7 +17,6 @@ typedef enum SlotState
 typedef struct ClientData
 {
     SlotState_t slot_state;
-    //int next_slot_idx;
     int client_socket;
     struct sockaddr_in client_addr;
     socklen_t client_addr_len;

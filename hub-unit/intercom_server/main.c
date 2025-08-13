@@ -1,5 +1,5 @@
 #include "hub_common.h"
-#include "server.h"
+#include "intercom_server_common.h"
 
 int main(void)
 {
