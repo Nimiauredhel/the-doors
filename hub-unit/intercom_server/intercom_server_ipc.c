@@ -2,6 +2,8 @@
 #include "intercom_server_listener.h"
 #include "intercom_server_common.h"
 
+static const time_t door_list_update_interval = 5;
+
 static mqd_t ipc_inbox_handle;
 static mqd_t ipc_outbox_handle;
 
@@ -9,6 +11,29 @@ static HubQueue_t *clients_to_doors_queue = NULL;
 
 static sem_t *ipc_door_states_sem_ptr;
 static void *ipc_door_states_shm_ptr;
+
+static void update_door_list(void)
+{
+    HubDoorStates_t *door_states_ptr = ipc_acquire_door_states_ptr();
+    pthread_mutex_lock(&door_list.lock);
+
+    door_list.count = 0;
+
+    for (int i = 0; i < HUB_MAX_DOOR_COUNT; i++)
+    {
+        if (door_states_ptr->slot_used[i])
+        {
+            door_list.indices[door_list.count] = i;
+            strncpy(door_list.names[door_list.count], door_states_ptr->name[i], UNIT_NAME_MAX_LEN);
+            door_list.count++;
+        }
+    }
+
+    door_list.last_updated = time(NULL);
+
+    ipc_release_door_states_ptr();
+    pthread_mutex_unlock(&door_list.lock);
+}
 
 static void ipc_in_loop(void)
 {
@@ -27,6 +52,13 @@ static void ipc_in_loop(void)
     else
     {
         forward_door_to_client_request((DoorPacket_t *)&msg_buff);
+    }
+
+    time_t since_door_list_updated = time(NULL) - door_list.last_updated;
+
+    if (since_door_list_updated >= door_list_update_interval)
+    {
+        update_door_list();
     }
 }
 

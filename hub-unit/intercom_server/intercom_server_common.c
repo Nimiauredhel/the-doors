@@ -6,8 +6,12 @@
 static pthread_t ipc_out_thread_handle;
 static pthread_t ipc_in_thread_handle;
 
+ServerDoorList_t door_list = {0};
+
 static void server_init(void)
 {
+    pthread_mutex_init(&door_list.lock, NULL);
+
     ipc_init();
     listener_init();
 }

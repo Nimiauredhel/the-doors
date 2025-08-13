@@ -224,6 +224,52 @@ static void connection_check_outbox(ClientData_t *data)
     }
 }
 
+static void connection_send_door_list(ClientData_t *data)
+{
+    char log_buff[128] = {0};
+    uint8_t out_buff[sizeof(DoorPacket_t) + sizeof(DoorInfo_t)] = {0};
+    DoorPacket_t *packet_ptr = (DoorPacket_t *)out_buff;
+    DoorInfo_t *data_ptr = (DoorInfo_t *)(out_buff + sizeof(DoorPacket_t));
+    int ret;
+
+    pthread_mutex_lock(&door_list.lock);
+
+	struct tm datetime = get_datetime();
+
+    packet_ptr->header.time = packet_encode_time(datetime.tm_hour, datetime.tm_min, datetime.tm_sec);
+    packet_ptr->header.date = packet_encode_date(datetime.tm_year, datetime.tm_mon, datetime.tm_mday);
+    packet_ptr->header.category = PACKET_CAT_DATA;
+    packet_ptr->body.Data.data_type = PACKET_DATA_DOOR_INFO;
+
+    for (int i = 0; i < door_list.count; i++)
+    {
+        data_ptr->index = door_list.indices[i];
+        strncpy(data_ptr->name, door_list.names[i], UNIT_NAME_MAX_LEN);
+
+        ret = sendto(data->client_socket, out_buff, sizeof(out_buff), 0, (struct sockaddr *)&data->client_addr, data->client_addr_len);
+
+        if (ret > 0)
+        {
+            snprintf(log_buff, sizeof(log_buff), "Sent Door Info to client socket.");
+            syslog_append(log_buff);
+        }
+        else if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            // TODO: check possible consequences of sleep() after a timeout
+            sleep(1);
+        }
+        else
+        {
+            perror(log_buff);
+
+            snprintf(log_buff, sizeof(log_buff), "Failed to send Door Info to client socket.");
+            syslog_append(log_buff);
+        }
+    }
+
+    pthread_mutex_unlock(&door_list.lock);
+}
+
 static void handle_report_packet(DoorPacket_t *packet, ClientData_t *client)
 {
     syslog_append("Handling report packet (unimplemented)");
@@ -281,6 +327,8 @@ static void connection_loop(ClientData_t *data)
 
 	snprintf(log_buff, sizeof(log_buff), "Started task for client %s", inet_ntoa(data->client_addr.sin_addr));
 	syslog_append(log_buff);
+
+    connection_send_door_list(data);
 
 	for(;;)
 	{

@@ -24,6 +24,17 @@ typedef struct ClientData
     HubQueue_t *outbox;
 } ClientData_t;
 
+typedef struct ServerDoorList
+{
+    pthread_mutex_t lock;
+    time_t last_updated;
+    uint8_t count;
+    uint8_t indices[HUB_MAX_DOOR_COUNT];
+    char names[HUB_MAX_DOOR_COUNT][UNIT_NAME_MAX_LEN];
+} ServerDoorList_t;
+
+extern ServerDoorList_t door_list;
+
 void server_start(void);
 
 #endif
