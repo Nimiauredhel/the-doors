@@ -43,14 +43,13 @@
 #define DOOR_STATES_SEM_NAME "DOORS_DOOR_STATES_SEM"
 #define CLIENT_STATES_SEM_NAME "DOORS_CLIENT_STATES_SEM"
 
-#define HUB_MAX_DOOR_COUNT (32)
-#define HUB_MAX_CLIENT_COUNT (128)
+#define HUB_MAX_DOOR_COUNT (100)
+#define HUB_MAX_CLIENT_COUNT (100)
 
 typedef struct HubDoorStates
 {
     bool slot_used[HUB_MAX_CLIENT_COUNT];
     time_t last_seen[HUB_MAX_DOOR_COUNT];
-    uint8_t i2c_addresses[HUB_MAX_DOOR_COUNT];
     char name[HUB_MAX_DOOR_COUNT][UNIT_NAME_MAX_LEN];
 } HubDoorStates_t;
 

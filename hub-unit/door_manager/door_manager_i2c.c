@@ -7,6 +7,7 @@ static int device_fd = -1;
 
 static bool target_addr_set[TARGET_ADDR_MAX_COUNT] = {false};
 static uint8_t target_addr_list[TARGET_ADDR_MAX_COUNT] = {0};
+static uint8_t current_target_addr = 0;
 
 static uint8_t target_addr_last_count = 0;
 
@@ -17,6 +18,7 @@ static void *rx_data_ptr = rx_buff + sizeof(DoorPacket_t);
 static void i2c_set_target(uint8_t addr)
 {
 	// assign the slave device address
+    current_target_addr = addr;
 	ioctl(device_fd, I2C_SLAVE, addr);
 }
 
@@ -64,7 +66,6 @@ static void read_data_from_door(uint16_t length)
 
     while(remaining > 0)
     {
-        printf("Offset %u\n", offset);
         uint8_t to_read = remaining > chunk_len ? chunk_len : remaining;
 
         int32_t bytes_read = i2c_master_read(I2C_REG_DATA, to_read, rx_buff+offset);
@@ -91,7 +92,8 @@ static void process_data_from_door(void)
     switch(data_type)
     {
     case PACKET_DATA_DOOR_INFO:
-        snprintf(syslog_buff, sizeof(syslog_buff), "Received door info, name: %s, address: %u, index: %u.",  door_info_ptr->name, door_info_ptr->i2c_address, door_info_ptr->index);
+        snprintf(syslog_buff, sizeof(syslog_buff), "Received door info, name: %s, address: %u, index: %u, from actual address: %u, expected index: %u.",
+                door_info_ptr->name, INDEX_TO_I2C_ADDR(door_info_ptr->index), door_info_ptr->index, current_target_addr, I2C_ADDR_TO_INDEX(current_target_addr));
         syslog_append(syslog_buff);
 
         if (door_info_ptr->index >= HUB_MAX_DOOR_COUNT)
@@ -105,26 +107,15 @@ static void process_data_from_door(void)
 
             if (door_states_ptr->slot_used[door_info_ptr->index])
             {
-                if (door_states_ptr->i2c_addresses[door_info_ptr->index] == door_info_ptr->i2c_address)
-                {
-                    sprintf(syslog_buff, "Received index & address match stored state, updating name & last seen.");
-                    syslog_append(syslog_buff);
-                }
-                else
-                {
-                    sprintf(syslog_buff, "Received index & address mismatch stored state, updating all.");
-                    syslog_append(syslog_buff);
-
-                    door_states_ptr->i2c_addresses[door_info_ptr->index] = door_info_ptr->i2c_address;
-                }
+                sprintf(syslog_buff, "Updating existing entry with received data.");
+                syslog_append(syslog_buff);
             }
             else
             {
-                sprintf(syslog_buff, "Door index unused, storing all received data.");
+                sprintf(syslog_buff, "Door index unused, storing new entry.");
                 syslog_append(syslog_buff);
 
                 door_states_ptr->slot_used[door_info_ptr->index] = true;
-                door_states_ptr->i2c_addresses[door_info_ptr->index] = door_info_ptr->i2c_address;
             }
 
             door_states_ptr->last_seen[door_info_ptr->index] = time(NULL);
