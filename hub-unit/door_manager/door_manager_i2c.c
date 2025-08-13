@@ -27,16 +27,58 @@ static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, con
 	//else printf("Sent %ld bytes.\n", len);
 }
 
-static int32_t i2c_master_read(const uint8_t reg_addr, const uint8_t len)
+static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
 {
-	int32_t bytes_read = i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, rx_buff);
-	//printf("Read %ld bytes.\n", bytes_read);
+	DoorPacket_t request_buffer = {0};
+	struct tm dt = get_datetime();
+
+	request_buffer.header.category = PACKET_CAT_REQUEST;
+	request_buffer.header.priority = priority;
+	request_buffer.header.date =
+		packet_encode_date(dt.tm_year-100, dt.tm_mon+1, dt.tm_mday);
+	request_buffer.header.time =
+		packet_encode_time(dt.tm_hour, dt.tm_min, dt.tm_sec);
+
+	request_buffer.body.Request.request_id = request;
+	request_buffer.body.Request.request_data_32 = extra_data;
+
+	i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)&request_buffer, sizeof(DoorPacket_t));
+}
+
+static int32_t i2c_master_read(const uint8_t reg_addr, const uint8_t len, uint8_t *dst)
+{
+    int32_t bytes_read = i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, dst);
     return bytes_read;
 }
 
 static void read_data_from_door(uint16_t length)
 {
-	int32_t bytes_read = i2c_master_read(I2C_REG_DATA, length);
+    static const uint8_t chunk_len = 24;
+
+    static char syslog_buff[64] = {0};
+
+    uint16_t offset = 0;
+    uint16_t remaining = length;
+
+    int32_t total_bytes_read = 0;
+
+    while(remaining > 0)
+    {
+        printf("Offset %u\n", offset);
+        uint8_t to_read = remaining > chunk_len ? chunk_len : remaining;
+
+        int32_t bytes_read = i2c_master_read(I2C_REG_DATA, to_read, rx_buff+offset);
+
+        if (bytes_read < 0) break;
+        remaining -= bytes_read;
+        total_bytes_read += bytes_read;
+        if (bytes_read < chunk_len) break;
+
+        offset += bytes_read;
+    }
+
+    snprintf(syslog_buff, sizeof(syslog_buff), "Read %d data bytes out of target %u.", total_bytes_read, length);
+    syslog_append(syslog_buff);
 }
 
 static void process_data_from_door(void)
@@ -98,25 +140,6 @@ static void process_data_from_door(void)
     default:
         break;
     }
-
-}
-
-static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
-{
-	DoorPacket_t request_buffer = {0};
-	struct tm dt = get_datetime();
-
-	request_buffer.header.category = PACKET_CAT_REQUEST;
-	request_buffer.header.priority = priority;
-	request_buffer.header.date =
-		packet_encode_date(dt.tm_year-100, dt.tm_mon+1, dt.tm_mday);
-	request_buffer.header.time =
-		packet_encode_time(dt.tm_hour, dt.tm_min, dt.tm_sec);
-
-	request_buffer.body.Request.request_id = request;
-	request_buffer.body.Request.request_data_32 = extra_data;
-
-	i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)&request_buffer, sizeof(DoorPacket_t));
 }
 
 static void process_report(void)
@@ -255,7 +278,7 @@ static void poll_slave_event_queue(void)
 
         // read event queue length
         // TODO: make this a uint16_t value?
-        int32_t bytes_read = i2c_master_read(I2C_REG_EVENT_COUNT, 1);
+        int32_t bytes_read = i2c_master_read(I2C_REG_EVENT_COUNT, 1, rx_buff);
         uint8_t queue_length = rx_buff[0];
     //sprintf(syslog_buff, "Read %ld bytes from address [0x%X] event count %u", bytes_read, target_addr_list[i], queue_length);
     //syslog_append(syslog_buff);
@@ -267,7 +290,7 @@ static void poll_slave_event_queue(void)
         for (int j = 0; j < queue_length; j++)
         {
             bzero(rx_buff, sizeof(rx_buff));
-            i2c_master_read(I2C_REG_EVENT_HEAD | (j << 1), sizeof(DoorPacket_t));
+            i2c_master_read(I2C_REG_EVENT_HEAD | (j << 1), sizeof(DoorPacket_t), rx_buff);
 
             /*
             printf("[%02u/%02u/%02u][%02u:%02u:%02u]: ",
@@ -311,40 +334,44 @@ static void poll_slave_event_queue(void)
 
 static void scan_i2c_bus(void)
 {
-    char syslog_buff[64] = {0};
+    char syslog_buff[128] = {0};
     int32_t read_bytes = 0;
 
-    target_addr_last_count = 0;
     explicit_bzero(target_addr_set, TARGET_ADDR_MAX_COUNT);
     explicit_bzero(target_addr_list, TARGET_ADDR_MAX_COUNT);
 
-    sprintf(syslog_buff, "Scanning I2C bus for target devices.");
-    syslog_append(syslog_buff);
+    target_addr_last_count = 0;
 
-    for (uint8_t i = 0; i < TARGET_ADDR_MAX_COUNT; i++)
+    while (target_addr_last_count == 0)
     {
-        uint8_t addr = i+TARGET_ADDR_OFFSET;
-        i2c_set_target(addr);
-        read_bytes = i2c_master_read(I2C_REG_EVENT_COUNT, 1);
+        sprintf(syslog_buff, "Scanning I2C bus for target devices.");
+        syslog_append(syslog_buff);
 
-	//    sprintf(syslog_buff, "Addr [0x%X], read bytes: %d", addr, read_bytes);
-	//    syslog_append(syslog_buff);
-
-        if (read_bytes > 0)
+        for (uint8_t i = 0; i < TARGET_ADDR_MAX_COUNT; i++)
         {
-            target_addr_set[i] = true;
-            target_addr_list[target_addr_last_count] = addr;
-            sprintf(syslog_buff, "Detected target device at address [0x%X].", target_addr_list[target_addr_last_count]);
-            syslog_append(syslog_buff);
-            target_addr_last_count += 1;
-        }
-    }
+            uint8_t addr = i+TARGET_ADDR_OFFSET;
+            i2c_set_target(addr);
+            read_bytes = i2c_master_read(I2C_REG_EVENT_COUNT, 1, rx_buff);
 
-    if (target_addr_last_count == 0)
-    {
-	    sprintf(syslog_buff, "Concluded I2C bus scan, no devices detected.");
-	    syslog_append(syslog_buff);
-        common_terminate(EXIT_FAILURE);
+        //    sprintf(syslog_buff, "Addr [0x%X], read bytes: %d", addr, read_bytes);
+        //    syslog_append(syslog_buff);
+
+            if (read_bytes > 0)
+            {
+                target_addr_set[i] = true;
+                target_addr_list[target_addr_last_count] = addr;
+                sprintf(syslog_buff, "Detected target device at address [0x%X].", target_addr_list[target_addr_last_count]);
+                syslog_append(syslog_buff);
+                target_addr_last_count += 1;
+            }
+        }
+
+        if (target_addr_last_count == 0)
+        {
+            snprintf(syslog_buff, sizeof(syslog_buff), "Concluded I2C bus scan, no devices detected - retrying in 2 seconds.");
+            syslog_append(syslog_buff);
+            sleep(2);
+        }
     }
 
     sprintf(syslog_buff, "Concluded I2C bus scan, %d devices detected.", target_addr_last_count);
