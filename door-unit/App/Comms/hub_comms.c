@@ -254,7 +254,6 @@ void comms_send_info(void)
 
 	persistence_get_name(info_ptr->name);
 	info_ptr->index = packet_ptr->body.Data.source_id;
-	info_ptr->i2c_address = i2c_addr;
 
 	i2c_send_data(PACKET_DATA_DOOR_INFO, packet_buff, sizeof(packet_buff));
 }
