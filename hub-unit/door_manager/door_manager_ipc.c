@@ -146,7 +146,7 @@ void ipc_init(void)
 
     syslog_append("Mapped door states shm.");
 
-    memset(ipc_door_states_shm_ptr, 0, sizeof(HubDoorStates_t));
+    explicit_bzero(ipc_door_states_shm_ptr, sizeof(HubDoorStates_t));
 
     syslog_append("IPC Initialization Complete");
 }

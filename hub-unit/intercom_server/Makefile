@@ -8,7 +8,7 @@ INC=-I../../common -I../hub_common
 LIBS=-lpthread -lrt
 DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
 STRICT_FLAGS=$(DEFAULT_FLAGS) -Wall -pedantic -Wextra
-DEBUG_FLAGS=$(STRICT_FLAGS) -g -o0
+DEBUG_FLAGS=$(STRICT_FLAGS) -g -pg -o0
 
 default:
 	mkdir -p $(BUILD_DIR)
