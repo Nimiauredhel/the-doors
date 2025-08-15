@@ -9,8 +9,22 @@ static volatile ClientState_t client_state_out = CLIENTSTATE_NONE;
 
 static volatile int8_t current_bell_idx = -1;
 
-static DoorPacket_t request_rx_buff = {0};
-static uint8_t data_rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
+static ClientDoorList_t door_list = {0};
+
+static uint8_t rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
+static DoorPacket_t *rx_packet_ptr = (DoorPacket_t *)rx_buff;
+static DoorInfo_t *rx_info_ptr = (DoorInfo_t *)(rx_buff + sizeof(DoorPacket_t));
+
+ClientDoorList_t *client_acquire_door_list_ptr(void)
+{
+    xSemaphoreTake(door_list.lock, portMAX_DELAY);
+    return &door_list;
+}
+
+void client_release_door_list_ptr(void)
+{
+    xSemaphoreGive(door_list.lock);
+}
 
 int8_t client_get_current_bell_idx(void)
 {
@@ -175,6 +189,11 @@ static void client_init(void)
 {
     printf("Initializing Intercom Client task.\n");
 
+    door_list.count = 0;
+    memset(door_list.indices, (uint8_t)102, CLIENT_MAX_DOOR_COUNT);
+    door_list.lock = xSemaphoreCreateMutex();
+    xSemaphoreGive(door_list.lock);
+
     client_state = CLIENTSTATE_INIT;
 
     esp_event_handler_instance_t instance_any_id;
@@ -205,18 +224,18 @@ static void process_request(void)
 {
     printf("Processing request from server.\n");
 
-    switch(request_rx_buff.body.Request.request_id)
+    switch(rx_packet_ptr->body.Request.request_id)
     {
         case PACKET_REQUEST_SYNC_TIME:
-            set_datetime(packet_decode_hour(request_rx_buff.header.time),
-                        packet_decode_minutes(request_rx_buff.header.time),
-                        packet_decode_seconds(request_rx_buff.header.time),
-                        packet_decode_day(request_rx_buff.header.date),
-                        packet_decode_month(request_rx_buff.header.date),
-                        packet_decode_year(request_rx_buff.header.date));
+            set_datetime(packet_decode_hour(rx_packet_ptr->header.time),
+                        packet_decode_minutes(rx_packet_ptr->header.time),
+                        packet_decode_seconds(rx_packet_ptr->header.time),
+                        packet_decode_day(rx_packet_ptr->header.date),
+                        packet_decode_month(rx_packet_ptr->header.date),
+                        packet_decode_year(rx_packet_ptr->header.date));
             break;
         case PACKET_REQUEST_BELL:
-            current_bell_idx = (int8_t)request_rx_buff.body.Request.source_id;
+            current_bell_idx = (int8_t)rx_packet_ptr->body.Request.source_id;
             printf("Received bell from door id %d.\n", current_bell_idx);
             client_state = CLIENTSTATE_BELL;
             vTaskDelay(pdMS_TO_TICKS(5000));
@@ -237,16 +256,82 @@ static void process_request(void)
     }
 }
 
-static int receive_request()
+static void process_data(void)
 {
-    int ret = recv(client_socket, &request_rx_buff, sizeof(request_rx_buff), 0);
+    printf("Processing data from server.\n");
+
+    switch(rx_packet_ptr->body.Data.data_type)
+    {
+    case PACKET_DATA_DOOR_INFO:
+        printf("Received door info: index %u, name %s.\n", rx_info_ptr->index, rx_info_ptr->name);
+
+        xSemaphoreTake(door_list.lock, portMAX_DELAY);
+
+        int16_t target_cell = -1;
+
+        for (int i = 0; i < door_list.count; i++)
+        {
+            if (door_list.indices[i] == rx_info_ptr->index)
+            {
+                target_cell = i;
+                break;
+            }
+        }
+
+        if (target_cell == -1)
+        {
+            target_cell = door_list.count;
+            door_list.count++;
+        }
+
+        if (door_list.count >= CLIENT_MAX_DOOR_COUNT)
+        {
+            door_list.count--;
+            printf("Door list full, discarding new info.\n");
+        }
+        else
+        {
+            door_list.indices[target_cell] = rx_info_ptr->index;
+            strncpy(door_list.names[target_cell], rx_info_ptr->name, UNIT_NAME_MAX_LEN);
+            printf("New info added to door list.\n");
+            gui_update_door_button(target_cell, true, door_list.names[target_cell]);
+        }
+
+        xSemaphoreGive(door_list.lock);
+        break;
+    case PACKET_DATA_IMAGE:
+        printf("Received image data.\n");
+        break;
+    case PACKET_DATA_NONE:
+    case PACKET_DATA_CLIENT_INFO:
+    case PACKET_DATA_MAX:
+      break;
+    }
+}
+
+
+static int receive_packet()
+{
+    int ret = recv(client_socket, rx_buff, sizeof(rx_buff), 0);
 
     if (ret > 0)
     {
-        process_request();
+        switch(rx_packet_ptr->header.category)
+        {
+            case PACKET_CAT_REQUEST:
+                process_request();
+                break;
+            case PACKET_CAT_DATA:
+                process_data();
+                break;
+            case PACKET_CAT_REPORT:
+            case PACKET_CAT_MAX:
+            case PACKET_CAT_NONE:
+              break;
+        }
     }
 
-    explicit_bzero(&request_rx_buff, sizeof(request_rx_buff));
+    explicit_bzero(rx_buff, sizeof(rx_buff));
 
     return ret;
 }
@@ -270,7 +355,7 @@ static void hub_comms(void)
         } \
     } 
 
-    HANDLE_RET(receive_request());
+    HANDLE_RET(receive_packet());
 
 #undef HANDLE_RET
 }

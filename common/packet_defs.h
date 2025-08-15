@@ -16,7 +16,7 @@
 // max size of data segment containing: door info, client info
 #define DOOR_DATA_BYTES_SMALL (sizeof(ClientInfo_t))
 // max size of data segment containing: image
-#define DOOR_DATA_BYTES_LARGE (76800)
+#define DOOR_DATA_BYTES_LARGE (7680)
 
 typedef enum DoorPacketCategory
 {

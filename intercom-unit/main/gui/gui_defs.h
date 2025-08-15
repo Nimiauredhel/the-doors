@@ -2,6 +2,7 @@
 #define GUI_DEFS_H
 
 #include "common.h"
+#include "packet_defs.h"
 #include "gfx.h"
 
 typedef enum InterfacePhase
@@ -43,18 +44,20 @@ typedef enum InterfaceActions
 
 typedef struct InterfaceButton
 {
+    bool active;
 	uint8_t id;
     uint8_t label_scale;
 	uint8_t width;
 	uint8_t height;
 	uint16_t x;
 	uint16_t y;
-	char label[8];
+	char label[UNIT_NAME_MAX_LEN];
     const BinarySprite_t *icon;
 } InterfaceButton_t;
 
 typedef struct InterfaceInputElement
 {
+    bool dirty;
     const InterfaceLayout_t id;
 	const uint8_t button_count;
 	const InterfaceButton_t *buttons;

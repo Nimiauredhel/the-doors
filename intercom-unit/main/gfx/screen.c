@@ -41,8 +41,8 @@ uint32_t screen_init(LCDOrientation_t orientation, esp_lcd_panel_io_color_trans_
 bool screen_fill_rect_loop(uint8_t *data, uint32_t data_length, uint16_t x_origin, uint16_t y_origin, uint16_t width, uint16_t height)
 {
 	if (width * height < 1) return false;
-    if (x_origin > screen_get_x_size()) return false;
-    if (y_origin > screen_get_y_size()) return false;
+    if (x_origin >= screen_get_x_size()) return false;
+    if (y_origin >= screen_get_y_size()) return false;
 
     if (x_origin + width > screen_get_x_size())
     {

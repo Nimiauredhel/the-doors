@@ -35,6 +35,8 @@ static void gui_gfx_draw_input_layout(const InterfaceInputElement_t *layout, int
 
     for (int i = 0; i < layout->button_count; i++)
     {
+        if (!layout->buttons[i].active) continue;
+
         gfx_fill_rect_single_color(layout->buttons[i].x, layout->buttons[i].y, layout->buttons[i].width, layout->buttons[i].height, *color_border);
         gfx_fill_rect_single_color(layout->buttons[i].x+1, layout->buttons[i].y+1, layout->buttons[i].width-2, layout->buttons[i].height-2, 
                      bell_idx == i ? *color_bg_bell : touched_button_idx == i ? *color_bg_pressed : *color_bg_neutral);
@@ -161,8 +163,10 @@ void gui_gfx_loop(void)
 
     if (button_idx != last_touched_button_idx
         || layout != prev_layout
-        || bell_idx != last_bell_idx)
+        || bell_idx != last_bell_idx
+        || layout->dirty)
     {
+        layout->dirty = false;
         gfx_select_window(input_window, true);
         gfx_fill_screen(color_cyan);
         gui_gfx_draw_input_layout(layout, button_idx);
