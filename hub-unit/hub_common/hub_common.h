@@ -48,7 +48,8 @@
 
 typedef struct HubDoorStates
 {
-    bool slot_used[HUB_MAX_CLIENT_COUNT];
+    uint8_t count;
+    uint8_t id[HUB_MAX_DOOR_COUNT];
     time_t last_seen[HUB_MAX_DOOR_COUNT];
     char name[HUB_MAX_DOOR_COUNT][UNIT_NAME_MAX_LEN];
 } HubDoorStates_t;

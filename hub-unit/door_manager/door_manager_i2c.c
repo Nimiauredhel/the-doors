@@ -105,21 +105,31 @@ static void process_data_from_door(void)
         {
             HubDoorStates_t *door_states_ptr = ipc_acquire_door_states_ptr();
 
-            if (door_states_ptr->slot_used[door_info_ptr->index])
+            int8_t cell = -1;
+
+            for (int i = 0; i < door_states_ptr->count; i++)
             {
-                sprintf(syslog_buff, "Updating existing entry with received data.");
-                syslog_append(syslog_buff);
+                if (door_states_ptr->id[i] == door_info_ptr->index)
+                {
+                    cell = i;
+                    sprintf(syslog_buff, "Updating existing entry with received data.");
+                    syslog_append(syslog_buff);
+                    break;
+                }
             }
-            else
+
+            if (cell < 0)
             {
-                sprintf(syslog_buff, "Door index unused, storing new entry.");
+                sprintf(syslog_buff, "Door ID unused, storing new entry.");
                 syslog_append(syslog_buff);
 
-                door_states_ptr->slot_used[door_info_ptr->index] = true;
+                cell = door_states_ptr->count;
+                door_states_ptr->count++;
+                door_states_ptr->id[cell] = door_info_ptr->index;
             }
 
-            door_states_ptr->last_seen[door_info_ptr->index] = time(NULL);
-            strncpy(door_states_ptr->name[door_info_ptr->index], door_info_ptr->name, UNIT_NAME_MAX_LEN);
+            door_states_ptr->last_seen[cell] = time(NULL);
+            strncpy(door_states_ptr->name[cell], door_info_ptr->name, UNIT_NAME_MAX_LEN);
 
             ipc_release_door_states_ptr();
         }

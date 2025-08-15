@@ -191,7 +191,6 @@ static void connection_check_outbox(ClientData_t *data)
 {
     char log_buff[128] = {0};
     DoorPacket_t packet_buff = {0};
-    uint16_t remaining;
     int ret;
 
     //snprintf(log_buff, sizeof(log_buff), "Checking outbox for client %s", inet_ntoa(data->client_addr.sin_addr));
@@ -232,7 +231,10 @@ static void connection_send_door_list(ClientData_t *data)
     DoorInfo_t *data_ptr = (DoorInfo_t *)(out_buff + sizeof(DoorPacket_t));
     int ret;
 
-    pthread_mutex_lock(&door_list.lock);
+    snprintf(log_buff, sizeof(log_buff), "Sending door list to client.");
+    syslog_append(log_buff);
+
+    HubDoorStates_t *door_list = ipc_acquire_door_states_ptr();
 
 	struct tm datetime = get_datetime();
 
@@ -241,16 +243,16 @@ static void connection_send_door_list(ClientData_t *data)
     packet_ptr->header.category = PACKET_CAT_DATA;
     packet_ptr->body.Data.data_type = PACKET_DATA_DOOR_INFO;
 
-    for (int i = 0; i < door_list.count; i++)
+    for (int i = 0; i < door_list->count; i++)
     {
-        data_ptr->index = door_list.indices[i];
-        strncpy(data_ptr->name, door_list.names[i], UNIT_NAME_MAX_LEN);
+        data_ptr->index = i;
+        strncpy(data_ptr->name, door_list->name[i], UNIT_NAME_MAX_LEN);
 
         ret = sendto(data->client_socket, out_buff, sizeof(out_buff), 0, (struct sockaddr *)&data->client_addr, data->client_addr_len);
 
         if (ret > 0)
         {
-            snprintf(log_buff, sizeof(log_buff), "Sent Door Info to client socket.");
+            snprintf(log_buff, sizeof(log_buff), "Sent Door Info to client socket: index %u, name %s.", i, door_list->name[i]);
             syslog_append(log_buff);
         }
         else if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -267,7 +269,10 @@ static void connection_send_door_list(ClientData_t *data)
         }
     }
 
-    pthread_mutex_unlock(&door_list.lock);
+    ipc_release_door_states_ptr();
+
+    snprintf(log_buff, sizeof(log_buff), "Sent door list to client.");
+    syslog_append(log_buff);
 }
 
 static void handle_report_packet(DoorPacket_t *packet, ClientData_t *client)
@@ -284,6 +289,7 @@ static void handle_request_packet(DoorPacket_t *packet, ClientData_t *client)
 	    case(PACKET_REQUEST_SYNC_TIME):
             syslog_append("Responding to time sync request.");
             send_request(PACKET_REQUEST_SYNC_TIME, client);
+            connection_send_door_list(client);
             break;
 	    default:
             syslog_append("Forwarding request to door.");
