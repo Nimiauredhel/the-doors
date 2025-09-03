@@ -324,39 +324,44 @@ static void connection_handle_incoming_packet(DoorPacket_t *packet, ClientData_t
 
 static void connection_loop(ClientData_t *data)
 {
-	static const uint8_t error_threshold = 6;
-	static uint8_t error_counter = 0;
+	const uint8_t error_threshold = 6;
+	const time_t silence_threshold = 2;
 
-	int ret;
-	char log_buff[128] = {0};
+	uint8_t error_counter = 0;
+
+	char syslog_buff[128] = {0};
 	DoorPacket_t packet_buff = {0};
+	int ret;
+    time_t last_seen = time(NULL);
 
-	snprintf(log_buff, sizeof(log_buff), "Started task for client %s", inet_ntoa(data->client_addr.sin_addr));
-	syslog_append(log_buff);
+	snprintf(syslog_buff, sizeof(syslog_buff), "Started task for client %s", inet_ntoa(data->client_addr.sin_addr));
+	syslog_append(syslog_buff);
 
     connection_send_door_list(data);
+    last_seen = time(NULL);
 
 	for(;;)
 	{
 		connection_check_outbox(data);
 
 		ret = 0;
-		explicit_bzero(log_buff, sizeof(log_buff));
+		explicit_bzero(syslog_buff, sizeof(syslog_buff));
 		explicit_bzero(&packet_buff, sizeof(packet_buff));
 
 		ret = recvfrom(data->client_socket, &packet_buff, sizeof(packet_buff), 0, (struct sockaddr*)&data->client_addr, &data->client_addr_len);
 
 		if (ret > 0)
 		{
+            last_seen = time(NULL);
 		    error_counter = 0;
-		    snprintf(log_buff, sizeof(log_buff), "Received packet from client %s", inet_ntoa(data->client_addr.sin_addr));
-		    syslog_append(log_buff);
+		    snprintf(syslog_buff, sizeof(syslog_buff), "Received packet from client %s", inet_ntoa(data->client_addr.sin_addr));
+		    syslog_append(syslog_buff);
 		    connection_handle_incoming_packet(&packet_buff, data);
 		}
 		else if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
-            // TODO: check possible consequences of sleep() after a timeout
-            sleep(1);
+            // 50ms sleep
+            usleep(1000 * 50);
 		}
 		else
 		{
@@ -364,21 +369,26 @@ static void connection_loop(ClientData_t *data)
 
 		    error_counter++;
 
-		    snprintf(log_buff, sizeof(log_buff), "Failed to receive on client socket.");
-		    syslog_append(log_buff);
+		    snprintf(syslog_buff, sizeof(syslog_buff), "Failed to receive on client socket.");
+		    syslog_append(syslog_buff);
 
-
-		    if (error_counter > error_threshold) break;
 		}
+
+        if (((time(NULL) - last_seen) > silence_threshold) || (error_counter > error_threshold)) break;
 	}
 
-	snprintf(log_buff, sizeof(log_buff), "Releasing client %s", inet_ntoa(data->client_addr.sin_addr));
-	syslog_append(log_buff);
+	snprintf(syslog_buff, sizeof(syslog_buff), "Releasing client %s", inet_ntoa(data->client_addr.sin_addr));
+	syslog_append(syslog_buff);
 }
 
 void *connection_task(void *arg)
 {
+    char syslog_buff[128] = {0};
+
     ClientData_t *data = (ClientData_t *)arg; 
+
+    snprintf(syslog_buff, sizeof(syslog_buff), "Starting connection task, client count: %d.", client_count);
+    syslog_append(syslog_buff);
 
     pthread_mutex_lock(&slots_mutex);
     // TODO: null check
@@ -386,15 +396,23 @@ void *connection_task(void *arg)
     data->slot_state = SLOTSTATE_ACTIVE;
     pthread_mutex_unlock(&slots_mutex);
 
+    snprintf(syslog_buff, sizeof(syslog_buff), "Starting connection loop, client count: %d.", client_count);
+    syslog_append(syslog_buff);
+
     connection_loop(data);
+
+    snprintf(syslog_buff, sizeof(syslog_buff), "Ended connection loop, client count: %d.", client_count);
+    syslog_append(syslog_buff);
 
     // cleanup
     close(data->client_socket);
     pthread_mutex_lock(&slots_mutex);
     hub_queue_destroy(data->outbox);
     data->slot_state = SLOTSTATE_GARBAGE;
-    client_count--;
     pthread_mutex_unlock(&slots_mutex);
+
+    snprintf(syslog_buff, sizeof(syslog_buff), "Ended connection task, client count: %d.", client_count);
+    syslog_append(syslog_buff);
 
     return NULL;
 }
