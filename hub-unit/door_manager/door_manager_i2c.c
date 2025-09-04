@@ -131,6 +131,15 @@ static void process_data_from_door(void)
             door_states_ptr->last_seen[cell] = time(NULL);
             strncpy(door_states_ptr->name[cell], door_info_ptr->name, UNIT_NAME_MAX_LEN);
 
+            FILE *file = fopen("site/doors.txt", "w");
+
+            for (int i = 0; i < door_states_ptr->count; i++)
+            {
+                fprintf(file, " [%u] %s [%ld]\n", door_states_ptr->id[i], door_states_ptr->name[i], door_states_ptr->last_seen[i]);
+            }
+
+            fclose(file);
+
             ipc_release_door_states_ptr();
         }
 	break;
