@@ -166,6 +166,9 @@ int main(void)
 	    launch_process(i);
     }
 
+    // launch web server ?
+    //system("sh init_web.sh");
+
     // begin loop checking that all processes are still running
     sleep(1);
     control_loop();

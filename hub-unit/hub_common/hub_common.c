@@ -15,6 +15,24 @@ void syslog_init(char *self_label)
 void syslog_append(char *msg)
 {
     syslog(LOG_INFO, "%s", msg);
+
+    struct tm now_dt = get_datetime();
+
+    FILE *file = fopen("site/logs.txt", "a");
+
+    /// only retry once
+    /// TODO: implement an internal log queue to handle this properly
+    if (file == NULL)
+    {
+        usleep(1000);
+        file = fopen("site/logs.txt", "a");
+    }
+
+    if (file != NULL)
+    {
+        fprintf(file, "[%02u:%02u:%02u]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec, msg);
+        fclose(file);
+    } 
 }
 
 /**
