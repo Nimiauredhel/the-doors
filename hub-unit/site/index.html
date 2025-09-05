@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DOORS Hub</title>
+
+    <meta charset="utf-8">
+    <meta http-equiv="Content-type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type="text/css">
+    body {
+        background-color: #000020;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    div {
+        width: 1600px;
+        height: auto;
+        margin: 5em auto;
+        padding: 2em;
+        background-color: #a0a0ff;
+        border-radius: 0.5em;
+        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+    }
+    iframe {
+        width: 100%;
+        height: auto;
+        margin: auto auto;
+        padding: auto;
+        background-color: #b0b0ff;
+        border-radius: 1.0em;
+        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+    }
+    </style>    
+</head>
+
+<body>
+<div>
+    <h1>DOORS Hub</h1>
+    <p>Just a web page served by the DOORS Hub.</p>
+    <button type="logs_button" onclick="frame_set_source('logs.txt')">Logs</button>
+    <button type="doors_button" onclick="frame_set_source('doors.txt')">Doors</button>
+    <button type="intercoms_button" onclick="frame_set_source('intercoms.txt')">Intercoms</button>
+    <button type="example_button" onclick="frame_set_source('example.txt')">Example</button>
+    <iframe id="data_frame" src="example.txt"></iframe>
+    <script>
+        var data_frame = document.getElementById('data_frame');
+
+        function frame_reload() {
+            data_frame.contentWindow.location.reload();
+        }
+
+        function frame_set_source (source) {
+            data_frame.src = source;
+            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
+            data_frame_body.style.color = 'red';
+            frame_reload();
+        }
+
+        function frame_onload () {
+            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
+            data_frame_body.style.color = 'black';
+            data_frame_body.style.fontSize = '20px';
+            data_frame_body.style.lineHeight = '20px';
+            data_frame.style.height = data_frame.contentWindow.document.documentElement.scrollHeight + 'px';
+        }
+
+        var data_frame = document.getElementById('data_frame');
+        data_frame.onload = frame_onload;
+
+        frame_set_source("logs.txt");
+        window.setInterval(function() { frame_reload() }, 1000);
+    </script>
+</div>
+</body>
+</html>
