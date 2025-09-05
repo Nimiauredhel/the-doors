@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html><head>
+<html>
+<head>
     <title>DOORS Hub</title>
 
     <meta charset="utf-8">
@@ -13,7 +14,8 @@
         font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     div {
-        width: 900px;
+        width: 1600px;
+        height: auto;
         margin: 5em auto;
         padding: 2em;
         background-color: #a0a0ff;
@@ -22,6 +24,7 @@
     }
     iframe {
         width: 100%;
+        height: auto;
         margin: auto auto;
         padding: auto;
         background-color: #b0b0ff;
@@ -35,28 +38,39 @@
 <div>
     <h1>DOORS Hub</h1>
     <p>Just a web page served by the DOORS Hub.</p>
-    <h2> Logs </h2>
-    <iframe id="logs" src="logs.txt"></iframe>
-    <h2> Doors </h2>
-    <iframe id="doors" src="doors.txt"></iframe>
-    <h2> Intercoms </h2>
-    <iframe id="intercoms" src="intercoms.txt"></iframe>
+    <button type="logs_button" onclick="frame_set_source('logs.txt')">Logs</button>
+    <button type="doors_button" onclick="frame_set_source('doors.txt')">Doors</button>
+    <button type="intercoms_button" onclick="frame_set_source('intercoms.txt')">Intercoms</button>
+    <button type="example_button" onclick="frame_set_source('example.txt')">Example</button>
+    <iframe id="data_frame" src="example.txt"></iframe>
     <script>
-        function frame_load (my_frame) {
-            var body = my_frame.contentWindow.document.querySelector('body');
-            body.style.color = 'black';
-            body.style.fontSize = '16px';
-            body.style.lineHeight = '16px';
+        var data_frame = document.getElementById('data_frame');
+
+        function frame_reload() {
+            data_frame.contentWindow.location.reload();
         }
 
-        var logs_frame = document.getElementById('logs');
-        logs_frame.onload = () => frame_load(logs_frame);
-        var doors_frame = document.getElementById('doors');
-        doors_frame.onload = () => frame_load(doors_frame);
-        var intercoms_frame = document.getElementById('intercoms');
-        intercoms_frame.onload = () => frame_load(intercoms_frame);
+        function frame_set_source (source) {
+            data_frame.src = source;
+            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
+            data_frame_body.style.color = 'red';
+            frame_reload();
+        }
+
+        function frame_onload () {
+            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
+            data_frame_body.style.color = 'black';
+            data_frame_body.style.fontSize = '20px';
+            data_frame_body.style.lineHeight = '20px';
+            data_frame.style.height = data_frame.contentWindow.document.documentElement.scrollHeight + 'px';
+        }
+
+        var data_frame = document.getElementById('data_frame');
+        data_frame.onload = frame_onload;
+
+        frame_set_source("logs.txt");
+        window.setInterval(function() { frame_reload() }, 1000);
     </script>
 </div>
-
-
-</body></html>
+</body>
+</html>
