@@ -6,10 +6,16 @@
  */
 static bool random_was_seeded = false;
 
+static char process_label[32] = {0};
+
 void syslog_init(char *self_label)
 {
+    char syslog_label[40] = {0};
+    snprintf(process_label, sizeof(process_label), "%s", self_label);
+    snprintf(syslog_label, sizeof(syslog_label), "DOORS %s", self_label);
+
     setlogmask(LOG_UPTO(LOG_INFO));
-    openlog(self_label, LOG_CONS | LOG_PERROR, LOG_USER);
+    openlog(syslog_label, LOG_CONS | LOG_PERROR, LOG_USER);
 }
 
 void syslog_append(char *msg)
@@ -30,7 +36,7 @@ void syslog_append(char *msg)
 
     if (file != NULL)
     {
-        fprintf(file, "[%02u:%02u:%02u]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec, msg);
+        fprintf(file, "[%02u:%02u:%02u][%s]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec, process_label, msg);
         fclose(file);
     } 
 }

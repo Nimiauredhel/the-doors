@@ -4,7 +4,6 @@ sudo mkdir -p /usr/bin/doors_hub
 # copy all built modules to the installation folder
 sudo cp -r build/* /usr/bin/doors_hub/
 
-
 # stop nginx server if running
 sudo nginx -s quit
 

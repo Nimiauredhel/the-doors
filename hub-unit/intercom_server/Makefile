@@ -1,48 +1,63 @@
-SOURCE=../../common/*.c ../hub_common/*.c *.c
+SOURCE=*.c
 PROGRAM=intercom_server
 EXE_NAME=$(PROGRAM)
 ARGS=
-BUILD_DIR=../build/
-EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
+BUILD_DIR=../build
+EXE_PATH=$(BUILD_DIR)/$(EXE_NAME)
+COMMON_LIB_PATH=/usr/lib/libhub_common.so
 INC=-I../../common -I../hub_common
-LIBS=-lpthread -lrt
+LIBS=-lhub_common -lpthread -lrt
 DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
 STRICT_FLAGS=$(DEFAULT_FLAGS) -Wall -pedantic -Wextra
+STRICT_PREFIX=bear --
 DEBUG_FLAGS=$(STRICT_FLAGS) -g -pg -o0
+FLAGS=
+PREFIX=
 
+.PHONY: default
 default:
-	mkdir -p $(BUILD_DIR)
-	gcc $(SOURCE) $(DEFAULT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	$(MAKE) setcap
-                                     
+	$(MAKE) $(EXE_PATH) FLAGS="$(DEFAULT_FLAGS)"
+
+.PHONY: strict
 strict:                              
-	mkdir -p $(BUILD_DIR)
-	bear -- gcc $(SOURCE) $(STRICT_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	$(MAKE) setcap
+	$(MAKE) $(EXE_PATH) PREFIX="$(STRICT_PREFIX)" FLAGS="$(STRICT_FLAGS)"
                     
+.PHONY: debug
 debug:              
+	$(MAKE) $(EXE_PATH) FLAGS="$(DEBUG_FLAGS)"
+
+.PHONY: post-build
+post-build:
+	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
+
+$(EXE_PATH): $(SOURCE) $(COMMON_LIB_PATH)
 	mkdir -p $(BUILD_DIR)
-	gcc $(SOURCE) $(DEBUG_FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
-	$(MAKE) setcap
+	$(PREFIX) gcc $(SOURCE) $(FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
+	$(MAKE) post-build
 
-.ONESHELL:
-run:
-	 cd $(BUILD_DIR); ./$(EXE_NAME) $(ARGS)
-
+.PHONY: andrun
 andrun:
 	$(MAKE) default
 	$(MAKE) run
 
+.PHONY: clean
+clean:
+	rm $(EXE_PATH)
+	rm compile_commands.json
+
+.ONESHELL:
+$(COMMON_LIB_PATH):
+	cd ../hub_common
+	$(MAKE)
+
+.PHONY: run
+run:
+	 cd $(BUILD_DIR); ./$(EXE_NAME) $(ARGS)
+
+.PHONY: gdb
 gdb:
 	cd $(BUILD_DIR); gdb ./$(EXE_NAME) $(ARGS)
 
+.PHONY: valgrind
 valgrind:
 	cd $(BUILD_DIR); valgrind -s --leak-check=yes --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(EXE_NAME) $(ARGS)
-
-clean:
-	rm -rf $(BUILD_DIR)
-	rm -f compile_commands.json
-
-setcap:
-	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
-

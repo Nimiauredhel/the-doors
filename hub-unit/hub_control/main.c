@@ -111,19 +111,21 @@ static void launch_process(uint8_t index)
 
 static void control_loop(void)
 {
-    static const uint16_t delay_secs = 15;
-    static uint64_t runtime_secs = 0;
+    static const uint16_t delay_secs = 10;
+    static time_t run_time_s = 0;
     
     char log_buff[128] = {0};
     int status;
     int ret;
 
+    time_t launch_time_s = time(NULL);
+
     for(;;)
     {
         sleep(delay_secs);
-        runtime_secs += delay_secs;
+        run_time_s = time(NULL) - launch_time_s;
 
-        snprintf(log_buff, sizeof(log_buff), "Still alive, runtime: %lu seconds", runtime_secs);
+        snprintf(log_buff, sizeof(log_buff), "Still alive, runtime: %lus", run_time_s);
         syslog_append(log_buff);
 
         for (int i = 0; i < NUM_PROCESSES; i++)
@@ -147,7 +149,7 @@ static void control_loop(void)
 
 int main(void)
 {
-    syslog_init("DOORS Hub Control");
+    syslog_init("Hub Control");
     initialize_signal_handler();
 
     // daemonize
@@ -165,9 +167,6 @@ int main(void)
     {
 	    launch_process(i);
     }
-
-    // launch web server ?
-    //system("sh init_web.sh");
 
     // begin loop checking that all processes are still running
     sleep(1);

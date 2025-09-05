@@ -9,8 +9,8 @@ int main(void)
 {
     char log_buff[128] = {0};
 
-    syslog_init("DOORS Door Manager");
-    snprintf(log_buff, sizeof(log_buff), "Starting Door Manager, PID %u", getpid());
+    syslog_init("Door Manager");
+    snprintf(log_buff, sizeof(log_buff), "Starting process with PID %u", getpid());
     syslog_append(log_buff);
     initialize_signal_handler();
     common_init();
