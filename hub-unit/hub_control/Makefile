@@ -1,11 +1,12 @@
-SOURCE=../../common/*.c ../hub_common/*.c *.c
+SOURCE=*.c
 PROGRAM=hub_control
 EXE_NAME=$(PROGRAM)
 ARGS=
-BUILD_DIR=../build/
-EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
+BUILD_DIR=../build
+EXE_PATH=$(BUILD_DIR)/$(EXE_NAME)
+COMMON_LIB_PATH=/usr/lib/libhub_common.so
 INC=-I../../common -I../hub_common
-LIBS=-lpthread -li2c -lrt
+LIBS=-lhub_common -lpthread -li2c -lrt
 DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
 STRICT_FLAGS=$(DEFAULT_FLAGS) -Wall -pedantic -Wextra
 STRICT_PREFIX=bear --
@@ -25,7 +26,7 @@ strict:
 debug:              
 	$(MAKE) $(EXE_PATH) FLAGS="$(DEBUG_FLAGS)"
 
-$(EXE_PATH): $(SOURCE)
+$(EXE_PATH): $(SOURCE) $(COMMON_LIB_PATH)
 	mkdir -p $(BUILD_DIR)
 	$(PREFIX) gcc $(SOURCE) $(FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 
@@ -40,6 +41,10 @@ andrun:
 	$(MAKE) run
 
 .ONESHELL:
+$(COMMON_LIB_PATH):
+	cd ../hub_common
+	$(MAKE)
+
 .PHONY: run
 run:
 	 cd $(BUILD_DIR); ./$(EXE_NAME) $(ARGS)

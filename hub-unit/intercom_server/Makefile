@@ -1,11 +1,12 @@
-SOURCE=../../common/*.c ../hub_common/*.c *.c
+SOURCE=*.c
 PROGRAM=intercom_server
 EXE_NAME=$(PROGRAM)
 ARGS=
-BUILD_DIR=../build/
-EXE_PATH=$(BUILD_DIR)$(EXE_NAME)
+BUILD_DIR=../build
+EXE_PATH=$(BUILD_DIR)/$(EXE_NAME)
+COMMON_LIB_PATH=/usr/lib/libhub_common.so
 INC=-I../../common -I../hub_common
-LIBS=-lpthread -lrt
+LIBS=-lhub_common -lpthread -lrt
 DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
 STRICT_FLAGS=$(DEFAULT_FLAGS) -Wall -pedantic -Wextra
 STRICT_PREFIX=bear --
@@ -29,7 +30,7 @@ debug:
 post-build:
 	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
 
-$(EXE_PATH): $(SOURCE)
+$(EXE_PATH): $(SOURCE) $(COMMON_LIB_PATH)
 	mkdir -p $(BUILD_DIR)
 	$(PREFIX) gcc $(SOURCE) $(FLAGS) $(INC) $(LIBS) -o $(EXE_PATH)
 	$(MAKE) post-build
@@ -45,6 +46,10 @@ clean:
 	rm compile_commands.json
 
 .ONESHELL:
+$(COMMON_LIB_PATH):
+	cd ../hub_common
+	$(MAKE)
+
 .PHONY: run
 run:
 	 cd $(BUILD_DIR); ./$(EXE_NAME) $(ARGS)
