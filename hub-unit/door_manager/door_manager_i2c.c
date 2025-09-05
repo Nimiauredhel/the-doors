@@ -131,11 +131,16 @@ static void process_data_from_door(void)
             door_states_ptr->last_seen[cell] = time(NULL);
             strncpy(door_states_ptr->name[cell], door_info_ptr->name, UNIT_NAME_MAX_LEN);
 
+            time_t t_now = time(NULL);
+            struct tm tm_now = get_datetime();
             FILE *file = fopen("site/doors.txt", "w");
+
+            fprintf(file, "Door Count: %u\n", door_states_ptr->count);
+            fprintf(file, "Logged [%02u:%02u:%02u]\n\n", tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
 
             for (int i = 0; i < door_states_ptr->count; i++)
             {
-                fprintf(file, " [%u] %s [%ld]\n", door_states_ptr->id[i], door_states_ptr->name[i], door_states_ptr->last_seen[i]);
+                fprintf(file, " [%u] %s [Updated %lds ago]\n", door_states_ptr->id[i], door_states_ptr->name[i], t_now - door_states_ptr->last_seen[i]);
             }
 
             fclose(file);
