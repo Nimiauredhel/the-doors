@@ -2,6 +2,8 @@
 #include "intercom_server_listener.h"
 #include "intercom_server_ipc.h"
 
+static const useconds_t listener_error_sleep_us = 500000;
+
 static int server_socket = -1;
 static struct sockaddr_in server_addr;
 
@@ -132,7 +134,7 @@ static void init_client_slots(void)
     {
         client_slots[i].slot_state = SLOTSTATE_VACANT;
         client_slots[i].client_socket = -1;
-        //client_slots[i].next_slot_idx = -1;
+        client_slots[i].index = -1;
     }
 }
 
@@ -166,14 +168,12 @@ static void increment_next_client_slot(void)
     pthread_mutex_unlock(&slots_mutex);
 }
 
-static void check_client_slots(void)
+static void update_client_slots(bool acquire_slots_mutex)
 {
-    pthread_mutex_lock(&slots_mutex);
+    if (acquire_slots_mutex) pthread_mutex_lock(&slots_mutex);
 
-    bool dirty = false;
-    uint16_t prev_count = client_count;
-    uint16_t temp_count = 0;
-    uint16_t indices[HUB_MAX_CLIENT_COUNT] = {0};
+    uint16_t removed_count = 0;
+    uint16_t removed_indices[HUB_MAX_CLIENT_COUNT] = {0};
 
     for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
     {
@@ -182,52 +182,13 @@ static void check_client_slots(void)
             pthread_join(client_slots[i].client_thread_handle, NULL);
             client_slots[i].slot_state = SLOTSTATE_VACANT;
             client_slots[i].client_socket = -1;
-            //client_slots[i].next_slot_idx = -1;
-            client_count--;
-            dirty = true;
-        }
-        else if (client_slots[i].slot_state == SLOTSTATE_ACTIVE)
-        {
-            indices[temp_count] = i;
-            temp_count++;
+            client_slots[i].index = -1;
+            removed_indices[removed_count] = i;
+            removed_count++;
         }
     }
 
-    dirty = dirty || temp_count != prev_count;
-
-    if (dirty)
-    {
-        /// TODO: implement actual 'last seen' field for intercom states
-        /// using a visibly odd value for now to make it stand out
-        time_t temp_fake_last_seen_time = time(NULL) - 12345;
-        char temp_fake_unit_name[UNIT_NAME_MAX_LEN] = "placeholder unit name";
-
-        HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
-        explicit_bzero(intercom_states_ptr, sizeof(HubClientStates_t));
-
-        for (uint16_t i = 0; i < temp_count; i++)
-        {
-            intercom_states_ptr->slot_used[indices[i]] = true;
-
-            /// TODO: see above
-            intercom_states_ptr->last_seen[indices[i]] = temp_fake_last_seen_time;
-
-            /// TODO: implement actual mac address field for intercom states
-            /// using a visibly odd value for now to make it stand out
-            for (uint8_t j = 0; j < 6; j++)
-            {
-                intercom_states_ptr->mac_addresses[indices[i]][j] = j+1;
-            }
-
-            strncpy(intercom_states_ptr->name[indices[i]], temp_fake_unit_name, UNIT_NAME_MAX_LEN);
-        }
-
-        common_update_intercom_list_txt(intercom_states_ptr);
-
-        ipc_release_intercom_states_ptr();
-    }
-
-    pthread_mutex_unlock(&slots_mutex);
+    if (acquire_slots_mutex) pthread_mutex_unlock(&slots_mutex);
 
     if (next_slot_idx < 0) increment_next_client_slot();
 }
@@ -255,8 +216,7 @@ static void connection_check_outbox(ClientData_t *data)
         }
         else if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            // TODO: check possible consequences of sleep() after a timeout
-            sleep(1);
+            usleep(listener_error_sleep_us);
         }
         else
         {
@@ -302,8 +262,7 @@ static void connection_send_door_list(ClientData_t *data)
         }
         else if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            // TODO: check possible consequences of sleep() after a timeout
-            sleep(1);
+            usleep(listener_error_sleep_us);
         }
         else
         {
@@ -343,23 +302,55 @@ static void handle_request_packet(DoorPacket_t *packet, ClientData_t *client)
 	}
 }
 
-static void connection_handle_incoming_packet(DoorPacket_t *packet, ClientData_t *client)
+static void connection_update_client_info(ClientInfo_t *info, ClientData_t *client)
 {
-    char log_buff[182] = {0};
+    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
 
-    snprintf(log_buff, sizeof(log_buff), "Received packet with category #%d", packet->header.category);
+    intercom_states_ptr->last_seen[client->index] = time(NULL);
+    intercom_states_ptr->slot_used[client->index] = true;
+
+    for (uint8_t i = 0; i < 6; i++)
+    {
+        intercom_states_ptr->mac_addresses[client->index][i] = info->mac_address[i];
+    }
+
+    strncpy(intercom_states_ptr->name[client->index], info->name, sizeof(intercom_states_ptr->name));
+
+    common_update_intercom_list_txt(intercom_states_ptr);
+
+    ipc_release_intercom_states_ptr();
+}
+
+static void connection_remove_client_info(ClientData_t *client)
+{
+    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+
+    intercom_states_ptr->slot_used[client->index] = false;
+
+    common_update_intercom_list_txt(intercom_states_ptr);
+
+    ipc_release_intercom_states_ptr();
+}
+
+static void connection_handle_incoming_packet(DoorPacket_t *packet_ptr, ClientInfo_t *info_ptr, ClientData_t *client)
+{
+    char log_buff[128] = {0};
+
+    snprintf(log_buff, sizeof(log_buff), "Received packet with category #%d", packet_ptr->header.category);
     log_append(log_buff);
 
-    switch(packet->header.category)
+    switch(packet_ptr->header.category)
     {
     case PACKET_CAT_REPORT:
-        handle_report_packet(packet, client);
+        handle_report_packet(packet_ptr, client);
         break;
     case PACKET_CAT_REQUEST:
-        handle_request_packet(packet, client);
+        handle_request_packet(packet_ptr, client);
+        break;
+    case PACKET_CAT_DATA:
+        connection_update_client_info(info_ptr, client);
         break;
     case PACKET_CAT_NONE:
-    case PACKET_CAT_DATA:
     case PACKET_CAT_MAX:
     default:
         log_append("Packet category invalid");
@@ -369,15 +360,18 @@ static void connection_handle_incoming_packet(DoorPacket_t *packet, ClientData_t
 
 static void connection_loop(ClientData_t *data)
 {
-	const uint8_t error_threshold = 6;
-	const time_t silence_threshold = 2;
+	const uint8_t error_threshold = 100;
+	const time_t silence_threshold = 15;
 
 	uint8_t error_counter = 0;
 
 	char syslog_buff[128] = {0};
-	DoorPacket_t packet_buff = {0};
 	int ret;
     time_t last_seen = time(NULL);
+
+    uint8_t rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_SMALL];
+    DoorPacket_t *rx_packet_ptr = (DoorPacket_t *)rx_buff;
+    ClientInfo_t *rx_info_ptr = (ClientInfo_t *)(rx_buff + sizeof(DoorPacket_t));
 
 	snprintf(syslog_buff, sizeof(syslog_buff), "Started task for client %s", inet_ntoa(data->client_addr.sin_addr));
 	log_append(syslog_buff);
@@ -391,9 +385,9 @@ static void connection_loop(ClientData_t *data)
 
 		ret = 0;
 		explicit_bzero(syslog_buff, sizeof(syslog_buff));
-		explicit_bzero(&packet_buff, sizeof(packet_buff));
+		explicit_bzero(rx_buff, sizeof(rx_buff));
 
-		ret = recvfrom(data->client_socket, &packet_buff, sizeof(packet_buff), 0, (struct sockaddr*)&data->client_addr, &data->client_addr_len);
+		ret = recvfrom(data->client_socket, rx_buff, sizeof(rx_buff), 0, (struct sockaddr*)&data->client_addr, &data->client_addr_len);
 
 		if (ret > 0)
 		{
@@ -401,20 +395,18 @@ static void connection_loop(ClientData_t *data)
 		    error_counter = 0;
 		    snprintf(syslog_buff, sizeof(syslog_buff), "Received packet from client %s", inet_ntoa(data->client_addr.sin_addr));
 		    log_append(syslog_buff);
-		    connection_handle_incoming_packet(&packet_buff, data);
+		    connection_handle_incoming_packet(rx_packet_ptr, rx_info_ptr, data);
 		}
 		else if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
-            // 50ms sleep
-            usleep(1000 * 50);
+            usleep(listener_error_sleep_us);
 		}
 		else
 		{
-		    perror("Failed to receive on client socket.");
-
+            int err = errno;
 		    error_counter++;
 
-		    snprintf(syslog_buff, sizeof(syslog_buff), "Failed to receive on client socket.");
+		    snprintf(syslog_buff, sizeof(syslog_buff), "Failed to receive on client socket: %s.", strerror(err));
 		    log_append(syslog_buff);
 
 		}
@@ -439,6 +431,8 @@ void *connection_task(void *arg)
     // TODO: null check
     data->outbox = hub_queue_create(8);
     data->slot_state = SLOTSTATE_ACTIVE;
+    /// TODO: handle slots updates in a separate thread and only mark "dirty" from here
+    update_client_slots(false);
     pthread_mutex_unlock(&slots_mutex);
 
     snprintf(syslog_buff, sizeof(syslog_buff), "Starting connection loop, client count: %d.", client_count);
@@ -451,9 +445,14 @@ void *connection_task(void *arg)
 
     // cleanup
     close(data->client_socket);
+
+    connection_remove_client_info(data);
+
     pthread_mutex_lock(&slots_mutex);
     hub_queue_destroy(data->outbox);
     data->slot_state = SLOTSTATE_GARBAGE;
+    /// TODO: handle slots updates in a separate thread and only mark "dirty" from here
+    update_client_slots(false);
     pthread_mutex_unlock(&slots_mutex);
 
     snprintf(syslog_buff, sizeof(syslog_buff), "Ended connection task, client count: %d.", client_count);
@@ -472,11 +471,10 @@ static void listen_loop(void)
     socklen_t new_client_addr_len = sizeof(new_client_addr);
     int new_client_socket = -1;
 
-    check_client_slots();
-
     if (next_slot_idx < 0 || client_count >= HUB_MAX_CLIENT_COUNT)
     {
-        sleep(1);
+        /// TODO: put this check after accept() and handle with some sort of response
+        usleep(listener_error_sleep_us);
         return;
     }
 
@@ -484,12 +482,12 @@ static void listen_loop(void)
 
     if (new_client_socket < 0)
     {
-        perror("Failed to accept request on socket.");
+        int err = errno;
 
-        snprintf(syslog_buff, sizeof(syslog_buff), "Failed to accept request on socket.");
+        snprintf(syslog_buff, sizeof(syslog_buff), "Failed to accept request on socket: %s.", strerror(err));
         log_append(syslog_buff);
 
-        sleep(1);
+        usleep(listener_error_sleep_us);
     }
     else
     {
@@ -521,14 +519,17 @@ static void listen_loop(void)
             client_slots[next_slot_idx].client_socket = new_client_socket;
             client_slots[next_slot_idx].client_addr = new_client_addr;
             client_slots[next_slot_idx].client_addr_len = new_client_addr_len;
+            client_slots[next_slot_idx].index = next_slot_idx;
             client_count++;
             pthread_create(&client_slots[next_slot_idx].client_thread_handle, NULL, connection_task, &client_slots[next_slot_idx]);
             pthread_mutex_unlock(&slots_mutex);
 
             if(0 > setsockopt(new_client_socket, SOL_SOCKET, SO_RCVTIMEO,  &socket_timeout, sizeof(socket_timeout)))
             {
-                perror("Failed to set socket timeout");
-                // TODO: figure out how to actually handle this
+                int err = errno;
+                snprintf(syslog_buff, sizeof(syslog_buff), "Failed to set socket timeout: %s.", strerror(err));
+                log_append(syslog_buff);
+                /// TODO: actually handle this
             }
 
             snprintf(syslog_buff, sizeof(syslog_buff), "New client connected: %s", inet_ntoa(client_slots[next_slot_idx].client_addr.sin_addr));
