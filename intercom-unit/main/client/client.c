@@ -1,5 +1,7 @@
 #include "client.h"
 
+static const useconds_t socket_timeout_usec = 500000;
+
 static int client_socket = -1;
 static struct sockaddr_in client_addr = {0};
 static struct sockaddr_in server_addr ={0};
@@ -38,6 +40,28 @@ esp_netif_ip_info_t client_get_ip_info(void)
     return ip_info;
 }
 
+int client_send_unit_info(void)
+{
+    struct tm datetime = get_datetime();
+
+    uint8_t unit_info_packet[sizeof(DoorPacket_t) + sizeof(ClientInfo_t)] = {0};
+
+    DoorPacket_t *packet_ptr = (DoorPacket_t *)unit_info_packet;
+    ClientInfo_t *info_ptr = (ClientInfo_t *)(unit_info_packet+sizeof(DoorPacket_t));
+
+    // TODO: include source, version, priority etc
+    packet_ptr->header.time = packet_encode_time(datetime.tm_hour, datetime.tm_min, datetime.tm_sec);
+    packet_ptr->header.date = packet_encode_date(datetime.tm_year, datetime.tm_mon, datetime.tm_mday);
+    packet_ptr->header.category = PACKET_CAT_DATA;
+    packet_ptr->body.Data.data_type = PACKET_DATA_CLIENT_INFO;
+    packet_ptr->body.Data.data_length = sizeof(ClientInfo_t);
+
+    esp_netif_get_mac(esp_netif_get_default_netif(), info_ptr->mac_address);
+    strncpy(info_ptr->name, "Client Name", sizeof(info_ptr->name));
+
+    return send(client_socket, unit_info_packet, sizeof(unit_info_packet), 0);
+}
+
 int client_send_request(DoorRequest_t request, uint16_t destination)
 {
     struct tm datetime = get_datetime();
@@ -69,8 +93,7 @@ static struct sockaddr_in init_server_socket_address(struct in_addr peer_address
 
 static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_ptr)
 {
-    //static const int reuse_flag = 1;
-    static const struct timeval socket_timeout = { .tv_sec = 1, .tv_usec = 0 };
+    static const struct timeval socket_timeout = { .tv_sec = 0, .tv_usec = socket_timeout_usec };
 
     *socket_ptr = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 
@@ -81,20 +104,6 @@ static void init_local_data_socket(int *socket_ptr, struct sockaddr_in *address_
         vTaskDelay(pdMS_TO_TICKS(2000));
         esp_restart();
     }
-
-    /*
-    if(0 > setsockopt(*socket_ptr, SOL_SOCKET, SO_REUSEADDR,  &reuse_flag, sizeof(reuse_flag)))
-    {
-        perror("Failed to set socket 'reuse address' option");
-        exit(EXIT_FAILURE);
-    }
-
-    if(0 > setsockopt(*socket_ptr, SOL_SOCKET, SO_REUSEPORT,  &reuse_flag, sizeof(reuse_flag)))
-    {
-        perror("Failed to set socket 'reuse port' option");
-        exit(EXIT_FAILURE);
-    }
-    */
 
     if(0 > setsockopt(*socket_ptr, SOL_SOCKET, SO_RCVTIMEO,  &socket_timeout, sizeof(socket_timeout)))
     {
@@ -158,6 +167,7 @@ static void connect_to_hub_server(void)
     printf("Successfully connected to Hub Intercom Server.\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
     client_send_request(PACKET_REQUEST_SYNC_TIME, 0);
+    client_send_unit_info();
 }
 
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -338,9 +348,6 @@ static int receive_packet()
 
 static void hub_comms(void)
 {
-    static const uint8_t connection_error_threshold = 10;
-    static uint8_t connection_error_count = 0;
-
 #define HANDLE_RET(ret) \
     if (ret > 0) { \
         connection_error_count = 0; \
@@ -354,6 +361,19 @@ static void hub_comms(void)
             return; \
         } \
     } 
+
+    static const uint8_t connection_error_threshold = 100;
+    static const time_t connection_sync_interval = 10;
+
+    static uint8_t connection_error_count = 0;
+    static time_t last_sent_sync = 0;
+
+    if ((time(NULL) - last_sent_sync) > connection_sync_interval)
+    {
+        HANDLE_RET(client_send_request(PACKET_REQUEST_SYNC_TIME, 0));
+        HANDLE_RET(client_send_unit_info());
+        last_sent_sync = time(NULL);
+    }
 
     HANDLE_RET(receive_packet());
 
@@ -371,7 +391,7 @@ static void client_loop(void)
     case CLIENTSTATE_NONE:
     case CLIENTSTATE_INIT:
     default:
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(500));
         break;
     case CLIENTSTATE_CONNECTING:
         connect_to_hub_server();
