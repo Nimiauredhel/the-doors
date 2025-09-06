@@ -4,8 +4,6 @@
 #include "hub_common.h"
 #include "networking_common.h"
 
-#define CLIENT_SLOTS 32
-
 typedef enum SlotState
 {
     SLOTSTATE_VACANT = 0,
@@ -33,6 +31,7 @@ typedef struct ServerDoorList
     char names[HUB_MAX_DOOR_COUNT][UNIT_NAME_MAX_LEN];
 } ServerDoorList_t;
 
+void common_update_intercom_list_txt(HubClientStates_t *client_states_ptr);
 void server_start(void);
 
 #endif
