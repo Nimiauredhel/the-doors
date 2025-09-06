@@ -94,7 +94,9 @@ static void ipc_init_intercom_states_shm(void)
 
     log_append("Mapped intercom states shm.");
 
-    explicit_bzero(ipc_intercom_states_shm_ptr, sizeof(HubClientStates_t));
+    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+    explicit_bzero(intercom_states_ptr, sizeof(HubClientStates_t));
+    ipc_release_intercom_states_ptr();
 }
 
 static void ipc_in_loop(void)

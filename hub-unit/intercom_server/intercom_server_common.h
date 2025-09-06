@@ -15,6 +15,7 @@ typedef enum SlotState
 typedef struct ClientData
 {
     SlotState_t slot_state;
+    int index;
     int client_socket;
     struct sockaddr_in client_addr;
     socklen_t client_addr_len;
