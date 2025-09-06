@@ -14,6 +14,7 @@
 
 extern HubQueue_t *doors_to_clients_queue;
 
+void common_update_door_list_txt(HubDoorStates_t *door_states_ptr);
 void common_init(void);
 void common_terminate(int ret);
 

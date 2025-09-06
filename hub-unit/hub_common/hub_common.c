@@ -1,36 +1,72 @@
 #include "hub_common.h"
 
+static const char *site_dir = "site";
+static const char *logs_dir = "logs";
+static const char *common_log_path = "logs/common.txt";
+
 /**
  * The random_range() function uses this to determine
  * whether rand() was already seeded or not.
  */
 static bool random_was_seeded = false;
 
-void syslog_init(char *self_label)
+static char process_label[32] = {0};
+static char process_log_path[40] = {0};
+
+void log_init(char *self_label)
 {
+    char syslog_label[40] = {0};
+    snprintf(process_label, sizeof(process_label), "%s", self_label);
+    snprintf(syslog_label, sizeof(syslog_label), "DOORS-%s", self_label);
+
     setlogmask(LOG_UPTO(LOG_INFO));
-    openlog(self_label, LOG_CONS | LOG_PERROR, LOG_USER);
+    openlog(syslog_label, LOG_CONS | LOG_PERROR, LOG_USER);
+
+    mkdir(logs_dir, 0777);
+
+    snprintf(process_log_path, sizeof(process_log_path), "%s/%s.txt", logs_dir, self_label);
 }
 
-void syslog_append(char *msg)
+void log_append(char *msg)
 {
     syslog(LOG_INFO, "%s", msg);
 
+    char formatted_log_buff[128] = {0};
     struct tm now_dt = get_datetime();
+    snprintf(formatted_log_buff, sizeof(formatted_log_buff), "[%02u:%02u:%02u][%s]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec, process_label, msg);
 
-    FILE *file = fopen("site/logs.txt", "a");
+    FILE *file = NULL;
+
+    /// write to common log
+    file = fopen(common_log_path, "a");
 
     /// only retry once
     /// TODO: implement an internal log queue to handle this properly
     if (file == NULL)
     {
         usleep(1000);
-        file = fopen("site/logs.txt", "a");
+        file = fopen(common_log_path, "a");
     }
 
     if (file != NULL)
     {
-        fprintf(file, "[%02u:%02u:%02u]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec, msg);
+        fprintf(file, "%s", formatted_log_buff);
+        fclose(file);
+    } 
+    /// write to process specific log
+    file = fopen(process_log_path, "a");
+
+    /// only retry once
+    /// TODO: implement an internal log queue to handle this properly
+    if (file == NULL)
+    {
+        usleep(1000);
+        file = fopen(process_log_path, "a");
+    }
+
+    if (file != NULL)
+    {
+        fprintf(file, "%s", formatted_log_buff);
         fclose(file);
     } 
 }
@@ -40,7 +76,7 @@ void syslog_append(char *msg)
  */
 void initialize_signal_handler(void)
 {
-    syslog_append("Initializing signal handler");
+    log_append("Initializing signal handler");
 
     struct sigaction new_sigaction = {0};
     new_sigaction.sa_handler = signal_handler;
@@ -67,18 +103,18 @@ void signal_handler(int signum)
     switch (signum)
     {
         case SIGHUP:
-            syslog_append("Received signal SIGHUP");
+            log_append("Received signal SIGHUP");
             break;
         case SIGINT:
-            syslog_append("Received signal SIGINT");
+            log_append("Received signal SIGINT");
             exit(EXIT_SUCCESS);
             break;
         case SIGTERM:
-            syslog_append("Received signal SIGTERM");
+            log_append("Received signal SIGTERM");
             exit(EXIT_SUCCESS);
             break;
         default:
-            syslog_append("Received signal Unknown");
+            log_append("Received signal Unknown");
             break;
     }
 }

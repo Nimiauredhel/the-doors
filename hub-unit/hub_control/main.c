@@ -25,18 +25,18 @@ static HubProcess_t processes[] =
 
 static void daemon_init(void)
 {
-    syslog_append("Daemonizing!");
+    log_append("Daemonizing!");
 
     int ret = daemon(1, 0);
 
     if (ret < 0)
     {
         perror("Failed to Daemonize");
-        syslog_append("Failed to Daemonize, Terminating");
+        log_append("Failed to Daemonize, Terminating");
         exit(EXIT_FAILURE);
     }
 
-    syslog_append("Successfully Daemonized");
+    log_append("Successfully Daemonized");
 }
 
 static void ipc_init(void)
@@ -49,12 +49,12 @@ static void ipc_init(void)
     {
         if (errno == EEXIST)
         {
-            syslog_append("Queue 'doors to clients' already exists.");
+            log_append("Queue 'doors to clients' already exists.");
         }
         else
         {
             perror("Failed to open or create 'doors to clients' queue");
-            syslog_append("Failed to open or create 'doors to clients' queue");
+            log_append("Failed to open or create 'doors to clients' queue");
             exit(EXIT_FAILURE);
         }
     }
@@ -67,12 +67,12 @@ static void ipc_init(void)
     {
         if (errno == EEXIST)
         {
-            syslog_append("Queue 'clients to doors' already exists.");
+            log_append("Queue 'clients to doors' already exists.");
         }
         else
         {
             perror("Failed to open or create 'clients to doors' queue");
-            syslog_append("Failed to open or create 'clients to doors' queue");
+            log_append("Failed to open or create 'clients to doors' queue");
             exit(EXIT_FAILURE);
         }
     }
@@ -88,7 +88,7 @@ static void launch_process(uint8_t index)
     if (pid < 0)
     {
         perror("Failed to fork");
-        syslog_append("Failed to fork");
+        log_append("Failed to fork");
         exit(EXIT_FAILURE);
     }
 
@@ -98,33 +98,35 @@ static void launch_process(uint8_t index)
 
         perror("Failed to execute process");
         snprintf(log_buff, sizeof(log_buff), "Failed to execute process: %s", strerror(exec_ret));
-        syslog_append(log_buff);
+        log_append(log_buff);
         exit(EXIT_FAILURE);
     }
     else
     {
         processes[index].pid = pid;
         snprintf(log_buff, sizeof(log_buff), "Successfully launched program %s with PID %d.", processes[index].exe_name, processes[index].pid);
-        syslog_append(log_buff);
+        log_append(log_buff);
     }
 }
 
 static void control_loop(void)
 {
-    static const uint16_t delay_secs = 15;
-    static uint64_t runtime_secs = 0;
+    static const uint16_t delay_secs = 10;
+    static time_t run_time_s = 0;
     
     char log_buff[128] = {0};
     int status;
     int ret;
 
+    time_t launch_time_s = time(NULL);
+
     for(;;)
     {
         sleep(delay_secs);
-        runtime_secs += delay_secs;
+        run_time_s = time(NULL) - launch_time_s;
 
-        snprintf(log_buff, sizeof(log_buff), "Still alive, runtime: %lu seconds", runtime_secs);
-        syslog_append(log_buff);
+        snprintf(log_buff, sizeof(log_buff), "Still alive, runtime: %lus", run_time_s);
+        log_append(log_buff);
 
         for (int i = 0; i < NUM_PROCESSES; i++)
         {
@@ -133,13 +135,13 @@ static void control_loop(void)
             if (ret != 0)
             {
                 snprintf(log_buff, sizeof(log_buff), "Program %s (PID %d) stopped with signal %d - relaunching.", processes[i].exe_name, processes[i].pid, WSTOPSIG(status));
-                syslog_append(log_buff);
+                log_append(log_buff);
                 launch_process(i);
             }
             else
             {
                 snprintf(log_buff, sizeof(log_buff), "Program %s (PID %d) still running.", processes[i].exe_name, processes[i].pid);
-                syslog_append(log_buff);
+                log_append(log_buff);
             }
         }
     }
@@ -147,7 +149,7 @@ static void control_loop(void)
 
 int main(void)
 {
-    syslog_init("DOORS Hub Control");
+    log_init("Hub-Control");
     initialize_signal_handler();
 
     // daemonize
@@ -165,9 +167,6 @@ int main(void)
     {
 	    launch_process(i);
     }
-
-    // launch web server ?
-    //system("sh init_web.sh");
 
     // begin loop checking that all processes are still running
     sleep(1);
