@@ -1,7 +1,7 @@
 #include "door_manager_i2c.h"
 
 static const char device_path[16] = "/dev/bone/i2c/2";
-static const uint8_t polling_interval_sec = 1;
+static const useconds_t i2c_polling_interval_usec = 500000;
 
 static int device_fd = -1;
 
@@ -79,7 +79,7 @@ static void read_data_from_door(uint16_t length)
     }
 
     snprintf(syslog_buff, sizeof(syslog_buff), "Read %d data bytes out of target %u.", total_bytes_read, length);
-    syslog_append(syslog_buff);
+    log_append(syslog_buff);
 }
 
 static void process_data_from_door(void)
@@ -94,12 +94,12 @@ static void process_data_from_door(void)
     case PACKET_DATA_DOOR_INFO:
         snprintf(syslog_buff, sizeof(syslog_buff), "Received door info, name: %s, address: %u, index: %u, from actual address: %u, expected index: %u.",
                 door_info_ptr->name, INDEX_TO_I2C_ADDR(door_info_ptr->index), door_info_ptr->index, current_target_addr, I2C_ADDR_TO_INDEX(current_target_addr));
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
 
         if (door_info_ptr->index >= HUB_MAX_DOOR_COUNT)
         {
             sprintf(syslog_buff, "Received index out of bounds.");
-            syslog_append(syslog_buff);
+            log_append(syslog_buff);
         }
         else
         {
@@ -113,7 +113,7 @@ static void process_data_from_door(void)
                 {
                     cell = i;
                     sprintf(syslog_buff, "Updating existing entry with received data.");
-                    syslog_append(syslog_buff);
+                    log_append(syslog_buff);
                     break;
                 }
             }
@@ -121,7 +121,7 @@ static void process_data_from_door(void)
             if (cell < 0)
             {
                 sprintf(syslog_buff, "Door ID unused, storing new entry.");
-                syslog_append(syslog_buff);
+                log_append(syslog_buff);
 
                 cell = door_states_ptr->count;
                 door_states_ptr->count++;
@@ -131,19 +131,7 @@ static void process_data_from_door(void)
             door_states_ptr->last_seen[cell] = time(NULL);
             strncpy(door_states_ptr->name[cell], door_info_ptr->name, UNIT_NAME_MAX_LEN);
 
-            time_t t_now = time(NULL);
-            struct tm tm_now = get_datetime();
-            FILE *file = fopen("site/doors.txt", "w");
-
-            fprintf(file, "Door Count: %u\n", door_states_ptr->count);
-            fprintf(file, "Logged [%02u:%02u:%02u]\n\n", tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
-
-            for (int i = 0; i < door_states_ptr->count; i++)
-            {
-                fprintf(file, " [%u] %s [Updated %lds ago]\n", door_states_ptr->id[i], door_states_ptr->name[i], t_now - door_states_ptr->last_seen[i]);
-            }
-
-            fclose(file);
+            common_update_door_list_txt(door_states_ptr);
 
             ipc_release_door_states_ptr();
         }
@@ -168,31 +156,31 @@ static void process_report(void)
     {
     case PACKET_REPORT_NONE:
          sprintf(syslog_buff, "Door event NONE.");
-         syslog_append(syslog_buff);
+         log_append(syslog_buff);
          break;
     case PACKET_REPORT_DOOR_OPENED:
          sprintf(syslog_buff, "Door Opened");
-         syslog_append(syslog_buff);
+         log_append(syslog_buff);
          break;
     case PACKET_REPORT_DOOR_CLOSED:
          sprintf(syslog_buff, "Door Closed");
-         syslog_append(syslog_buff);
+         log_append(syslog_buff);
          break;
     case PACKET_REPORT_DOOR_BLOCKED:
         sprintf(syslog_buff, "Door Blocked for %u seconds", rx_packet_ptr->body.Report.report_data_32);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_PASS_CORRECT:
         bzero(debug_buff, sizeof(debug_buff));
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
         sprintf(syslog_buff, "Correct Password Entered: %s.", debug_buff);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_PASS_WRONG:
         bzero(debug_buff, sizeof(debug_buff));
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
         sprintf(syslog_buff, "Wrong Password Entered: %s.", debug_buff);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_PASS_CHANGED:
         bzero(debug_buff, sizeof(debug_buff));
@@ -201,22 +189,22 @@ static void process_report(void)
         debug_buff[5] = '>';
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_32, debug_buff+6);
         sprintf(syslog_buff, "Password Changed. %s", debug_buff);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_QUERY_RESULT:
         sprintf(syslog_buff, "Query Result [%u][%u]", rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_DATA_READY:
         snprintf(syslog_buff, sizeof(syslog_buff), "Data Ready from source [%u], data size [%u].",
                 rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         read_data_from_door(rx_packet_ptr->body.Report.report_data_32);
         process_data_from_door();
         break;
     case PACKET_REPORT_ERROR:
         sprintf(syslog_buff, "Error Code [%u][%u]", rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_TIME_SET:
         sprintf(syslog_buff, "Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
@@ -228,16 +216,16 @@ static void process_report(void)
         packet_decode_hour(rx_packet_ptr->body.Report.report_data_32),
         packet_decode_minutes(rx_packet_ptr->body.Report.report_data_32),
         packet_decode_seconds(rx_packet_ptr->body.Report.report_data_32));
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     case PACKET_REPORT_FRESH_BOOT:
         sprintf(syslog_buff, "Fresh Boot. Sending time sync!");
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         send_request_to_door(PACKET_REQUEST_SYNC_TIME, 0, 1);
         break;
     default:
         sprintf(syslog_buff, "Unknown Door Event");
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
         break;
     }
 }
@@ -272,7 +260,7 @@ static void process_request_from_door(void)
       break;
     }
 
-    syslog_append(syslog_buff);
+    log_append(syslog_buff);
 }
 
 static void poll_slave_event_queue(void)
@@ -281,9 +269,7 @@ static void poll_slave_event_queue(void)
 
 	char syslog_buff[128] = {0};
 
-	//syslog_append("Starting polling");
-
-    sleep(polling_interval_sec);
+	//log_append("Starting polling");
 
     for (int i = 0; i < target_addr_last_count; i++)
     {
@@ -296,7 +282,7 @@ static void poll_slave_event_queue(void)
         int32_t bytes_read = i2c_master_read(I2C_REG_EVENT_COUNT, 1, rx_buff);
         uint8_t queue_length = rx_buff[0];
     //sprintf(syslog_buff, "Read %ld bytes from address [0x%X] event count %u", bytes_read, target_addr_list[i], queue_length);
-    //syslog_append(syslog_buff);
+    //log_append(syslog_buff);
 
 
         if (bytes_read <= 0 || queue_length <= 0) continue;
@@ -360,7 +346,7 @@ static void scan_i2c_bus(void)
     while (target_addr_last_count == 0)
     {
         sprintf(syslog_buff, "Scanning I2C bus for target devices.");
-        syslog_append(syslog_buff);
+        log_append(syslog_buff);
 
         for (uint8_t i = 0; i < TARGET_ADDR_MAX_COUNT; i++)
         {
@@ -369,14 +355,14 @@ static void scan_i2c_bus(void)
             read_bytes = i2c_master_read(I2C_REG_EVENT_COUNT, 1, rx_buff);
 
         //    sprintf(syslog_buff, "Addr [0x%X], read bytes: %d", addr, read_bytes);
-        //    syslog_append(syslog_buff);
+        //    log_append(syslog_buff);
 
             if (read_bytes > 0)
             {
                 target_addr_set[i] = true;
                 target_addr_list[target_addr_last_count] = addr;
                 sprintf(syslog_buff, "Detected target device at address [0x%X].", target_addr_list[target_addr_last_count]);
-                syslog_append(syslog_buff);
+                log_append(syslog_buff);
                 target_addr_last_count += 1;
             }
         }
@@ -384,18 +370,18 @@ static void scan_i2c_bus(void)
         if (target_addr_last_count == 0)
         {
             snprintf(syslog_buff, sizeof(syslog_buff), "Concluded I2C bus scan, no devices detected - retrying in 2 seconds.");
-            syslog_append(syslog_buff);
+            log_append(syslog_buff);
             sleep(2);
         }
     }
 
     sprintf(syslog_buff, "Concluded I2C bus scan, %d devices detected.", target_addr_last_count);
-    syslog_append(syslog_buff);
+    log_append(syslog_buff);
 }
 
 void i2c_forward_request(DoorPacket_t *request)
 {
-    syslog_append("Forwarding request to door");
+    log_append("Forwarding request to door");
     if (target_addr_last_count > 0)
     {
         i2c_set_target(target_addr_list[0]);
@@ -405,20 +391,22 @@ void i2c_forward_request(DoorPacket_t *request)
 
 static void i2c_loop(void)
 {
-    static const uint16_t rescan_threshold = 100;
-    static uint16_t rescan_counter = 0;
+    static const int16_t rescan_threshold_loops = 60;
+    static int16_t rescan_counter_loops = 0;
 
-    if (rescan_counter <= 0)
+    if (rescan_counter_loops <= 0)
     {
-        rescan_counter = rescan_threshold;
+        rescan_counter_loops = rescan_threshold_loops;
         scan_i2c_bus();
     }
     else
     {
-        rescan_counter--;
+        rescan_counter_loops--;
     }
 
     poll_slave_event_queue();
+
+    usleep(i2c_polling_interval_usec);
 }
 
 void i2c_terminate(void)
@@ -442,7 +430,7 @@ void i2c_init(void)
 	system("sh i2c2_init.sh");
 
 	sprintf(buff, "Opening I2C device at path %s", device_path);
-	syslog_append(buff);
+	log_append(buff);
 
 	// open the i2c device file
 	device_fd = open(device_path, O_RDWR, S_IWUSR);
@@ -450,12 +438,12 @@ void i2c_init(void)
 	if (device_fd <= 0)
 	{
 		sprintf(buff, "Error opening I2C device, code: %d", device_fd);
-		syslog_append(buff);
+		log_append(buff);
         common_terminate(EXIT_FAILURE);
 	}
 	else
 	{
 		sprintf(buff, "Successfully opened I2C device, descriptor: %d", device_fd);
-		syslog_append(buff);
+		log_append(buff);
 	}
 }

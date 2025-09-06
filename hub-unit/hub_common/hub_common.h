@@ -62,8 +62,8 @@ typedef struct HubClientStates
     char name[HUB_MAX_CLIENT_COUNT][UNIT_NAME_MAX_LEN];
 } HubClientStates_t;
 
-void syslog_init(char *self_label);
-void syslog_append(char *msg);
+void log_init(char *self_label);
+void log_append(char *msg);
 void initialize_signal_handler(void);
 void initialize_random_seed(void);
 void signal_handler(int signum);

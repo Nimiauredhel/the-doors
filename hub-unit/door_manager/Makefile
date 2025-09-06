@@ -5,6 +5,7 @@ ARGS=
 BUILD_DIR=../build
 EXE_PATH=$(BUILD_DIR)/$(EXE_NAME)
 COMMON_LIB_PATH=/usr/lib/libhub_common.so
+COMMON_LIB_SRC=../hub_common/*
 INC=-I../../common -I../hub_common
 LIBS=-lhub_common -lpthread -li2c -lrt
 DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
@@ -46,7 +47,7 @@ clean:
 	rm compile_commands.json
 
 .ONESHELL:
-$(COMMON_LIB_PATH):
+$(COMMON_LIB_PATH): $(COMMON_LIB_SRC)
 	cd ../hub_common
 	$(MAKE)
 
