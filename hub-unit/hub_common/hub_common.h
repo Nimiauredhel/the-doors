@@ -62,6 +62,12 @@ typedef struct HubClientStates
     char name[HUB_MAX_CLIENT_COUNT][UNIT_NAME_MAX_LEN];
 } HubClientStates_t;
 
+/**
+ * Global flag set by OS termination signals
+ * and polled by functions to allow graceful termination.
+ */
+extern bool should_terminate;
+
 void log_init(char *self_label);
 void log_append(char *msg);
 void initialize_signal_handler(void);

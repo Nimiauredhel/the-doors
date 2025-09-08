@@ -3,6 +3,7 @@
 
 #include <string.h>
 
+#include "hub_common_ipc.h"
 #include "door_manager_common.h"
 #include "door_manager_i2c.h"
 

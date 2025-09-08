@@ -6,10 +6,22 @@
 static pthread_t ipc_out_thread_handle;
 static pthread_t ipc_in_thread_handle;
 
+HubQueue_t *clients_to_doors_queue = NULL;
+
 static void server_init(void)
 {
-    ipc_init();
-    listener_init();
+    log_append("Initializing common resources.");
+
+    clients_to_doors_queue = hub_queue_create(128);
+
+    if (clients_to_doors_queue == NULL)
+    {
+        log_append("Failed to create Clients to Doors Queue.");
+        should_terminate = true;
+        return;
+    }
+
+    log_append("Done initializing common resources.");
 }
 
 void common_update_intercom_list_txt(HubClientStates_t *client_states_ptr)
@@ -50,16 +62,21 @@ void common_update_intercom_list_txt(HubClientStates_t *client_states_ptr)
     fclose(file);
 }
 
-
 void server_start(void)
 {
+    /// TODO: replace frequent 'if()' with something nicer
     server_init();
+    if (!should_terminate) ipc_init();
+    if (!should_terminate) listener_init();
 
-    pthread_create(&ipc_out_thread_handle, NULL, ipc_out_task, NULL);
-    pthread_create(&ipc_in_thread_handle, NULL, ipc_in_task, NULL);
+    if (!should_terminate) 
+    {
+        pthread_create(&ipc_out_thread_handle, NULL, ipc_out_task, NULL);
+        pthread_create(&ipc_in_thread_handle, NULL, ipc_in_task, NULL);
 
-    // not creating a new thread since main thread is doing nothing
-    listener_task(NULL);
+        // not creating a new thread since main thread is doing nothing
+        listener_task(NULL);
+    }
 
-    for(;;);
+    while(!should_terminate);
 }

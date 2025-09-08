@@ -5,6 +5,12 @@ static const char *logs_dir = "logs";
 static const char *common_log_path = "logs/common.txt";
 
 /**
+ * Global flag set by OS termination signals
+ * and polled by functions to allow graceful termination.
+ */
+bool should_terminate = false;
+
+/**
  * The random_range() function uses this to determine
  * whether rand() was already seeded or not.
  */
@@ -107,11 +113,11 @@ void signal_handler(int signum)
             break;
         case SIGINT:
             log_append("Received signal SIGINT");
-            exit(EXIT_SUCCESS);
+            should_terminate = true;
             break;
         case SIGTERM:
             log_append("Received signal SIGTERM");
-            exit(EXIT_SUCCESS);
+            should_terminate = true;
             break;
         default:
             log_append("Received signal Unknown");

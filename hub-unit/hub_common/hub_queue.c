@@ -32,6 +32,12 @@ HubQueue_t *hub_queue_create(uint16_t capacity)
 {
     HubQueue_t *queue_ptr = malloc(sizeof(HubQueue_t) + (capacity * sizeof(DoorPacket_t)));
 
+    if (queue_ptr == NULL)
+    {
+        log_append("!! Failed to create hub queue !!");
+        return NULL;
+    }
+
     queue_ptr->capacity = capacity;
     queue_ptr->head_idx = 0;
     queue_ptr->tail_idx = 0;
@@ -44,6 +50,12 @@ HubQueue_t *hub_queue_create(uint16_t capacity)
 
 void hub_queue_destroy(HubQueue_t *queue)
 {
+    if (queue == NULL)
+    {
+        log_append("!! Attempted to destroy null hub queue !!");
+        return;
+    }
+
     pthread_mutex_unlock(&queue->mutex);
     pthread_mutex_destroy(&queue->mutex);
     free(queue);
@@ -52,6 +64,12 @@ void hub_queue_destroy(HubQueue_t *queue)
 
 int hub_queue_enqueue(HubQueue_t *queue, DoorPacket_t *src)
 {
+    if (queue == NULL)
+    {
+        log_append("!! Attempted to enqueue null hub queue !!");
+        return 0;
+    }
+
     pthread_mutex_lock(&queue->mutex);
 
     if (queue->length >= queue->capacity)
@@ -72,6 +90,12 @@ int hub_queue_enqueue(HubQueue_t *queue, DoorPacket_t *src)
 
 int hub_queue_dequeue(HubQueue_t *queue, DoorPacket_t *dst)
 {
+    if (queue == NULL)
+    {
+        log_append("!! Attempted to dequeue null hub queue !!");
+        return 0;
+    }
+
     pthread_mutex_lock(&queue->mutex);
     if (queue->length <= 0)
     {

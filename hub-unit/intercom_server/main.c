@@ -10,4 +10,6 @@ int main(void)
     log_append(log_buff);
 
     server_start();
+
+    return 0;
 }

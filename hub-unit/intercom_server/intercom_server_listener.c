@@ -58,17 +58,20 @@ static void init_server_socket(void)
 {
     static const int reuse_flag = 1;
 
+    /// TODO: fix up error handling and graceful termination flow - the current state is half baked at best
+
     char log_buff[128] = {0};
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (server_socket <= 0)
+    if (server_socket < 0)
     {
         perror("Failed to create requests socket");
 
         snprintf(log_buff, sizeof(log_buff), "Failed to create requests socket");
         log_append(log_buff);
 
-        exit(EXIT_FAILURE);
+        should_terminate = true;
+        return;
     }
 
     if(0 > setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR,  &reuse_flag, sizeof(reuse_flag)))
@@ -78,7 +81,8 @@ static void init_server_socket(void)
         snprintf(log_buff, sizeof(log_buff), "Failed to set socket 'reuse address' option");
         log_append(log_buff);
 
-        exit(EXIT_FAILURE);
+        should_terminate = true;
+        return;
     }
 
     if(0 > setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT,  &reuse_flag, sizeof(reuse_flag)))
@@ -88,7 +92,8 @@ static void init_server_socket(void)
         snprintf(log_buff, sizeof(log_buff), "Failed to set socket 'reuse port' option");
         log_append(log_buff);
 
-        exit(EXIT_FAILURE);
+        should_terminate = true;
+        return;
     }
 
     server_addr.sin_family = AF_INET;
@@ -104,7 +109,8 @@ static void init_server_socket(void)
         snprintf(log_buff, sizeof(log_buff), "Could not bind requests socket");
         log_append(log_buff);
 
-        exit(EXIT_FAILURE);
+        should_terminate = true;
+        return;
     }
 
     snprintf(log_buff, sizeof(log_buff), "Successfully bound socket.");
@@ -119,7 +125,8 @@ static void init_server_socket(void)
         snprintf(log_buff, sizeof(log_buff), "Failed to listen on socket.");
         log_append(log_buff);
 
-        exit(EXIT_FAILURE);
+        should_terminate = true;
+        return;
     }
 
     snprintf(log_buff, sizeof(log_buff), "Now listening on socket.");
@@ -284,7 +291,7 @@ static void handle_report_packet(DoorPacket_t *packet, ClientData_t *client)
     log_append("Handling report packet (unimplemented)");
 }
 
-static void handle_request_packet(DoorPacket_t *packet, ClientData_t *client)
+static void process_request_from_intercom(DoorPacket_t *packet, ClientData_t *client)
 {
     log_append("Handling request packet.");
 
@@ -297,7 +304,7 @@ static void handle_request_packet(DoorPacket_t *packet, ClientData_t *client)
             break;
 	    default:
             log_append("Forwarding request to door.");
-            ipc_forward_client_to_door_request(packet);
+            hub_queue_enqueue(clients_to_doors_queue, packet);
             break;
 	}
 }
@@ -345,7 +352,7 @@ static void connection_handle_incoming_packet(DoorPacket_t *packet_ptr, ClientIn
         handle_report_packet(packet_ptr, client);
         break;
     case PACKET_CAT_REQUEST:
-        handle_request_packet(packet_ptr, client);
+        process_request_from_intercom(packet_ptr, client);
         break;
     case PACKET_CAT_DATA:
         connection_update_client_info(info_ptr, client);
@@ -379,7 +386,7 @@ static void connection_loop(ClientData_t *data)
     connection_send_door_list(data);
     last_seen = time(NULL);
 
-	for(;;)
+    while(!should_terminate)
 	{
 		connection_check_outbox(data);
 
@@ -543,14 +550,22 @@ static void listen_loop(void)
 void listener_init(void)
 {
     init_server_socket();
-    init_client_slots();
+    if (!should_terminate) init_client_slots();
 }
 
 void* listener_task(void *arg)
 {
-    for(;;)
+    /// suppresses 'unused variable' warning
+    (void)arg;
+
+    log_append("Starting Listener Task.");
+
+    while(!should_terminate)
     {
         listen_loop();
     }
+
+    log_append("Ending Listener Task.");
+
     return NULL;
 }

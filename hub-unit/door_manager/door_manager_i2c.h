@@ -11,7 +11,7 @@
 #include "door_manager_ipc.h"
 
 void i2c_forward_request(DoorPacket_t *request);
-void i2c_terminate(void);
+void i2c_deinit(void);
 void* i2c_task(void *arg);
 void i2c_init(void);
 

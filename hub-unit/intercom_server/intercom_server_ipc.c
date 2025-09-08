@@ -2,122 +2,35 @@
 #include "intercom_server_listener.h"
 #include "intercom_server_common.h"
 
-static mqd_t ipc_inbox_handle;
-static mqd_t ipc_outbox_handle;
-
-static HubQueue_t *clients_to_doors_queue = NULL;
-
-static sem_t *ipc_door_states_sem_ptr;
-static void *ipc_door_states_shm_ptr;
-
-static sem_t *ipc_intercom_states_sem_ptr;
-static void *ipc_intercom_states_shm_ptr;
-
-static void ipc_link_door_states_shm(void)
+static const useconds_t ipc_loop_delay_usec = 500000;
+static const struct timespec mq_timeout =
 {
-    /// TODO: most of this section is duplicated across modules and should be extracted
+    .tv_nsec = 0,
+    .tv_sec = 1,
+};
 
-    ipc_door_states_sem_ptr = sem_open(DOOR_STATES_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
+static const HubHandles_t *hub_handles_ptr = NULL;
 
-    if (ipc_door_states_sem_ptr == NULL)
-    {
-        log_append("Failed to open door states semaphore.");
-        exit(EXIT_FAILURE);
-    }
-
-    log_append("Opened door states semaphore.");
-
-    int shm_fd;
-
-    shm_fd = shm_open(DOOR_STATES_SHM_NAME, O_CREAT | O_RDWR, 0666);
-
-    if (shm_fd <= 0)
-    {
-        log_append("Failed to open door states shm.");
-        exit(EXIT_FAILURE);
-    }
-
-    ftruncate(shm_fd, sizeof(HubDoorStates_t));
-    ipc_door_states_shm_ptr = mmap(0, sizeof(HubDoorStates_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-    if (ipc_door_states_shm_ptr == NULL)
-    {
-        log_append("Failed to map door states shm.");
-        exit(EXIT_FAILURE);
-    }
-
-    log_append("Mapped door states shm.");
-}
-
-static void ipc_init_intercom_states_shm(void)
-{
-    /// TODO: most of this section is duplicated across modules and should be extracted
-
-    ipc_intercom_states_sem_ptr = sem_open(CLIENT_STATES_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
-
-    if (ipc_intercom_states_sem_ptr == NULL)
-    {
-        log_append("Failed to open intercom states semaphore.");
-        exit(EXIT_FAILURE);
-    }
-
-    log_append("Opened intercom states semaphore.");
-
-    if (0 > sem_init(ipc_intercom_states_sem_ptr, 1, 0))
-    {
-        log_append("Failed to initialize intercom states semaphore.");
-        exit(EXIT_FAILURE);
-    }
-
-    log_append("Initialized intercom states semaphore.");
-
-    sem_post(ipc_intercom_states_sem_ptr);
-
-    int shm_fd;
-
-    shm_fd = shm_open(CLIENT_STATES_SHM_NAME, O_CREAT | O_RDWR, 0666);
-
-    if (shm_fd <= 0)
-    {
-        log_append("Failed to open intercom states shm.");
-        exit(EXIT_FAILURE);
-    }
-
-    ftruncate(shm_fd, sizeof(HubClientStates_t));
-    ipc_intercom_states_shm_ptr = mmap(0, sizeof(HubClientStates_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-    if (ipc_intercom_states_shm_ptr == NULL)
-    {
-        log_append("Failed to map intercom states shm.");
-        exit(EXIT_FAILURE);
-    }
-
-    log_append("Mapped intercom states shm.");
-
-    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
-    explicit_bzero(intercom_states_ptr, sizeof(HubClientStates_t));
-    ipc_release_intercom_states_ptr();
-}
-
+/**
+ * @brief Reads messages from the 'intercom server inbox' POSIX queue,
+ * and forwards them for further processing (which typically means
+ * forwarding them to a particular Intercom Unit on the local network).
+ * A generous timeout duration is given to allow the calling thread
+ * to terminate if necessary.
+ **/
 static void ipc_in_loop(void)
 {
-    static const struct timespec inbox_timeout =
-    {
-        .tv_nsec = 0,
-        .tv_sec = 1,
-    };
-
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
     static char log_buff[128] = {0};
 
-    usleep(10000);
+    usleep(ipc_loop_delay_usec);
 
-    bytes_transmitted = mq_timedreceive(ipc_inbox_handle, msg_buff, sizeof(msg_buff), NULL, &inbox_timeout);
+    bytes_transmitted = mq_timedreceive(hub_handles_ptr->intercom_server_inbox_handle, msg_buff, sizeof(msg_buff), NULL, &mq_timeout);
 
     if (bytes_transmitted <= 0)
     {
-        if (errno == ETIMEDOUT || errno == EAGAIN)
+        if (errno == ETIMEDOUT || errno == EAGAIN || errno == EWOULDBLOCK)
         {
         }
         else
@@ -126,7 +39,11 @@ static void ipc_in_loop(void)
             log_append(log_buff);
         }
 
-        sleep(1);
+        /**
+         * intentionally only sleeps when nothing was dequeued,
+         * so that sequential inputs will be processed as fast as possible.
+         **/
+        usleep(ipc_loop_delay_usec);
     }
     else
     {
@@ -134,8 +51,14 @@ static void ipc_in_loop(void)
     }
 }
 
+/**
+ * @brief Reads messages from the internal 'clients to doors' queue,
+ * and forwards them to the 'door manager inbox' POSIX queue.
+ **/
 static void ipc_out_loop(void)
 {
+    /// TODO: this function is nearly duplicated in 'door_manager_ipc.c', consider extracting.
+    
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
     static char log_buff[128] = {0};
@@ -144,119 +67,101 @@ static void ipc_out_loop(void)
     {
         log_append("Forwarding from internal queue to outbox.");
 
-        for(;;)
+        /**
+         * this is a 'retry' loop - it breaks on success and reports on failures,
+         * which is why the common exit condition is currently inside and not on top.
+         * TODO: consider a retry counter or otherwise a more thought through error handling
+         * TODO: possibly mark message priority and consider some messages droppable
+         **/
+        while(!should_terminate)
         {
-            bytes_transmitted = mq_send(ipc_outbox_handle, msg_buff, sizeof(msg_buff), 0);
+            bytes_transmitted = mq_send(hub_handles_ptr->door_manager_inbox_handle, msg_buff, sizeof(msg_buff), 0);
 
             if (bytes_transmitted >= 0) break;
 
-            snprintf(log_buff, sizeof(log_buff), "Failed forwarding to outbox: %s", strerror(errno));
+            snprintf(log_buff, sizeof(log_buff), "Failed forwarding from internal queue to door manager inbox: %s", strerror(errno));
             log_append(log_buff);
-            sleep(1);
+            usleep(ipc_loop_delay_usec);
         }
     }
     else
     {
-        sleep(1);
+        /**
+         * intentionally only sleeps when nothing was dequeued,
+         * so that sequential inputs will be processed as fast as possible.
+         **/
+        usleep(ipc_loop_delay_usec);
     }
 }
 
-HubClientStates_t *ipc_acquire_intercom_states_ptr(void)
+void* ipc_in_task(void *arg)
 {
-    sem_wait(ipc_intercom_states_sem_ptr);
-    return (HubClientStates_t *)ipc_intercom_states_sem_ptr;
-}
+    /// suppresses the 'unused variable' warning
+    (void)arg;
 
-void ipc_release_intercom_states_ptr(void)
-{
-    sem_post(ipc_intercom_states_sem_ptr);
-}
+    log_append("Starting IPC Input Task.");
 
-HubDoorStates_t *ipc_acquire_door_states_ptr(void)
-{
-    sem_wait(ipc_door_states_sem_ptr);
-    return (HubDoorStates_t *)ipc_door_states_sem_ptr;
-}
-
-void ipc_release_door_states_ptr(void)
-{
-    sem_post(ipc_door_states_sem_ptr);
-}
-
-void ipc_forward_client_to_door_request(DoorPacket_t *request)
-{
-    static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
-    static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
-
-    log_append("Forwarding from internal queue to outbox.");
-
-    memcpy(msg_buff, request, sizeof(*request));
-
-    for(;;)
+    while(!should_terminate)
     {
-        bytes_transmitted = mq_send(ipc_outbox_handle, msg_buff, sizeof(msg_buff), 0);
-
-        if (bytes_transmitted >= 0) break;
-
-        snprintf(log_buff, sizeof(log_buff), "Failed forwarding to outbox: %s", strerror(errno));
-        log_append(log_buff);
-        sleep(1);
+        ipc_in_loop();
     }
+
+    log_append("Ending IPC Input Task.");
+
+    return NULL;
+}
+
+void* ipc_out_task(void *arg)
+{
+    /// suppresses the 'unused variable' warning
+    (void)arg;
+
+    log_append("Starting IPC Output Task.");
+
+    while(!should_terminate)
+    {
+        ipc_out_loop();
+    }
+
+    log_append("Ending IPC Output Task.");
+
+    return NULL;
 }
 
 void ipc_init(void)
 {
     log_append("Initializing IPC");
 
-    clients_to_doors_queue = hub_queue_create(128);
+    bool initialized = ipc_init_inbox_handles()
+                    && ipc_init_door_states_ptrs(false)
+                    && ipc_init_intercom_states_ptrs(true)
+                    && (NULL != (hub_handles_ptr = ipc_get_hub_handles_ptr()));
 
-    ipc_outbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_WRONLY);
-
-    if (ipc_outbox_handle < 0)
+    if (initialized)
     {
-        perror("Failed to open outbox queue");
-        log_append("Failed to open outbox queue");
-        exit(EXIT_FAILURE);
+        hub_handles_ptr = ipc_get_hub_handles_ptr();
+        log_append("IPC Initialization Completed.");
+
+        /// initial update/creation of door states txt
+        HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+        common_update_intercom_list_txt(intercom_states_ptr);
+        ipc_release_intercom_states_ptr();
     }
-
-    log_append("Opened outbox queue");
-
-    ipc_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_RDONLY);
-
-    if (ipc_outbox_handle < 0)
+    else
     {
-        perror("Failed to open inbox queue");
-        log_append("Failed to open inbox queue");
-        exit(EXIT_FAILURE);
+        log_append("IPC Initialization Failed.");
+        should_terminate = true;
     }
-
-    log_append("Opened inbox queue");
-
-    ipc_init_intercom_states_shm();
-    ipc_link_door_states_shm();
-
-    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
-    common_update_intercom_list_txt(intercom_states_ptr);
-    ipc_release_intercom_states_ptr();
-
-    log_append("IPC Initialization Complete");
 }
 
-void* ipc_in_task(void *arg)
+void ipc_deinit(void)
 {
-    for(;;)
+    if (hub_handles_ptr != NULL)
     {
-        ipc_in_loop();
+        mq_close(hub_handles_ptr->door_manager_inbox_handle);
+        mq_close(hub_handles_ptr->intercom_server_inbox_handle);
+        sem_close(hub_handles_ptr->door_states_sem_ptr);
+        sem_close(hub_handles_ptr->intercom_states_sem_ptr);
+        hub_handles_ptr = NULL;
     }
-    return NULL;
-}
-
-void* ipc_out_task(void *arg)
-{
-    for(;;)
-    {
-        ipc_out_loop();
-    }
-    return NULL;
 }
