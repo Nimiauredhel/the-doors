@@ -1,8 +1,10 @@
 #include "door_manager_common.h"
+#include "door_manager_i2c.h"
+#include "door_manager_ipc.h"
 
-HubQueue_t *doors_to_clients_queue;
+HubQueue_t *doors_to_clients_queue = NULL;
 
-void common_update_door_list_txt(HubDoorStates_t *door_states_ptr)
+void door_manager_update_door_list_txt(HubDoorStates_t *door_states_ptr)
 {
     static const char *door_list_txt_path = "logs/door-list.txt";
 
@@ -23,7 +25,7 @@ void common_update_door_list_txt(HubDoorStates_t *door_states_ptr)
     fclose(file);
 }
 
-void common_init(void)
+void door_manager_init(void)
 {
     log_append("Initializing common resources.");
 
@@ -31,23 +33,21 @@ void common_init(void)
 
     if (doors_to_clients_queue == NULL)
     {
-        perror("Failed to create Doors to Clients Queue");
-        log_append("Failed to create Doors to Clients Queue");
-        common_terminate(EXIT_FAILURE);
+        log_append("Failed to create Doors to Clients Queue.");
+        should_terminate = true;
+        return;
     }
 
     log_append("Done initializing common resources.");
 }
 
-void common_terminate(int ret)
+void door_manager_deinit(void)
 {
     ipc_deinit();
-    i2c_terminate();
+    i2c_deinit();
 
     if (doors_to_clients_queue != NULL)
     {
         hub_queue_destroy(doors_to_clients_queue);
     }
-
-    exit(ret);
 }

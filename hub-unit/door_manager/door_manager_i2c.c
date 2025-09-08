@@ -131,7 +131,7 @@ static void process_data_from_door(void)
             door_states_ptr->last_seen[cell] = time(NULL);
             strncpy(door_states_ptr->name[cell], door_info_ptr->name, UNIT_NAME_MAX_LEN);
 
-            common_update_door_list_txt(door_states_ptr);
+            door_manager_update_door_list_txt(door_states_ptr);
 
             ipc_release_door_states_ptr();
         }
@@ -379,6 +379,10 @@ static void scan_i2c_bus(void)
     log_append(syslog_buff);
 }
 
+/**
+ * @brief Accepts a 'request' type packet, and forwards it
+ * to its intended recipient Door Unit on the I2C bus.
+ **/
 void i2c_forward_request(DoorPacket_t *request)
 {
     log_append("Forwarding request to door");
@@ -409,7 +413,7 @@ static void i2c_loop(void)
     usleep(i2c_polling_interval_usec);
 }
 
-void i2c_terminate(void)
+void i2c_deinit(void)
 {
     if (device_fd > 0)
     {
@@ -419,7 +423,7 @@ void i2c_terminate(void)
 
 void* i2c_task(void *arg)
 {
-    for(;;) i2c_loop();
+    while(!should_terminate) i2c_loop();
     return NULL;
 }
 
@@ -439,7 +443,8 @@ void i2c_init(void)
 	{
 		sprintf(buff, "Error opening I2C device, code: %d", device_fd);
 		log_append(buff);
-        common_terminate(EXIT_FAILURE);
+        should_terminate = true;
+        return;
 	}
 	else
 	{
