@@ -2,7 +2,11 @@
 #include "intercom_server_listener.h"
 #include "intercom_server_ipc.h"
 
-static const useconds_t listener_error_sleep_us = 500000;
+static const struct timespec listener_loop_delay =
+{
+    .tv_nsec = 500000000,
+    .tv_sec = 0,
+};
 
 static int server_socket = -1;
 static struct sockaddr_in server_addr;
@@ -179,9 +183,6 @@ static void update_client_slots(bool acquire_slots_mutex)
 {
     if (acquire_slots_mutex) pthread_mutex_lock(&slots_mutex);
 
-    uint16_t removed_count = 0;
-    uint16_t removed_indices[HUB_MAX_CLIENT_COUNT] = {0};
-
     for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
     {
         if (client_slots[i].slot_state == SLOTSTATE_GARBAGE)
@@ -190,8 +191,6 @@ static void update_client_slots(bool acquire_slots_mutex)
             client_slots[i].slot_state = SLOTSTATE_VACANT;
             client_slots[i].client_socket = -1;
             client_slots[i].index = -1;
-            removed_indices[removed_count] = i;
-            removed_count++;
         }
     }
 
@@ -205,9 +204,6 @@ static void connection_check_outbox(ClientData_t *data)
     char log_buff[128] = {0};
     DoorPacket_t packet_buff = {0};
     int ret;
-
-    //snprintf(log_buff, sizeof(log_buff), "Checking outbox for client %s", inet_ntoa(data->client_addr.sin_addr));
-    //log_append(log_buff);
 
     while(hub_queue_dequeue(data->outbox, &packet_buff) >= 0)
     {
@@ -223,7 +219,7 @@ static void connection_check_outbox(ClientData_t *data)
         }
         else if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            usleep(listener_error_sleep_us);
+            nanosleep(&listener_loop_delay, NULL);
         }
         else
         {
@@ -269,7 +265,7 @@ static void connection_send_door_list(ClientData_t *data)
         }
         else if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            usleep(listener_error_sleep_us);
+            nanosleep(&listener_loop_delay, NULL);
         }
         else
         {
@@ -284,11 +280,6 @@ static void connection_send_door_list(ClientData_t *data)
 
     snprintf(log_buff, sizeof(log_buff), "Sent door list to client.");
     log_append(log_buff);
-}
-
-static void handle_report_packet(DoorPacket_t *packet, ClientData_t *client)
-{
-    log_append("Handling report packet (unimplemented)");
 }
 
 static void process_request_from_intercom(DoorPacket_t *packet, ClientData_t *client)
@@ -349,7 +340,8 @@ static void connection_handle_incoming_packet(DoorPacket_t *packet_ptr, ClientIn
     switch(packet_ptr->header.category)
     {
     case PACKET_CAT_REPORT:
-        handle_report_packet(packet_ptr, client);
+        log_append("Received report packet (cannot handle, unimplemented).");
+        /// TODO: decide whether intercom units should send report packets
         break;
     case PACKET_CAT_REQUEST:
         process_request_from_intercom(packet_ptr, client);
@@ -406,7 +398,7 @@ static void connection_loop(ClientData_t *data)
 		}
 		else if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
-            usleep(listener_error_sleep_us);
+            nanosleep(&listener_loop_delay, NULL);
 		}
 		else
 		{
@@ -438,7 +430,7 @@ void *connection_task(void *arg)
     // TODO: null check
     data->outbox = hub_queue_create(8);
     data->slot_state = SLOTSTATE_ACTIVE;
-    /// TODO: handle slots updates in a separate thread and only mark "dirty" from here
+    // TODO: handle slots updates in a separate thread and only mark "dirty" from here
     update_client_slots(false);
     pthread_mutex_unlock(&slots_mutex);
 
@@ -458,7 +450,7 @@ void *connection_task(void *arg)
     pthread_mutex_lock(&slots_mutex);
     hub_queue_destroy(data->outbox);
     data->slot_state = SLOTSTATE_GARBAGE;
-    /// TODO: handle slots updates in a separate thread and only mark "dirty" from here
+    // TODO: handle slots updates in a separate thread and only mark "dirty" from here
     update_client_slots(false);
     pthread_mutex_unlock(&slots_mutex);
 
@@ -480,8 +472,8 @@ static void listen_loop(void)
 
     if (next_slot_idx < 0 || client_count >= HUB_MAX_CLIENT_COUNT)
     {
-        /// TODO: put this check after accept() and handle with some sort of response
-        usleep(listener_error_sleep_us);
+        // TODO: put this check after accept() and handle with some sort of response
+        nanosleep(&listener_loop_delay, NULL);
         return;
     }
 
@@ -494,7 +486,7 @@ static void listen_loop(void)
         snprintf(syslog_buff, sizeof(syslog_buff), "Failed to accept request on socket: %s.", strerror(err));
         log_append(syslog_buff);
 
-        usleep(listener_error_sleep_us);
+        nanosleep(&listener_loop_delay, NULL);
     }
     else
     {
@@ -536,7 +528,7 @@ static void listen_loop(void)
                 int err = errno;
                 snprintf(syslog_buff, sizeof(syslog_buff), "Failed to set socket timeout: %s.", strerror(err));
                 log_append(syslog_buff);
-                /// TODO: actually handle this
+                // TODO: actually handle this
             }
 
             snprintf(syslog_buff, sizeof(syslog_buff), "New client connected: %s", inet_ntoa(client_slots[next_slot_idx].client_addr.sin_addr));
@@ -555,7 +547,7 @@ void listener_init(void)
 
 void* listener_task(void *arg)
 {
-    /// suppresses 'unused variable' warning
+    // suppresses 'unused variable' warning
     (void)arg;
 
     log_append("Starting Listener Task.");

@@ -1,6 +1,10 @@
 #include "door_manager_ipc.h"
 
-static const useconds_t ipc_loop_delay_usec = 500000;
+static const struct timespec loop_delay =
+{
+    .tv_nsec = 500000000,
+    .tv_sec = 0,
+};
 static const struct timespec mq_timeout =
 {
     .tv_nsec = 0,
@@ -39,7 +43,7 @@ static void ipc_in_loop(void)
          * intentionally only sleeps when nothing was dequeued,
          * so that sequential inputs will be processed as fast as possible.
          **/
-        usleep(ipc_loop_delay_usec);
+        nanosleep(&loop_delay, NULL);
     }
     else
     {
@@ -71,13 +75,13 @@ static void ipc_out_loop(void)
          **/
         while(!should_terminate)
         {
-            bytes_transmitted = mq_send(hub_handles_ptr->intercom_server_inbox_handle, msg_buff, sizeof(msg_buff), 0);
+            bytes_transmitted = mq_timedsend(hub_handles_ptr->intercom_server_inbox_handle, msg_buff, sizeof(msg_buff), 0, &mq_timeout);
 
             if (bytes_transmitted >= 0) break;
 
             snprintf(log_buff, sizeof(log_buff), "Failed forwarding to intercom server inbox: %s", strerror(errno));
             log_append(log_buff);
-            usleep(ipc_loop_delay_usec);
+            nanosleep(&loop_delay, NULL);
         }
     }
     else
@@ -86,7 +90,7 @@ static void ipc_out_loop(void)
          * intentionally only sleeps when nothing was dequeued,
          * so that sequential inputs will be processed as fast as possible.
          **/
-        usleep(ipc_loop_delay_usec);
+        nanosleep(&loop_delay, NULL);
     }
 }
 
