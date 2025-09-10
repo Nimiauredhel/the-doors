@@ -17,16 +17,21 @@ int main(void)
     log_append(log_buff);
     initialize_signal_handler();
     door_manager_init();
+
     if (!should_terminate) ipc_init();
     if (!should_terminate) i2c_init();
-    pthread_create(&i2c_thread, NULL, i2c_task, NULL);
-    pthread_create(&ipc_out_thread, NULL, ipc_out_task, NULL);
 
-    /// not creating a third thread since main is currently doing nothing
-    /// TODO: find use for another thread or clean this up
-    ipc_in_task(NULL);
+    if (!should_terminate)
+    {
+        pthread_create(&i2c_thread, NULL, i2c_task, NULL);
+        pthread_create(&ipc_out_thread, NULL, ipc_out_task, NULL);
 
-    while (!should_terminate);
+        /// not creating a third thread since main is currently doing nothing
+        /// TODO: find use for another thread or clean this up
+        ipc_in_task(NULL);
+
+        while (!should_terminate);
+    }
 
     door_manager_deinit();
     return 0;

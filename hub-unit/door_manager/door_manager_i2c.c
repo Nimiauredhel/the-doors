@@ -1,7 +1,16 @@
 #include "door_manager_i2c.h"
 
 static const char device_path[16] = "/dev/bone/i2c/2";
-static const useconds_t i2c_polling_interval_usec = 500000;
+static const struct timespec polling_loop_delay =
+{
+    .tv_nsec = 500000000,
+    .tv_sec = 0,
+};
+static const struct timespec scanning_loop_delay =
+{
+    .tv_nsec = 0,
+    .tv_sec = 2,
+};
 
 static int device_fd = -1;
 
@@ -47,17 +56,27 @@ static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uin
 	i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)&request_buffer, sizeof(DoorPacket_t));
 }
 
-static int32_t i2c_master_read(const uint8_t reg_addr, const uint8_t len, uint8_t *dst)
+/**
+ * @brief Attempts to read <length> bytes from the currently targeted Door unit's <reg_addr> register, to buffer <dst>.
+ * @param [in] reg_addr The target register to read from.
+ * @param [in] length The number of bytes to be read.
+ * @param [out] dst The destination buffer to which the bytes will be written.
+ **/
+static int32_t i2c_master_read(const uint8_t reg_addr, const uint8_t length, uint8_t *dst)
 {
-    int32_t bytes_read = i2c_smbus_read_i2c_block_data(device_fd, reg_addr, len, dst);
+    int32_t bytes_read = i2c_smbus_read_i2c_block_data(device_fd, reg_addr, length, dst);
     return bytes_read;
 }
 
+/**
+ * @brief Attempts to read <length> bytes from the currently targeted Door unit's Data register.
+ * @param [in] length The number of bytes to be read.
+ **/
 static void read_data_from_door(uint16_t length)
 {
     static const uint8_t chunk_len = 24;
 
-    static char syslog_buff[64] = {0};
+    static char log_buff[128] = {0};
 
     uint16_t offset = 0;
     uint16_t remaining = length;
@@ -78,13 +97,13 @@ static void read_data_from_door(uint16_t length)
         offset += bytes_read;
     }
 
-    snprintf(syslog_buff, sizeof(syslog_buff), "Read %d data bytes out of target %u.", total_bytes_read, length);
-    log_append(syslog_buff);
+    snprintf(log_buff, sizeof(log_buff), "Read %d data bytes out of target %u.", total_bytes_read, length);
+    log_append(log_buff);
 }
 
 static void process_data_from_door(void)
 {
-    char syslog_buff[128] = {0};
+    char log_buff[128] = {0};
 
     DoorDataType_t data_type = rx_packet_ptr->body.Data.data_type;
     DoorInfo_t *door_info_ptr = (DoorInfo_t *)rx_data_ptr;
@@ -92,14 +111,13 @@ static void process_data_from_door(void)
     switch(data_type)
     {
     case PACKET_DATA_DOOR_INFO:
-        snprintf(syslog_buff, sizeof(syslog_buff), "Received door info, name: %s, address: %u, index: %u, from actual address: %u, expected index: %u.",
+        snprintf(log_buff, sizeof(log_buff), "Received door info, name: %s, address: %u, index: %u, from actual address: %u, expected index: %u.",
                 door_info_ptr->name, INDEX_TO_I2C_ADDR(door_info_ptr->index), door_info_ptr->index, current_target_addr, I2C_ADDR_TO_INDEX(current_target_addr));
-        log_append(syslog_buff);
+        log_append(log_buff);
 
         if (door_info_ptr->index >= HUB_MAX_DOOR_COUNT)
         {
-            sprintf(syslog_buff, "Received index out of bounds.");
-            log_append(syslog_buff);
+            log_append("Received index out of bounds.");
         }
         else
         {
@@ -112,16 +130,14 @@ static void process_data_from_door(void)
                 if (door_states_ptr->id[i] == door_info_ptr->index)
                 {
                     cell = i;
-                    sprintf(syslog_buff, "Updating existing entry with received data.");
-                    log_append(syslog_buff);
+                    log_append("Updating existing entry with received data.");
                     break;
                 }
             }
 
             if (cell < 0)
             {
-                sprintf(syslog_buff, "Door ID unused, storing new entry.");
-                log_append(syslog_buff);
+                log_append("Door ID unused, storing new entry.");
 
                 cell = door_states_ptr->count;
                 door_states_ptr->count++;
@@ -148,39 +164,39 @@ static void process_data_from_door(void)
 static void process_report(void)
 {
 	char debug_buff[32] = {0};
-	char syslog_buff[128] = {0};
+	char log_buff[128] = {0};
 
     DoorReport_t report_type = rx_packet_ptr->body.Report.report_id;
 
     switch(report_type)
     {
     case PACKET_REPORT_NONE:
-         sprintf(syslog_buff, "Door event NONE.");
-         log_append(syslog_buff);
+         snprintf(log_buff, sizeof(log_buff), "Door %u event: NONE.", rx_packet_ptr->body.Report.source_id);
+         log_append(log_buff);
          break;
     case PACKET_REPORT_DOOR_OPENED:
-         sprintf(syslog_buff, "Door Opened");
-         log_append(syslog_buff);
+         snprintf(log_buff, sizeof(log_buff), "Door %u: Opened", rx_packet_ptr->body.Report.source_id);
+         log_append(log_buff);
          break;
     case PACKET_REPORT_DOOR_CLOSED:
-         sprintf(syslog_buff, "Door Closed");
-         log_append(syslog_buff);
+         snprintf(log_buff, sizeof(log_buff), "Door %u: Closed", rx_packet_ptr->body.Report.source_id);
+         log_append(log_buff);
          break;
     case PACKET_REPORT_DOOR_BLOCKED:
-        sprintf(syslog_buff, "Door Blocked for %u seconds", rx_packet_ptr->body.Report.report_data_32);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Blocked for %u seconds", rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_PASS_CORRECT:
         bzero(debug_buff, sizeof(debug_buff));
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
-        sprintf(syslog_buff, "Correct Password Entered: %s.", debug_buff);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Correct Password Entered: %s.", rx_packet_ptr->body.Report.source_id, debug_buff);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_PASS_WRONG:
         bzero(debug_buff, sizeof(debug_buff));
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
-        sprintf(syslog_buff, "Wrong Password Entered: %s.", debug_buff);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Wrong Password Entered: %s.", rx_packet_ptr->body.Report.source_id, debug_buff);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_PASS_CHANGED:
         bzero(debug_buff, sizeof(debug_buff));
@@ -188,26 +204,27 @@ static void process_report(void)
         debug_buff[4] = '-';
         debug_buff[5] = '>';
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_32, debug_buff+6);
-        sprintf(syslog_buff, "Password Changed. %s", debug_buff);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Password Changed. %s", rx_packet_ptr->body.Report.source_id, debug_buff);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_QUERY_RESULT:
-        sprintf(syslog_buff, "Query Result [%u][%u]", rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Query Result [%u][%u]", rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_DATA_READY:
-        snprintf(syslog_buff, sizeof(syslog_buff), "Data Ready from source [%u], data size [%u].",
-                rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Data Ready, size [%u].",
+                 rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
+        log_append(log_buff);
         read_data_from_door(rx_packet_ptr->body.Report.report_data_32);
         process_data_from_door();
         break;
     case PACKET_REPORT_ERROR:
-        sprintf(syslog_buff, "Error Code [%u][%u]", rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Error Code [%u][%u]", rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_TIME_SET:
-        sprintf(syslog_buff, "Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
+        rx_packet_ptr->body.Report.source_id,
         rx_packet_ptr->body.Report.report_data_16,
         rx_packet_ptr->body.Report.report_data_32,
         packet_decode_day(rx_packet_ptr->body.Report.report_data_16),
@@ -216,30 +233,30 @@ static void process_report(void)
         packet_decode_hour(rx_packet_ptr->body.Report.report_data_32),
         packet_decode_minutes(rx_packet_ptr->body.Report.report_data_32),
         packet_decode_seconds(rx_packet_ptr->body.Report.report_data_32));
-        log_append(syslog_buff);
+        log_append(log_buff);
         break;
     case PACKET_REPORT_FRESH_BOOT:
-        sprintf(syslog_buff, "Fresh Boot. Sending time sync!");
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Fresh Boot. Sending time sync!", rx_packet_ptr->body.Report.source_id);
+        log_append(log_buff);
         send_request_to_door(PACKET_REQUEST_SYNC_TIME, 0, 1);
         break;
     default:
-        sprintf(syslog_buff, "Unknown Door Event");
-        log_append(syslog_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Unknown Event", rx_packet_ptr->body.Report.source_id);
+        log_append(log_buff);
         break;
     }
 }
 
 static void process_request_from_door(void)
 {
-	char syslog_buff[128] = {0};
+	char log_buff[128] = {0};
 
     DoorRequest_t request_type = rx_packet_ptr->body.Request.request_id;
 
     switch(request_type)
     {
     case PACKET_REQUEST_BELL:
-        sprintf(syslog_buff, "Forwarding bell from door %u to client %u.", rx_packet_ptr->body.Request.source_id, rx_packet_ptr->body.Request.destination_id);
+        snprintf(log_buff, sizeof(log_buff), "Forwarding bell from door %u to client %u.", rx_packet_ptr->body.Request.source_id, rx_packet_ptr->body.Request.destination_id);
         hub_queue_enqueue(doors_to_clients_queue, rx_packet_ptr);
         break;
     case PACKET_REQUEST_SYNC_TIME:
@@ -260,16 +277,12 @@ static void process_request_from_door(void)
       break;
     }
 
-    log_append(syslog_buff);
+    log_append(log_buff);
 }
 
 static void poll_slave_event_queue(void)
 {
 	static const uint8_t zero = 0;
-
-	char syslog_buff[128] = {0};
-
-	//log_append("Starting polling");
 
     for (int i = 0; i < target_addr_last_count; i++)
     {
@@ -278,31 +291,15 @@ static void poll_slave_event_queue(void)
         bzero(rx_buff, sizeof(rx_buff));
 
         // read event queue length
-        // TODO: make this a uint16_t value?
         int32_t bytes_read = i2c_master_read(I2C_REG_EVENT_COUNT, 1, rx_buff);
         uint8_t queue_length = rx_buff[0];
-    //sprintf(syslog_buff, "Read %ld bytes from address [0x%X] event count %u", bytes_read, target_addr_list[i], queue_length);
-    //log_append(syslog_buff);
-
 
         if (bytes_read <= 0 || queue_length <= 0) continue;
-    //		printf("Reported %u new events in slave queue! Reading...\n", queue_length);
 
         for (int j = 0; j < queue_length; j++)
         {
             bzero(rx_buff, sizeof(rx_buff));
             i2c_master_read(I2C_REG_EVENT_HEAD | (j << 1), sizeof(DoorPacket_t), rx_buff);
-
-            /*
-            printf("[%02u/%02u/%02u][%02u:%02u:%02u]: ",
-                    packet_decode_day(packet_ptr->header.date),
-                    packet_decode_month(packet_ptr->header.date),
-                    packet_decode_year(packet_ptr->header.date),
-                    packet_decode_hour(packet_ptr->header.time),
-                    packet_decode_minutes(packet_ptr->header.time),
-                    packet_decode_seconds(packet_ptr->header.time));
-                    */
-
 
             switch(rx_packet_ptr->header.category)
             {
@@ -327,15 +324,13 @@ static void poll_slave_event_queue(void)
 
         }
 
-        //printf("Events retrieved. Ordering slave device to reset its local queue...\n");
         i2c_master_write(I2C_REG_EVENT_COUNT, &zero, 1);
-        //printf("Report concluded, polling resumed.\n");
     }
 }
 
 static void scan_i2c_bus(void)
 {
-    char syslog_buff[128] = {0};
+    char log_buff[128] = {0};
     int32_t read_bytes = 0;
 
     explicit_bzero(target_addr_set, TARGET_ADDR_MAX_COUNT);
@@ -345,8 +340,7 @@ static void scan_i2c_bus(void)
 
     while (target_addr_last_count == 0)
     {
-        sprintf(syslog_buff, "Scanning I2C bus for target devices.");
-        log_append(syslog_buff);
+        log_append("Scanning I2C bus for target devices.");
 
         for (uint8_t i = 0; i < TARGET_ADDR_MAX_COUNT; i++)
         {
@@ -354,29 +348,25 @@ static void scan_i2c_bus(void)
             i2c_set_target(addr);
             read_bytes = i2c_master_read(I2C_REG_EVENT_COUNT, 1, rx_buff);
 
-        //    sprintf(syslog_buff, "Addr [0x%X], read bytes: %d", addr, read_bytes);
-        //    log_append(syslog_buff);
-
             if (read_bytes > 0)
             {
                 target_addr_set[i] = true;
                 target_addr_list[target_addr_last_count] = addr;
-                sprintf(syslog_buff, "Detected target device at address [0x%X].", target_addr_list[target_addr_last_count]);
-                log_append(syslog_buff);
+                snprintf(log_buff, sizeof(log_buff), "Detected target device at address [0x%X].", target_addr_list[target_addr_last_count]);
+                log_append(log_buff);
                 target_addr_last_count += 1;
             }
         }
 
         if (target_addr_last_count == 0)
         {
-            snprintf(syslog_buff, sizeof(syslog_buff), "Concluded I2C bus scan, no devices detected - retrying in 2 seconds.");
-            log_append(syslog_buff);
-            sleep(2);
+            log_append("Concluded I2C bus scan, no devices detected - retrying in 2 seconds.");
+            nanosleep(&scanning_loop_delay, NULL);
         }
     }
 
-    sprintf(syslog_buff, "Concluded I2C bus scan, %d devices detected.", target_addr_last_count);
-    log_append(syslog_buff);
+    snprintf(log_buff, sizeof(log_buff), "Concluded I2C bus scan, %d devices detected.", target_addr_last_count);
+    log_append(log_buff);
 }
 
 /**
@@ -410,7 +400,7 @@ static void i2c_loop(void)
 
     poll_slave_event_queue();
 
-    usleep(i2c_polling_interval_usec);
+    nanosleep(&polling_loop_delay, NULL);
 }
 
 void i2c_deinit(void)
@@ -423,6 +413,8 @@ void i2c_deinit(void)
 
 void* i2c_task(void *arg)
 {
+    (void)arg;
+
     while(!should_terminate) i2c_loop();
     return NULL;
 }
@@ -431,7 +423,12 @@ void i2c_init(void)
 {
 	char buff[64] = {0};
 
-	system("sh i2c2_init.sh");
+	if (0 > system("sh i2c2_init.sh"))
+    {
+        log_append("Failed to run I2C2 initialization script.");
+        should_terminate = true;
+        return;
+    }
 
 	sprintf(buff, "Opening I2C device at path %s", device_path);
 	log_append(buff);
