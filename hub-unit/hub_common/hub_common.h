@@ -39,12 +39,16 @@
 
 #define DOOR_STATES_SHM_NAME "DOORS_DOOR_STATES_SHM"
 #define CLIENT_STATES_SHM_NAME "DOORS_CLIENT_STATES_SHM"
+#define HUB_LOG_SHM_NAME "DOORS_HUB_LOG_SHM"
 
 #define DOOR_STATES_SEM_NAME "DOORS_DOOR_STATES_SEM"
 #define CLIENT_STATES_SEM_NAME "DOORS_CLIENT_STATES_SEM"
+#define HUB_LOG_SEM_NAME "DOORS_HUB_LOG_SEM"
 
 #define HUB_MAX_DOOR_COUNT (100)
 #define HUB_MAX_CLIENT_COUNT (100)
+#define HUB_MAX_LOG_COUNT (100)
+#define HUB_MAX_LOG_MSG_LENGTH (128)
 
 typedef struct HubDoorStates
 {
@@ -62,13 +66,20 @@ typedef struct HubClientStates
     char name[HUB_MAX_CLIENT_COUNT][UNIT_NAME_MAX_LEN];
 } HubClientStates_t;
 
+typedef struct HubLogRing
+{
+    uint16_t head;
+    struct tm timestamps[HUB_MAX_LOG_COUNT];
+    char logs[HUB_MAX_LOG_COUNT][HUB_MAX_LOG_MSG_LENGTH];
+} HubLogRing_t;
+
 /**
  * Global flag set by OS termination signals
  * and polled by functions to allow graceful termination.
  */
 extern bool should_terminate;
 
-void log_init(char *self_label);
+void log_init(char *self_label, bool init_shm);
 void log_append(char *msg);
 void initialize_signal_handler(void);
 void initialize_random_seed(void);

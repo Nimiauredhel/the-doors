@@ -12,7 +12,7 @@ int main(void)
 {
     char log_buff[128] = {0};
 
-    log_init("Door-Manager");
+    log_init("Door-Manager", false);
     snprintf(log_buff, sizeof(log_buff), "Starting process with PID %u", getpid());
     log_append(log_buff);
     initialize_signal_handler();

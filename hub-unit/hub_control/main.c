@@ -5,7 +5,7 @@
 
 int main(void)
 {
-    log_init("Hub-Control");
+    log_init("Hub-Control", true);
     initialize_signal_handler();
 
     // daemonize

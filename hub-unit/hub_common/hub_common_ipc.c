@@ -13,6 +13,9 @@ static HubHandles_t hub_handles =
     .intercom_states_shm_ptr = NULL,
 };
 
+static sem_t *hub_log_sem_ptr;
+static void *hub_log_shm_ptr;
+
 bool ipc_init_door_states_ptrs(bool init_shm)
 {
     int shm_fd = 0;
@@ -209,6 +212,84 @@ err:
     return false;
 }
 
+/// TODO: third near identical function - should genericise
+bool ipc_init_hub_log_ptrs(bool init_shm)
+{
+    int shm_fd = 0;
+
+    hub_log_sem_ptr = NULL;
+    hub_log_sem_ptr = sem_open(HUB_LOG_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
+
+    if (hub_log_sem_ptr == NULL)
+    {
+        log_append("Failed to open hub log semaphore.");
+        goto err;
+    }
+
+    if (init_shm)
+    {
+        if (0 > sem_init(hub_log_sem_ptr, 1, 0))
+        {
+            log_append("Failed to initialize hub log semaphore.");
+            goto err;
+        }
+
+        log_append("Initialized hub log semaphore.");
+    }
+    else
+    {
+        log_append("Opened hub log semaphore.");
+    }
+
+    shm_fd = shm_open(HUB_LOG_SHM_NAME, O_CREAT | O_RDWR, 0666);
+
+    if (shm_fd <= 0)
+    {
+        log_append("Failed to open hub log shm.");
+        goto err;
+    }
+
+    if (0 > ftruncate(shm_fd, sizeof(HubLogRing_t)))
+    {
+        log_append("Failed to truncate hub log shm.");
+        goto err;
+    }
+
+    hub_log_shm_ptr = mmap(0, sizeof(HubLogRing_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+    if (hub_log_shm_ptr == NULL)
+    {
+        log_append("Failed to map hub log shm.");
+        goto err;
+    }
+
+    if (init_shm)
+    {
+        explicit_bzero(hub_log_shm_ptr, sizeof(HubLogRing_t));
+        sem_post(hub_log_sem_ptr);
+        log_append("Initialized hub log shm.");
+    }
+    else
+    {
+        log_append("Mapped hub log shm.");
+    }
+
+    return true;
+
+err:
+    if (hub_log_sem_ptr != NULL)
+    {
+        sem_close(hub_log_sem_ptr);
+        hub_log_sem_ptr = NULL;
+    }
+
+    if (hub_log_shm_ptr != NULL)
+    {
+        hub_log_shm_ptr = NULL;
+    }
+    return false;
+}
+
 HubClientStates_t *ipc_acquire_intercom_states_ptr(void)
 {
     sem_wait(hub_handles.intercom_states_sem_ptr);
@@ -229,6 +310,17 @@ HubDoorStates_t *ipc_acquire_door_states_ptr(void)
 void ipc_release_door_states_ptr(void)
 {
     sem_post(hub_handles.door_states_sem_ptr);
+}
+
+HubLogRing_t *ipc_acquire_hub_log_ptr(void)
+{
+    sem_wait(hub_log_sem_ptr);
+    return (HubLogRing_t *)hub_log_shm_ptr;
+}
+
+void ipc_release_hub_log_ptr(void)
+{
+    sem_post(hub_log_sem_ptr);
 }
 
 const HubHandles_t* ipc_get_hub_handles_ptr(void)
