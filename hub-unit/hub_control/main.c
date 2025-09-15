@@ -1,6 +1,5 @@
 #include "hub_common.h"
 #include "hub_control_daemon.h"
-#include "hub_control_ipc.h"
 #include "hub_control_processes.h"
 
 int main(void)
@@ -10,13 +9,6 @@ int main(void)
 
     // daemonize
     daemon_init();
-
-    // initializee hub common resources (pipes, shared memory, etc.)
-    // TODO: rethink the role of this call
-    ipc_init();
-
-    // prepare the arguments to be passed to individual processes
-    // TODO: rethink the imaginary role of this non-existent call
 
     // launch all hub processes
     processes_launch_all();

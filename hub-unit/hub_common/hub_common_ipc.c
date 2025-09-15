@@ -1,6 +1,14 @@
 #include "hub_common_ipc.h"
 #include "hub_common.h"
 
+static const struct mq_attr hub_mq_attributes =
+{
+    .mq_flags = 0,
+    .mq_maxmsg = MQ_MSG_COUNT_MAX,
+    .mq_msgsize = MQ_MSG_SIZE_MAX,
+    .mq_curmsgs = 0,
+};
+
 static HubHandles_t hub_handles =
 {
     .intercom_server_inbox_handle = -1,
@@ -171,30 +179,67 @@ err:
 
 bool ipc_init_inbox_handles(void)
 {
+    // TODO: the repetitive logs can be compressed
+
     hub_handles.intercom_server_inbox_handle = -1;
     hub_handles.door_manager_inbox_handle = -1;
 
-    hub_handles.intercom_server_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_RDWR);
+    hub_handles.intercom_server_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
 
     if (hub_handles.intercom_server_inbox_handle < 0)
     {
-        perror("Failed to open intercom server inbox queue");
-        log_append("Failed to open intercom server inbox queue");
-        goto err;
+        if (errno == EEXIST)
+        {
+            log_append("Intercom server inbox queue already exists.");
+
+            hub_handles.intercom_server_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_RDWR);
+
+            if (hub_handles.intercom_server_inbox_handle < 0)
+            {
+                log_append("Failed to open intercom server inbox queue.");
+                goto err;
+            }
+
+            log_append("Opened intercom server inbox queue.");
+        }
+        else
+        {
+            log_append("Failed to open intercom server inbox queue.");
+            goto err;
+        }
+    }
+    else
+    {
+        log_append("Created intercom server inbox queue.");
     }
 
-    log_append("Opened intercom server inbox queue");
-
-    hub_handles.door_manager_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_RDWR);
+    hub_handles.door_manager_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
 
     if (hub_handles.door_manager_inbox_handle < 0)
     {
-        perror("Failed to open door manager inbox queue");
-        log_append("Failed to door manager inbox queue");
-        goto err;
-    }
+        if (errno == EEXIST)
+        {
+            log_append("Door manager inbox queue already exists.");
+            hub_handles.door_manager_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_RDWR);
 
-    log_append("Opened door manager inbox queue");
+            if (hub_handles.door_manager_inbox_handle < 0)
+            {
+                log_append("Failed to open door manager inbox queue.");
+                goto err;
+            }
+
+            log_append("Opened door manager inbox queue.");
+        }
+        else
+        {
+            log_append("Failed to open door manager inbox queue.");
+            goto err;
+        }
+    }
+    else
+    {
+        log_append("Created door manager inbox queue.");
+    }
 
     return true;
 

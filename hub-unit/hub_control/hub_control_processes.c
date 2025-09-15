@@ -1,5 +1,4 @@
 #include "hub_control_processes.h"
-#include "hub_control_ipc.h"
 #include "hub_common.h"
 
 #define NUM_PROCESSES 2
