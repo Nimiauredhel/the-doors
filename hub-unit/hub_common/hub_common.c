@@ -57,6 +57,12 @@ void log_init(char *self_label, bool init_shm)
     log_shm_initialized = ipc_init_hub_log_ptrs(init_shm);
 }
 
+void log_deinit(void)
+{
+    log_shm_initialized = false;
+    ipc_deinit_hub_log_ptrs();
+}
+
 void log_append(char *msg)
 {
     if (log_sys_initialized)
@@ -188,6 +194,8 @@ void signal_handler(int signum)
             log_append("Received signal SIGTERM");
             should_terminate = true;
             break;
+        case SIGKILL:
+            exit(EXIT_FAILURE);
         default:
             log_append("Received signal Unknown");
             break;

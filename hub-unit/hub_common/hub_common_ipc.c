@@ -24,6 +24,92 @@ static HubHandles_t hub_handles =
 static sem_t *hub_log_sem_ptr;
 static void *hub_log_shm_ptr;
 
+/// TODO: three near identical functions - should genericise
+bool ipc_init_hub_log_ptrs(bool init_shm)
+{
+    int shm_fd = 0;
+
+    hub_log_sem_ptr = NULL;
+    hub_log_sem_ptr = sem_open(HUB_LOG_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
+
+    if (hub_log_sem_ptr == NULL)
+    {
+        log_append("Failed to open hub log semaphore.");
+        goto err;
+    }
+
+    if (init_shm)
+    {
+        if (0 > sem_init(hub_log_sem_ptr, 1, 0))
+        {
+            log_append("Failed to initialize hub log semaphore.");
+            goto err;
+        }
+
+        log_append("Initialized hub log semaphore.");
+    }
+    else
+    {
+        log_append("Opened hub log semaphore.");
+    }
+
+    shm_fd = shm_open(HUB_LOG_SHM_NAME, O_CREAT | O_RDWR, 0666);
+
+    if (shm_fd <= 0)
+    {
+        log_append("Failed to open hub log shm.");
+        goto err;
+    }
+
+    if (0 > ftruncate(shm_fd, sizeof(HubLogRing_t)))
+    {
+        log_append("Failed to truncate hub log shm.");
+        goto err;
+    }
+
+    hub_log_shm_ptr = mmap(0, sizeof(HubLogRing_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+    if (hub_log_shm_ptr == NULL)
+    {
+        log_append("Failed to map hub log shm.");
+        goto err;
+    }
+
+    if (init_shm)
+    {
+        explicit_bzero(hub_log_shm_ptr, sizeof(HubLogRing_t));
+        sem_post(hub_log_sem_ptr);
+        log_append("Initialized hub log shm.");
+    }
+    else
+    {
+        log_append("Mapped hub log shm.");
+    }
+
+    if (shm_fd > 0) close(shm_fd);
+    return true;
+
+err:
+    if (shm_fd > 0) close(shm_fd);
+    ipc_deinit_hub_log_ptrs();
+    return false;
+}
+
+void ipc_deinit_hub_log_ptrs(void)
+{
+    if (hub_log_sem_ptr != NULL)
+    {
+        sem_close(hub_log_sem_ptr);
+        hub_log_sem_ptr = NULL;
+    }
+
+    if (hub_log_shm_ptr != NULL)
+    {
+        munmap(hub_log_shm_ptr, sizeof(HubLogRing_t));
+        hub_log_shm_ptr = NULL;
+    }
+}
+
 bool ipc_init_door_states_ptrs(bool init_shm)
 {
     int shm_fd = 0;
@@ -253,84 +339,6 @@ err:
     {
         mq_close(hub_handles.door_manager_inbox_handle);
         hub_handles.door_manager_inbox_handle = -1;
-    }
-    return false;
-}
-
-/// TODO: third near identical function - should genericise
-bool ipc_init_hub_log_ptrs(bool init_shm)
-{
-    int shm_fd = 0;
-
-    hub_log_sem_ptr = NULL;
-    hub_log_sem_ptr = sem_open(HUB_LOG_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
-
-    if (hub_log_sem_ptr == NULL)
-    {
-        log_append("Failed to open hub log semaphore.");
-        goto err;
-    }
-
-    if (init_shm)
-    {
-        if (0 > sem_init(hub_log_sem_ptr, 1, 0))
-        {
-            log_append("Failed to initialize hub log semaphore.");
-            goto err;
-        }
-
-        log_append("Initialized hub log semaphore.");
-    }
-    else
-    {
-        log_append("Opened hub log semaphore.");
-    }
-
-    shm_fd = shm_open(HUB_LOG_SHM_NAME, O_CREAT | O_RDWR, 0666);
-
-    if (shm_fd <= 0)
-    {
-        log_append("Failed to open hub log shm.");
-        goto err;
-    }
-
-    if (0 > ftruncate(shm_fd, sizeof(HubLogRing_t)))
-    {
-        log_append("Failed to truncate hub log shm.");
-        goto err;
-    }
-
-    hub_log_shm_ptr = mmap(0, sizeof(HubLogRing_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-    if (hub_log_shm_ptr == NULL)
-    {
-        log_append("Failed to map hub log shm.");
-        goto err;
-    }
-
-    if (init_shm)
-    {
-        explicit_bzero(hub_log_shm_ptr, sizeof(HubLogRing_t));
-        sem_post(hub_log_sem_ptr);
-        log_append("Initialized hub log shm.");
-    }
-    else
-    {
-        log_append("Mapped hub log shm.");
-    }
-
-    return true;
-
-err:
-    if (hub_log_sem_ptr != NULL)
-    {
-        sem_close(hub_log_sem_ptr);
-        hub_log_sem_ptr = NULL;
-    }
-
-    if (hub_log_shm_ptr != NULL)
-    {
-        hub_log_shm_ptr = NULL;
     }
     return false;
 }

@@ -12,7 +12,7 @@ static void server_init(void)
 {
     log_append("Initializing common resources.");
 
-    clients_to_doors_queue = hub_queue_create(128);
+    clients_to_doors_queue = hub_queue_create(HUB_MAX_LOG_MSG_LENGTH);
 
     if (clients_to_doors_queue == NULL)
     {

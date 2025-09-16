@@ -26,7 +26,7 @@ static void ipc_in_loop(void)
 {
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
+    static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     nanosleep(&loop_delay, NULL);
 
@@ -65,7 +65,7 @@ static void ipc_out_loop(void)
     
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
+    static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     if (hub_queue_dequeue(clients_to_doors_queue, (DoorPacket_t *)&msg_buff) >= 0)
     {

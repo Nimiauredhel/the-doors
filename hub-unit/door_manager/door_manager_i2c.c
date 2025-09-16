@@ -76,7 +76,7 @@ static void read_data_from_door(uint16_t length)
 {
     static const uint8_t chunk_len = 24;
 
-    static char log_buff[128] = {0};
+    static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     uint16_t offset = 0;
     uint16_t remaining = length;
@@ -103,7 +103,7 @@ static void read_data_from_door(uint16_t length)
 
 static void process_data_from_door(void)
 {
-    char log_buff[128] = {0};
+    char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     DoorDataType_t data_type = rx_packet_ptr->body.Data.data_type;
     DoorInfo_t *door_info_ptr = (DoorInfo_t *)rx_data_ptr;
@@ -164,7 +164,7 @@ static void process_data_from_door(void)
 static void process_report(void)
 {
 	char debug_buff[32] = {0};
-	char log_buff[128] = {0};
+	char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     DoorReport_t report_type = rx_packet_ptr->body.Report.report_id;
 
@@ -249,7 +249,7 @@ static void process_report(void)
 
 static void process_request_from_door(void)
 {
-	char log_buff[128] = {0};
+	char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     DoorRequest_t request_type = rx_packet_ptr->body.Request.request_id;
 
@@ -330,7 +330,7 @@ static void poll_slave_event_queue(void)
 
 static void scan_i2c_bus(void)
 {
-    char log_buff[128] = {0};
+    char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
     int32_t read_bytes = 0;
 
     explicit_bzero(target_addr_set, TARGET_ADDR_MAX_COUNT);

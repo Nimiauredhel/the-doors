@@ -50,4 +50,6 @@ void door_manager_deinit(void)
     {
         hub_queue_destroy(doors_to_clients_queue);
     }
+
+    log_deinit();
 }

@@ -80,6 +80,7 @@ typedef struct HubLogRing
 extern bool should_terminate;
 
 void log_init(char *self_label, bool init_shm);
+void log_deinit(void);
 void log_append(char *msg);
 void initialize_signal_handler(void);
 void initialize_random_seed(void);

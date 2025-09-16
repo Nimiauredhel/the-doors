@@ -24,7 +24,7 @@ static void ipc_in_loop(void)
 {
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
+    static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     bytes_transmitted = mq_timedreceive(hub_handles_ptr->door_manager_inbox_handle, msg_buff, sizeof(msg_buff), NULL, &mq_timeout);
 
@@ -61,7 +61,7 @@ static void ipc_out_loop(void)
 
     static char msg_buff[MQ_MSG_SIZE_MAX] = {0};
     static ssize_t bytes_transmitted = 0;
-    static char log_buff[128] = {0};
+    static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     if (hub_queue_dequeue(doors_to_clients_queue, (DoorPacket_t *)&msg_buff) >= 0)
     {

@@ -15,16 +15,24 @@ typedef struct HubHandles
     void *intercom_states_shm_ptr;
 } HubHandles_t;
 
-bool ipc_init_door_states_ptrs(bool init_shm);
-bool ipc_init_intercom_states_ptrs(bool init_shm);
 bool ipc_init_hub_log_ptrs(bool init_shm);
+void ipc_deinit_hub_log_ptrs(void);
+
+bool ipc_init_door_states_ptrs(bool init_shm);
+
+bool ipc_init_intercom_states_ptrs(bool init_shm);
+
 bool ipc_init_inbox_handles(void);
+
 HubClientStates_t *ipc_acquire_intercom_states_ptr(void);
 void ipc_release_intercom_states_ptr(void);
+
 HubDoorStates_t *ipc_acquire_door_states_ptr(void);
 void ipc_release_door_states_ptr(void);
+
 HubLogRing_t *ipc_acquire_hub_log_ptr(void);
 void ipc_release_hub_log_ptr(void);
+
 const HubHandles_t* ipc_get_hub_handles_ptr(void);
 
 #endif

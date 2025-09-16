@@ -9,6 +9,9 @@ make -j4 clean
 cd ../intercom_server
 make -j4 clean
 
+cd ../db_service
+make -j4 clean
+
 # clean the common header library
 cd ../hub_common
 sudo make -j4 clean

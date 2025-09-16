@@ -10,7 +10,7 @@ static pthread_t ipc_out_thread;
 
 int main(void)
 {
-    char log_buff[128] = {0};
+    char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     log_init("Door-Manager", false);
     snprintf(log_buff, sizeof(log_buff), "Starting process with PID %u", getpid());
