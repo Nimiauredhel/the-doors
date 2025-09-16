@@ -87,6 +87,18 @@ static void ipc_out_loop(void)
             log_append(log_buff);
             nanosleep(&loop_delay, NULL);
         }
+
+        // send copy to db
+        while(!should_terminate)
+        {
+            bytes_transmitted = mq_timedsend(hub_handles_ptr->db_service_inbox_handle, msg_buff, sizeof(msg_buff), 0, &mq_timeout);
+
+            if (bytes_transmitted >= 0) break;
+
+            snprintf(log_buff, sizeof(log_buff), "Failed forwarding to DB inbox: %s", strerror(errno));
+            log_append(log_buff);
+            nanosleep(&loop_delay, NULL);
+        }
     }
     else
     {
@@ -143,10 +155,9 @@ void ipc_init(void)
 
     if (initialized)
     {
-        hub_handles_ptr = ipc_get_hub_handles_ptr();
         log_append("IPC Initialization Completed.");
 
-        /// initial update/creation of door states txt
+        /// initial update/creation of intercom states txt
         HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
         common_update_intercom_list_txt(intercom_states_ptr);
         ipc_release_intercom_states_ptr();
@@ -160,10 +171,10 @@ void ipc_init(void)
 
 void ipc_deinit(void)
 {
+    ipc_deinit_inbox_handles();
+
     if (hub_handles_ptr != NULL)
     {
-        mq_close(hub_handles_ptr->door_manager_inbox_handle);
-        mq_close(hub_handles_ptr->intercom_server_inbox_handle);
         sem_close(hub_handles_ptr->door_states_sem_ptr);
         sem_close(hub_handles_ptr->intercom_states_sem_ptr);
         hub_handles_ptr = NULL;

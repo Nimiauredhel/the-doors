@@ -166,6 +166,7 @@ static void process_report(void)
 	char debug_buff[32] = {0};
 	char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
+    ipc_send_packet_copy_to_db(rx_packet_ptr);
     DoorReport_t report_type = rx_packet_ptr->body.Report.report_id;
 
     switch(report_type)

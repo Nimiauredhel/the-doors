@@ -7,7 +7,7 @@ EXE_PATH=$(BUILD_DIR)/$(EXE_NAME)
 COMMON_LIB_PATH=/usr/lib/libhub_common.so
 COMMON_LIB_SRC=../hub_common/*
 INC=-I../../common -I../hub_common
-LIBS=-lhub_common -lpthread -lrt
+LIBS=-lhub_common -lpthread -lrt -lsqlite3
 DEFAULT_FLAGS=-std=c99 -D_GNU_SOURCE
 STRICT_FLAGS=$(DEFAULT_FLAGS) -Wall -pedantic -Wextra
 STRICT_PREFIX=bear --
@@ -29,7 +29,7 @@ debug:
 
 .PHONY: post-build
 post-build:
-	#nothing here yet
+	cp print_db.sh $(BUILD_DIR)/
 
 $(EXE_PATH): $(SOURCE) $(COMMON_LIB_PATH)
 	mkdir -p $(BUILD_DIR)

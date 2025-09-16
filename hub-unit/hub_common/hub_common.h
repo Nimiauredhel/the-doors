@@ -24,26 +24,10 @@
 #include <signal.h>
 #include <pthread.h>
 
-#include <mqueue.h>
-#include <semaphore.h>
-
 #include "../../common/packet_defs.h"
 #include "../../common/packet_utils.h"
 
 #include "hub_queue.h"
-
-#define CLIENTS_TO_DOORS_QUEUE_NAME "/mq_clients_to_doors"
-#define DOORS_TO_CLIENTS_QUEUE_NAME "/mq_doors_to_clients"
-#define MQ_MSG_SIZE_MAX (sizeof(DoorPacket_t) + DOOR_DATA_BYTES_SMALL)
-#define MQ_MSG_COUNT_MAX (10)
-
-#define DOOR_STATES_SHM_NAME "DOORS_DOOR_STATES_SHM"
-#define CLIENT_STATES_SHM_NAME "DOORS_CLIENT_STATES_SHM"
-#define HUB_LOG_SHM_NAME "DOORS_HUB_LOG_SHM"
-
-#define DOOR_STATES_SEM_NAME "DOORS_DOOR_STATES_SEM"
-#define CLIENT_STATES_SEM_NAME "DOORS_CLIENT_STATES_SEM"
-#define HUB_LOG_SEM_NAME "DOORS_HUB_LOG_SEM"
 
 #define HUB_MAX_DOOR_COUNT (100)
 #define HUB_MAX_CLIENT_COUNT (100)

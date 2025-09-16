@@ -123,7 +123,6 @@ void ipc_init(void)
 
     if (initialized)
     {
-        hub_handles_ptr = ipc_get_hub_handles_ptr();
         log_append("IPC Initialization Completed.");
     }
     else
@@ -135,10 +134,10 @@ void ipc_init(void)
 
 void ipc_deinit(void)
 {
+    ipc_deinit_inbox_handles();
+
     if (hub_handles_ptr != NULL)
     {
-        mq_close(hub_handles_ptr->door_manager_inbox_handle);
-        mq_close(hub_handles_ptr->intercom_server_inbox_handle);
         sem_close(hub_handles_ptr->door_states_sem_ptr);
         sem_close(hub_handles_ptr->intercom_states_sem_ptr);
         hub_handles_ptr = NULL;

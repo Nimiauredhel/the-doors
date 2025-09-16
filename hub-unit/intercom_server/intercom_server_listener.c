@@ -394,6 +394,7 @@ static void connection_loop(ClientData_t *data)
 		    error_counter = 0;
 		    snprintf(log_buff, sizeof(log_buff), "Received packet from client %s", inet_ntoa(data->client_addr.sin_addr));
 		    log_append(log_buff);
+            ipc_send_packet_copy_to_db(rx_packet_ptr);
 		    connection_handle_incoming_packet(rx_packet_ptr, rx_info_ptr, data);
 		}
 		else if (errno == EAGAIN || errno == EWOULDBLOCK)
