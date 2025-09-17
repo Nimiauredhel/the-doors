@@ -48,6 +48,7 @@
     <p>
         <button type="logs_button" onclick="frame_set_source('logs.txt')">All Logs</button>
         <button type="help_button" onclick="frame_set_source('help.txt')">Help</button>
+        <button type="test_button" onclick="test_button()">Test Button</button>
     </p>
 
     <p>
@@ -81,6 +82,13 @@
             data_frame_body.style.fontSize = '20px';
             data_frame_body.style.lineHeight = '20px';
             data_frame.style.height = data_frame.contentWindow.document.documentElement.scrollHeight + 'px';
+        }
+
+        function test_button()
+        {
+            xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/test_button");
+            xhr.send(); 
         }
 
         var data_frame = document.getElementById('data_frame');
