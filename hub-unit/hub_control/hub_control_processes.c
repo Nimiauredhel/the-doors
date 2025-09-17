@@ -1,7 +1,7 @@
 #include "hub_control_processes.h"
 #include "hub_common.h"
 
-#define NUM_PROCESSES (3)
+#define NUM_PROCESSES (4)
 
 typedef struct HubProcess
 {
@@ -13,6 +13,7 @@ static HubProcess_t processes[] =
 {
     {-1, "/usr/bin/doors_hub/door_manager"},
     {-1, "/usr/bin/doors_hub/intercom_server"},
+    {-1, "/usr/bin/doors_hub/web_server"},
     {-1, "/usr/bin/doors_hub/db_service"},
 };
 

@@ -49,7 +49,7 @@ void log_init(char *self_label, bool init_shm)
 
     if (file != NULL)
     {
-        fprintf(file, "Cleared.\n");
+        fprintf(file, "");
         fclose(file);
     } 
 

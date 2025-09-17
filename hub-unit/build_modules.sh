@@ -9,6 +9,9 @@ make -j4 strict
 cd ../intercom_server
 make -j4 strict
 
+cd ../web_server
+make -j4 strict
+
 cd ../db_service
 make -j4 strict
 

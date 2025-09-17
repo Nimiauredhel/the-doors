@@ -37,12 +37,30 @@
 <body>
 <div>
     <h1>DOORS Hub</h1>
-    <p>Just a web page served by the DOORS Hub.</p>
-    <button type="logs_button" onclick="frame_set_source('logs.txt')">Logs</button>
-    <button type="doors_button" onclick="frame_set_source('doors.txt')">Doors</button>
-    <button type="intercoms_button" onclick="frame_set_source('intercoms.txt')">Intercoms</button>
-    <button type="example_button" onclick="frame_set_source('example.txt')">Example</button>
-    <iframe id="data_frame" src="example.txt"></iframe>
+
+    <p>Welcome to the DOORS system Hub unit!</p>
+
+    <p>
+        <button type="doors_button" onclick="frame_set_source('doors.txt')">Door List</button>
+        <button type="intercoms_button" onclick="frame_set_source('intercoms.txt')">Intercom List</button>
+    </p>
+
+    <p>
+        <button type="logs_button" onclick="frame_set_source('logs.txt')">All Logs</button>
+        <button type="help_button" onclick="frame_set_source('help.txt')">Help</button>
+    </p>
+
+    <p>
+        <button type="door_manager_logs_button" onclick="frame_set_source('Door-Manager.txt')">Door Manager Logs</button>
+        <button type="intercom_server_logs_button" onclick="frame_set_source('Intercom-Server.txt')">Intercom Server Logs</button>
+    </p>
+
+    <p>
+        <button type="web_server_logs_button" onclick="frame_set_source('Web-Server.txt')">Web Server Logs</button>
+        <button type="db_service_logs_button" onclick="frame_set_source('Database-Service.txt')">Database Service Logs</button>
+    </p>
+
+    <iframe id="data_frame" src="help.txt"></iframe>
     <script>
         var data_frame = document.getElementById('data_frame');
 

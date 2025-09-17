@@ -1,4 +1,0 @@
-Just some
-    EXAMPLE     TEXT
-            to test
-    the web interface

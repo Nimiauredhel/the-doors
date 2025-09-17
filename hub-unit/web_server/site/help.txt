@@ -1,0 +1,2 @@
+This is the web interface for the Hub unit managing this DOORS system.
+The buttons above control the information displayed in this space.
