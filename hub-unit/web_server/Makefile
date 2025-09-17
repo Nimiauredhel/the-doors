@@ -17,20 +17,22 @@ PREFIX=
 
 .PHONY: default
 default:
+	cp -rf ./site $(BUILD_DIR)/.
 	$(MAKE) $(EXE_PATH) FLAGS="$(DEFAULT_FLAGS)"
 
 .PHONY: strict
 strict:                              
+	cp -rf ./site $(BUILD_DIR)/.
 	$(MAKE) $(EXE_PATH) PREFIX="$(STRICT_PREFIX)" FLAGS="$(STRICT_FLAGS)"
                     
 .PHONY: debug
 debug:              
+	cp -rf ./site $(BUILD_DIR)/.
 	$(MAKE) $(EXE_PATH) FLAGS="$(DEBUG_FLAGS)"
 
 .PHONY: post-build
 post-build:
 	sudo setcap 'CAP_NET_BIND_SERVICE=ep' $(EXE_PATH)
-	cp -r ./site $(BUILD_DIR)/.
 
 $(EXE_PATH): $(SOURCE) $(COMMON_LIB_PATH)
 	mkdir -p $(BUILD_DIR)
