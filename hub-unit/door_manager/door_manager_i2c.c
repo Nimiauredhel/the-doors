@@ -33,9 +33,15 @@ static void i2c_set_target(uint8_t addr)
 
 static void i2c_master_write(const uint8_t reg_addr, const uint8_t *message, const uint8_t len)
 {
+    char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
+
 	int32_t result = i2c_smbus_write_i2c_block_data(device_fd, reg_addr, len, message);
-	if (result != 0) perror("I2C send error");
-	//else printf("Sent %ld bytes.\n", len);
+	if (result != 0)
+    {
+        int err = errno;
+        snprintf(log_buff, sizeof(log_buff), "I2C send error: %s", strerror(err));
+        log_append(log_buff);
+    }
 }
 
 static void send_request_to_door(DoorRequest_t request, uint32_t extra_data, uint16_t priority)
@@ -422,31 +428,33 @@ void* i2c_task(void *arg)
 
 void i2c_init(void)
 {
-	char buff[64] = {0};
+	char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
+
+    log_append("Running I2C-2 initialization script.");
 
 	if (0 > system("sh i2c2_init.sh"))
     {
-        log_append("Failed to run I2C2 initialization script.");
+        log_append("Failed to run I2C-2 initialization script.");
         should_terminate = true;
         return;
     }
 
-	sprintf(buff, "Opening I2C device at path %s", device_path);
-	log_append(buff);
+	snprintf(log_buff, sizeof(log_buff), "Opening I2C device at path %s", device_path);
+	log_append(log_buff);
 
 	// open the i2c device file
 	device_fd = open(device_path, O_RDWR, S_IWUSR);
 
 	if (device_fd <= 0)
 	{
-		sprintf(buff, "Error opening I2C device, code: %d", device_fd);
-		log_append(buff);
+		snprintf(log_buff, sizeof(log_buff), "Error opening I2C device, code: %d", device_fd);
+		log_append(log_buff);
         should_terminate = true;
         return;
 	}
 	else
 	{
-		sprintf(buff, "Successfully opened I2C device, descriptor: %d", device_fd);
-		log_append(buff);
+		snprintf(log_buff, sizeof(log_buff), "Successfully opened I2C device, descriptor: %d", device_fd);
+		log_append(log_buff);
 	}
 }

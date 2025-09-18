@@ -17,22 +17,26 @@ bool should_terminate = false;
  */
 static bool random_was_seeded = false;
 
-static char process_label[32] = {0};
-static char process_log_path[40] = {0};
+static char process_label[32] = "Unnamed-Process";
+static char syslog_label[40] = "DOORS-Unnamed-Process";
+static char process_log_path[40] = "logs/Unnamed-Process.txt";
 
 static bool log_sys_initialized = false;
 static bool log_shm_initialized = false;
 
 void log_init(char *self_label, bool init_shm)
 {
-    char syslog_label[40] = {0};
+    // *** init log labels
     snprintf(process_label, sizeof(process_label), "%s", self_label);
     snprintf(syslog_label, sizeof(syslog_label), "DOORS-%s", self_label);
 
+    // *** init sys log
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog(syslog_label, LOG_CONS | LOG_PERROR, LOG_USER);
+
     log_sys_initialized = true;
 
+    // *** init txt file logs
     mkdir(logs_dir, 0777);
     snprintf(process_log_path, sizeof(process_log_path), "%s/%s.txt", logs_dir, self_label);
 
@@ -68,6 +72,10 @@ void log_append(char *msg)
     if (log_sys_initialized)
     {
         syslog(LOG_INFO, "%s", msg);
+    }
+    else
+    {
+        printf("%s\n", msg);
     }
 
     // preparing the txt log string

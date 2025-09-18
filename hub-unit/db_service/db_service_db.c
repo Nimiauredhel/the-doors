@@ -27,13 +27,13 @@ bool db_init(void)
     static const char db_str_create_packets_table[] =
     {
         "CREATE TABLE IF NOT EXISTS packets ("
-        "time INTEGER NOT NULL, "
-        "date INTEGER NOT NULL, "
-        "category INTEGER NOT NULL, "
-        "subcategory INTEGER NOT NULL, "
-        "source_id INTEGER NOT NULL, "
-        "data_16 INTEGER NOT NULL, "
-        "data_32 INTEGER NOT NULL );"
+        "time INTEGER, "
+        "date INTEGER, "
+        "category INTEGER, "
+        "subcategory INTEGER, "
+        "source_id INTEGER, "
+        "data_16 INTEGER, "
+        "data_32 INTEGER );"
     };
 
     static const char db_str_append_packet[] =

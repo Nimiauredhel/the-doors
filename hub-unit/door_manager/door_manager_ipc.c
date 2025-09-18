@@ -63,7 +63,7 @@ static void ipc_out_loop(void)
     static ssize_t bytes_transmitted = 0;
     static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
-    if (hub_queue_dequeue(doors_to_clients_queue, (DoorPacket_t *)&msg_buff) >= 0)
+    if (hub_queue_dequeue(doors_to_clients_queue, (DoorPacket_t *)msg_buff) >= 0)
     {
         log_append("Forwarding from internal queue to intercom server inbox.");
 
