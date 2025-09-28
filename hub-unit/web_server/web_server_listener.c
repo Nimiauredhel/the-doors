@@ -20,10 +20,53 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
         case MG_EV_HTTP_MSG:
             http_msg_ptr = (struct mg_http_message *)event_data;
 
-            if (mg_match(http_msg_ptr->uri, mg_str("/api/test_button"), NULL))
+            if (mg_match(http_msg_ptr->uri, mg_str("/actions/test"), NULL))
             {
                 snprintf(log_buff, sizeof(log_buff), "Test button pushed by a connection with message count of %d.", connection->data[0]);
                 log_append(log_buff);
+            }
+            else if (mg_match(http_msg_ptr->uri, mg_str("/help"), NULL))
+            {
+                mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"help.txt\"></iframe>");
+            }
+            else if (mg_match(http_msg_ptr->uri, mg_str("/logs/*"), NULL))
+            {
+
+                if (mg_match(http_msg_ptr->uri, mg_str("*/all"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"logs.txt\" hx-get=\"/logs/all\" hx-target=\"#info\" hx-trigger=\"every 2s\"></iframe>");
+                }
+                else if (mg_match(http_msg_ptr->uri, mg_str("*/hub_control"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"Hub-Control.txt\" hx-get=\"/logs/hub_control\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
+                else if (mg_match(http_msg_ptr->uri, mg_str("*/door_manager"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"Door-Manager.txt\" hx-get=\"/logs/door_manager\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
+                else if (mg_match(http_msg_ptr->uri, mg_str("*/intercom_server"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"Intercom-Server.txt\" hx-get=\"/logs/intercom_server\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
+                else if (mg_match(http_msg_ptr->uri, mg_str("*/web_server"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"Web-Server.txt\" hx-get=\"/logs/web_server\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
+                else if (mg_match(http_msg_ptr->uri, mg_str("*/database_service"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"Database-Service.txt\" hx-get=\"/logs/database_service\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
+            }
+            else if (mg_match(http_msg_ptr->uri, mg_str("/lists/*"), NULL))
+            {
+                if (mg_match(http_msg_ptr->uri, mg_str("*/doors"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"doors.txt\" hx-get=\"/lists/doors\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
+                else if (mg_match(http_msg_ptr->uri, mg_str("*/intercoms"), NULL))
+                {
+                    mg_http_reply(connection, 200, "", "<iframe id=\"data_frame\" src=\"intercoms.txt\" hx-get=\"/lists/intercoms\" hx-target=\"#info\" hx-trigger=\"every 2s\">></iframe>");
+                }
             }
             else
             {

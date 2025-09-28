@@ -41,39 +41,37 @@
     <p>Welcome to the DOORS system Hub unit!</p>
 
     <p>
-        <button type="doors_button" onclick="frame_set_source('doors.txt')">Door List</button>
-        <button type="intercoms_button" onclick="frame_set_source('intercoms.txt')">Intercom List</button>
+        <button hx-target="#info" hx-get="/lists/doors">Door List</button>
+        <button hx-target="#info" hx-get="/lists/intercoms">Intercom List</button>
     </p>
 
     <p>
-        <button type="logs_button" onclick="frame_set_source('logs.txt')">All Logs</button>
-        <button type="help_button" onclick="frame_set_source('help.txt')">Help</button>
-        <button type="test_button" onclick="test_button()">Test Button</button>
+        <button hx-target="#info" hx-get="/logs/all">All Logs</button>
+        <button hx-target="#info" hx-get="/help">Help</button>
+        <button hx-swap="none" hx-get="/actions/test">Test Button</button>
     </p>
 
     <p>
-        <button type="door_manager_logs_button" onclick="frame_set_source('Door-Manager.txt')">Door Manager Logs</button>
-        <button type="intercom_server_logs_button" onclick="frame_set_source('Intercom-Server.txt')">Intercom Server Logs</button>
+        <button hx-target="#info" hx-get="/logs/door_manager">Door Manager Logs</button>
+        <button hx-target="#info" hx-get="/logs/intercom_server">Intercom Server Logs</button>
     </p>
 
     <p>
-        <button type="web_server_logs_button" onclick="frame_set_source('Web-Server.txt')">Web Server Logs</button>
-        <button type="db_service_logs_button" onclick="frame_set_source('Database-Service.txt')">Database Service Logs</button>
+        <button hx-target="#info" hx-get="/logs/web_server">Web Server Logs</button>
+        <button hx-target="#info" hx-get="/logs/database_service">Database Service Logs</button>
     </p>
 
-    <iframe id="data_frame" src="help.txt"></iframe>
+    <div id="info">
+        <iframe id="data_frame" src="help.txt"></iframe>
+    </div>
+
+    <script src="htmx.min.js"></script>
+
     <script>
         var data_frame = document.getElementById('data_frame');
 
         function frame_reload() {
             data_frame.contentWindow.location.reload();
-        }
-
-        function frame_set_source (source) {
-            data_frame.src = source;
-            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
-            data_frame_body.style.color = 'red';
-            frame_reload();
         }
 
         function frame_onload () {
@@ -84,17 +82,9 @@
             data_frame.style.height = data_frame.contentWindow.document.documentElement.scrollHeight + 'px';
         }
 
-        function test_button()
-        {
-            xhr = new XMLHttpRequest();
-            xhr.open("POST", "/api/test_button");
-            xhr.send(); 
-        }
-
         var data_frame = document.getElementById('data_frame');
         data_frame.onload = frame_onload;
 
-        frame_set_source("help.txt");
         window.setInterval(function() { frame_reload() }, 1000);
     </script>
 </div>
