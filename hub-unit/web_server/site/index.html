@@ -33,12 +33,12 @@
         color: #000088;
     }
     .infobox {
-        color: #b0b0ff;
+        color: #b0b0dd;
         background-color: #9090ff;
     }
     .infoline {
-        color: #0000aa;
-        background-color: #8080ff;
+        color: #0ff0ff;
+        background-color: #0000aa;
     }
     .logbox {
         color: #000088;
@@ -60,14 +60,18 @@
         <p class="infoline">Welcome to the DOORS system Hub unit!</p>
 
         <p class="infoline">
+            <button hx-target="#info" hx-get="/help">Help</button>
+            <button hx-swap="none" hx-get="/actions/test">Test Button</button>
+        </p>
+
+        <p class="infoline">
             <button hx-target="#info" hx-get="/lists/doors">Door List</button>
             <button hx-target="#info" hx-get="/lists/intercoms">Intercom List</button>
         </p>
 
         <p class="infoline">
             <button hx-target="#info" hx-get="/logs/all">All Logs</button>
-            <button hx-target="#info" hx-get="/help">Help</button>
-            <button hx-swap="none" hx-get="/actions/test">Test Button</button>
+            <button hx-target="#info" hx-get="/logs/hub_control">Hub Control Logs</button>
         </p>
 
         <p class="infoline">
@@ -80,8 +84,10 @@
             <button hx-target="#info" hx-get="/logs/database_service">Database Service Logs</button>
         </p>
     </div>
+
     <div id="info" class="infobox">
-        <iframe id="data_frame" src="help.txt"></iframe>
+        <div class="logbox" hx-target="#info" hx-get="/help" hx-trigger="load">
+        </div>
     </div>
 </body>
 </html>

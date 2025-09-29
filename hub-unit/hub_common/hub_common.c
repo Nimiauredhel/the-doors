@@ -107,6 +107,9 @@ void log_append(char *msg)
     FILE *file = NULL;
 
     // *** write to process specific log txt file ***
+    // *** TODO: move this somewhere else, no need to do it every write
+    // *** TODO: commented out for reference until the above is addressed
+    /*
     snprintf(formatted_log_buff, sizeof(formatted_log_buff), "[%02u:%02u:%02u][%s]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec,
             module_labels[current_module_id], log_buff);
     file = fopen(process_log_path, "a");
@@ -124,6 +127,7 @@ void log_append(char *msg)
         fprintf(file, "%s", formatted_log_buff);
         fclose(file);
     } 
+    */
 
     if (!log_shm_initialized) return;
 

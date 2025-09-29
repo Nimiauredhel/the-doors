@@ -1,1 +1,0 @@
-../logs/intercom-list.txt
