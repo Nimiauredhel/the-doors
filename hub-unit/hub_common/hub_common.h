@@ -29,10 +29,23 @@
 
 #include "hub_queue.h"
 
+#define HUB_MODULE_COUNT (5)
+#define HUB_MODULE_NAME_MAX_LEN (32)
+
 #define HUB_MAX_DOOR_COUNT (100)
 #define HUB_MAX_CLIENT_COUNT (100)
 #define HUB_MAX_LOG_COUNT (100)
 #define HUB_MAX_LOG_MSG_LENGTH (128)
+
+typedef enum HubModuleId
+{
+    HUB_MODULE_NONE = 0,
+    HUB_MODULE_HUB_CONTROL = 1,
+    HUB_MODULE_DOOR_MANAGER = 2,
+    HUB_MODULE_INTERCOM_SERVER = 3,
+    HUB_MODULE_WEB_SERVER = 4,
+    HUB_MODULE_DATABASE_SERVICE = 5,
+} HubModuleId_t;
 
 typedef struct HubDoorStates
 {
@@ -53,6 +66,7 @@ typedef struct HubClientStates
 typedef struct HubLogRing
 {
     uint16_t head;
+    HubModuleId_t module_ids[HUB_MAX_LOG_COUNT];
     struct tm timestamps[HUB_MAX_LOG_COUNT];
     char logs[HUB_MAX_LOG_COUNT][HUB_MAX_LOG_MSG_LENGTH];
 } HubLogRing_t;
@@ -63,7 +77,9 @@ typedef struct HubLogRing
  */
 extern bool should_terminate;
 
-void log_init(char *self_label, bool init_shm);
+void set_module_id(HubModuleId_t module_id);
+const char* get_module_label(HubModuleId_t module_id);
+void log_init(bool init_shm);
 void log_deinit(void);
 void log_append(char *msg);
 void initialize_signal_handler(void);

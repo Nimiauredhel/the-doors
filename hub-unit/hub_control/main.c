@@ -4,7 +4,8 @@
 
 int main(void)
 {
-    log_init("Hub-Control", true);
+    set_module_id(HUB_MODULE_HUB_CONTROL);
+    log_init(true);
     initialize_signal_handler();
 
     // daemonize

@@ -12,7 +12,8 @@ int main(void)
 {
     char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
-    log_init("Door-Manager", false);
+    set_module_id(HUB_MODULE_DOOR_MANAGER);
+    log_init(false);
     snprintf(log_buff, sizeof(log_buff), "Starting process with PID %u", getpid());
     log_append(log_buff);
     initialize_signal_handler();
