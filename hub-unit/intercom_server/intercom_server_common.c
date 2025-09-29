@@ -31,6 +31,7 @@ void common_update_intercom_list_txt(HubClientStates_t *client_states_ptr)
     uint16_t count = 0;
     uint16_t indices[HUB_MAX_CLIENT_COUNT] = {0};
 
+    // TODO: maintain count in shm to void this nonsense
     for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
     {
         if (client_states_ptr->slot_used[i] == true)

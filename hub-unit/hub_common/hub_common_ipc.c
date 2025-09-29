@@ -9,13 +9,15 @@ static const struct mq_attr hub_mq_attributes =
     .mq_curmsgs = 0,
 };
 
-static const struct timespec mq_timeout =
+static const struct mq_attr hub_db_mq_attributes =
 {
-    .tv_nsec = 0,
-    .tv_sec = 1,
+    .mq_flags = 0,
+    .mq_maxmsg = MQ_MSG_COUNT_MAX,
+    .mq_msgsize = MQ_DB_MSG_SIZE_MAX,
+    .mq_curmsgs = 0,
 };
 
-static const struct timespec loop_delay =
+static const struct timespec mq_timeout =
 {
     .tv_nsec = 500000000,
     .tv_sec = 0,
@@ -25,7 +27,7 @@ static HubHandles_t hub_handles =
 {
     .intercom_server_inbox_handle = -1,
     .door_manager_inbox_handle = -1,
-    .db_service_inbox_handle = -1,
+    .database_service_inbox_handle = -1,
 
     .door_states_shm_ptr = NULL,
     .door_states_sem_ptr = NULL,
@@ -39,14 +41,28 @@ static void *hub_log_shm_ptr;
 
 void ipc_send_packet_copy_to_db(DoorPacket_t *source)
 {
+    static const uint8_t retry_max = 5;
+    
+    uint8_t retry_counter = 0;
+
     // send copy to db
     while(!should_terminate)
     {
-        int bytes_transmitted = mq_timedsend(hub_handles.db_service_inbox_handle, (char *)source, sizeof(*source), 0, &mq_timeout);
+        int bytes_transmitted = mq_timedsend(hub_handles.database_service_inbox_handle, (char *)source, sizeof(*source), 0, &mq_timeout);
 
         if (bytes_transmitted >= 0) break;
 
-        nanosleep(&loop_delay, NULL);
+        retry_counter++;
+
+        if (retry_counter >= retry_max)
+        {
+            log_append("Failed to forward packet copy to DB, and retry limit reached - aborting.");
+            break;
+        }
+        else
+        {
+            //log_append("Failed to forward packet copy to DB; retrying.");
+        }
     }
 }
 
@@ -295,10 +311,10 @@ bool ipc_init_inbox_handles(void)
 
     hub_handles.intercom_server_inbox_handle = -1;
     hub_handles.door_manager_inbox_handle = -1;
-    hub_handles.db_service_inbox_handle = -1;
+    hub_handles.database_service_inbox_handle = -1;
 
     // *** intercom server inbox ***
-    hub_handles.intercom_server_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
+    hub_handles.intercom_server_inbox_handle = mq_open(INTERCOM_SERVER_INBOX_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
 
     if (hub_handles.intercom_server_inbox_handle < 0)
     {
@@ -306,7 +322,7 @@ bool ipc_init_inbox_handles(void)
         {
             log_append("Intercom server inbox queue already exists.");
 
-            hub_handles.intercom_server_inbox_handle = mq_open(DOORS_TO_CLIENTS_QUEUE_NAME, O_RDWR);
+            hub_handles.intercom_server_inbox_handle = mq_open(INTERCOM_SERVER_INBOX_QUEUE_NAME, O_RDWR);
 
             if (hub_handles.intercom_server_inbox_handle < 0)
             {
@@ -328,14 +344,14 @@ bool ipc_init_inbox_handles(void)
     }
 
     // *** door manager inbox ***
-    hub_handles.door_manager_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
+    hub_handles.door_manager_inbox_handle = mq_open(DOOR_MANAGER_INBOX_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
 
     if (hub_handles.door_manager_inbox_handle < 0)
     {
         if (errno == EEXIST)
         {
             log_append("Door manager inbox queue already exists.");
-            hub_handles.door_manager_inbox_handle = mq_open(CLIENTS_TO_DOORS_QUEUE_NAME, O_RDWR);
+            hub_handles.door_manager_inbox_handle = mq_open(DOOR_MANAGER_INBOX_QUEUE_NAME, O_RDWR);
 
             if (hub_handles.door_manager_inbox_handle < 0)
             {
@@ -357,16 +373,16 @@ bool ipc_init_inbox_handles(void)
     }
 
     // *** db service inbox ***
-    hub_handles.db_service_inbox_handle = mq_open(DB_INBOX_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_mq_attributes);
+    hub_handles.database_service_inbox_handle = mq_open(DATABASE_SERVICE_INBOX_QUEUE_NAME, O_CREAT | O_EXCL, 0666, &hub_db_mq_attributes);
 
-    if (hub_handles.db_service_inbox_handle < 0)
+    if (hub_handles.database_service_inbox_handle < 0)
     {
         if (errno == EEXIST)
         {
             log_append("DB inbox queue already exists.");
-            hub_handles.db_service_inbox_handle = mq_open(DB_INBOX_QUEUE_NAME, O_RDWR);
+            hub_handles.database_service_inbox_handle = mq_open(DATABASE_SERVICE_INBOX_QUEUE_NAME, O_RDWR);
 
-            if (hub_handles.db_service_inbox_handle < 0)
+            if (hub_handles.database_service_inbox_handle < 0)
             {
                 log_append("Failed to open DB inbox queue.");
                 goto err;
@@ -406,10 +422,10 @@ void ipc_deinit_inbox_handles(void)
         hub_handles.door_manager_inbox_handle = -1;
     }
 
-    if (hub_handles.db_service_inbox_handle >= 0)
+    if (hub_handles.database_service_inbox_handle >= 0)
     {
-        mq_close(hub_handles.db_service_inbox_handle);
-        hub_handles.db_service_inbox_handle = -1;
+        mq_close(hub_handles.database_service_inbox_handle);
+        hub_handles.database_service_inbox_handle = -1;
     }
 }
 

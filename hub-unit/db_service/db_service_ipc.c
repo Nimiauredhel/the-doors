@@ -27,16 +27,18 @@ static void ipc_in_loop(void)
     static ssize_t bytes_transmitted = 0;
     static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
-    bytes_transmitted = mq_timedreceive(hub_handles_ptr->db_service_inbox_handle, msg_buff, sizeof(msg_buff), NULL, &mq_timeout);
+    bytes_transmitted = mq_timedreceive(hub_handles_ptr->database_service_inbox_handle, msg_buff, sizeof(msg_buff), NULL, &mq_timeout);
 
-    if (bytes_transmitted < 0)
+    if (bytes_transmitted <= 0)
     {
-        if (errno == ETIMEDOUT || errno == EAGAIN || errno == EWOULDBLOCK)
+        int err = errno;
+
+        if (err == ETIMEDOUT || err == EAGAIN || err == EWOULDBLOCK)
         {
         }
         else
         {
-            snprintf(log_buff, sizeof(log_buff), "Failed to receive from inbox: %s", strerror(errno));
+            snprintf(log_buff, sizeof(log_buff), "Failed to receive from inbox: %s", strerror(err));
             log_append(log_buff);
         }
 

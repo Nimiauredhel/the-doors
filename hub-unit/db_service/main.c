@@ -10,7 +10,8 @@ int main(void)
 {
     char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
-    log_init("Database-Service", false);
+    set_module_id(HUB_MODULE_DATABASE_SERVICE);
+    log_init(false);
     snprintf(log_buff, sizeof(log_buff), "Starting process with PID %u", getpid());
     log_append(log_buff);
     initialize_signal_handler();

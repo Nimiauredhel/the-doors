@@ -6,11 +6,12 @@
 #include <mqueue.h>
 #include <semaphore.h>
 
-#define CLIENTS_TO_DOORS_QUEUE_NAME "/mq_clients_to_doors"
-#define DOORS_TO_CLIENTS_QUEUE_NAME "/mq_doors_to_clients"
-#define DB_INBOX_QUEUE_NAME "/mq_doors_db_inbox"
+#define DOOR_MANAGER_INBOX_QUEUE_NAME "/mq_doors_door_manager_inbox"
+#define INTERCOM_SERVER_INBOX_QUEUE_NAME "/mq_doors_intercom_server_inbox"
+#define DATABASE_SERVICE_INBOX_QUEUE_NAME "/mq_doors_database_service_inbox"
 
 #define MQ_MSG_SIZE_MAX (sizeof(DoorPacket_t) + DOOR_DATA_BYTES_SMALL)
+#define MQ_DB_MSG_SIZE_MAX (sizeof(DoorPacket_t))
 #define MQ_MSG_COUNT_MAX (10)
 
 #define DOOR_STATES_SHM_NAME "DOORS_DOOR_STATES_SHM"
@@ -25,7 +26,7 @@ typedef struct HubHandles
 {
     mqd_t door_manager_inbox_handle;
     mqd_t intercom_server_inbox_handle;
-    mqd_t db_service_inbox_handle;
+    mqd_t database_service_inbox_handle;
 
     sem_t *door_states_sem_ptr;
     void *door_states_shm_ptr;

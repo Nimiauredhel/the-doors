@@ -14,81 +14,80 @@
         font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     div {
-        width: 1600px;
+        width: auto;
         height: auto;
-        margin: 5em auto;
+        margin: auto auto;
         padding: 2em;
         background-color: #a0a0ff;
         border-radius: 0.5em;
         box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
     }
-    iframe {
-        width: 100%;
-        height: auto;
-        margin: auto auto;
-        padding: auto;
-        background-color: #b0b0ff;
-        border-radius: 1.0em;
-        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+    button {
+        color: #d0d0ff;
+        background-color: #5050ff;
+    }
+    p {
+        background-color: #9090ff;
+    }
+    h1 {
+        color: #000088;
+    }
+    .infobox {
+        color: #b0b0dd;
+        background-color: #9090ff;
+    }
+    .infoline {
+        color: #0ff0ff;
+        background-color: #0000aa;
+    }
+    .logbox {
+        color: #000088;
+        background-color: #8080ff;
+    }
+    .logline {
+        color: #000000;
+        background-color: #7070ff;
     }
     </style>    
 </head>
 
 <body>
-<div>
-    <h1>DOORS Hub</h1>
+    <script src="htmx.min.js"></script>
 
-    <p>Welcome to the DOORS system Hub unit!</p>
+    <div id="dash" class="infobox">
+        <h1>DOORS Hub</h1>
 
-    <p>
-        <button type="doors_button" onclick="frame_set_source('doors.txt')">Door List</button>
-        <button type="intercoms_button" onclick="frame_set_source('intercoms.txt')">Intercom List</button>
-    </p>
+        <p class="infoline">Welcome to the DOORS system Hub unit!</p>
 
-    <p>
-        <button type="logs_button" onclick="frame_set_source('logs.txt')">All Logs</button>
-        <button type="help_button" onclick="frame_set_source('help.txt')">Help</button>
-    </p>
+        <p class="infoline">
+            <button hx-target="#info" hx-get="/help">Help</button>
+            <button hx-swap="none" hx-get="/actions/test">Test Button</button>
+        </p>
 
-    <p>
-        <button type="door_manager_logs_button" onclick="frame_set_source('Door-Manager.txt')">Door Manager Logs</button>
-        <button type="intercom_server_logs_button" onclick="frame_set_source('Intercom-Server.txt')">Intercom Server Logs</button>
-    </p>
+        <p class="infoline">
+            <button hx-target="#info" hx-get="/lists/doors">Door List</button>
+            <button hx-target="#info" hx-get="/lists/intercoms">Intercom List</button>
+        </p>
 
-    <p>
-        <button type="web_server_logs_button" onclick="frame_set_source('Web-Server.txt')">Web Server Logs</button>
-        <button type="db_service_logs_button" onclick="frame_set_source('Database-Service.txt')">Database Service Logs</button>
-    </p>
+        <p class="infoline">
+            <button hx-target="#info" hx-get="/logs/all">All Logs</button>
+            <button hx-target="#info" hx-get="/logs/hub_control">Hub Control Logs</button>
+        </p>
 
-    <iframe id="data_frame" src="help.txt"></iframe>
-    <script>
-        var data_frame = document.getElementById('data_frame');
+        <p class="infoline">
+            <button hx-target="#info" hx-get="/logs/door_manager">Door Manager Logs</button>
+            <button hx-target="#info" hx-get="/logs/intercom_server">Intercom Server Logs</button>
+        </p>
 
-        function frame_reload() {
-            data_frame.contentWindow.location.reload();
-        }
+        <p class="infoline">
+            <button hx-target="#info" hx-get="/logs/web_server">Web Server Logs</button>
+            <button hx-target="#info" hx-get="/logs/database_service">Database Service Logs</button>
+        </p>
+    </div>
 
-        function frame_set_source (source) {
-            data_frame.src = source;
-            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
-            data_frame_body.style.color = 'red';
-            frame_reload();
-        }
-
-        function frame_onload () {
-            var data_frame_body = data_frame.contentWindow.document.querySelector('body');
-            data_frame_body.style.color = 'black';
-            data_frame_body.style.fontSize = '20px';
-            data_frame_body.style.lineHeight = '20px';
-            data_frame.style.height = data_frame.contentWindow.document.documentElement.scrollHeight + 'px';
-        }
-
-        var data_frame = document.getElementById('data_frame');
-        data_frame.onload = frame_onload;
-
-        frame_set_source("help.txt");
-        window.setInterval(function() { frame_reload() }, 1000);
-    </script>
-</div>
+    <div id="info" class="infobox">
+        <div class="logbox" hx-target="#info" hx-get="/help" hx-trigger="load">
+        </div>
+    </div>
 </body>
 </html>

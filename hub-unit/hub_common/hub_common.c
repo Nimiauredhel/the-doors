@@ -17,24 +17,47 @@ bool should_terminate = false;
  */
 static bool random_was_seeded = false;
 
-static char process_label[32] = {0};
-static char process_log_path[40] = {0};
+static const char module_labels[HUB_MODULE_COUNT+1][HUB_MODULE_NAME_MAX_LEN] =
+{
+    "Unknown",
+    "Hub-Control",
+    "Door-Manager",
+    "Intercom-Server",
+    "Web-Server",
+    "Database-Service",
+};
+
+static HubModuleId_t current_module_id = HUB_MODULE_NONE;
+static char syslog_label[40] = "DOORS-Unknown";
+static char process_log_path[40] = "logs/Unknown.txt";
 
 static bool log_sys_initialized = false;
 static bool log_shm_initialized = false;
 
-void log_init(char *self_label, bool init_shm)
+void set_module_id(HubModuleId_t module_id)
 {
-    char syslog_label[40] = {0};
-    snprintf(process_label, sizeof(process_label), "%s", self_label);
-    snprintf(syslog_label, sizeof(syslog_label), "DOORS-%s", self_label);
+    current_module_id = module_id;
+}
 
+const char* get_module_label(HubModuleId_t module_id)
+{
+    return module_labels[module_id];
+}
+
+void log_init(bool init_shm)
+{
+    // *** init log labels
+    snprintf(syslog_label, sizeof(syslog_label), "DOORS-%s", module_labels[current_module_id]);
+
+    // *** init sys log
     setlogmask(LOG_UPTO(LOG_INFO));
     openlog(syslog_label, LOG_CONS | LOG_PERROR, LOG_USER);
+
     log_sys_initialized = true;
 
+    // *** init txt file logs
     mkdir(logs_dir, 0777);
-    snprintf(process_log_path, sizeof(process_log_path), "%s/%s.txt", logs_dir, self_label);
+    snprintf(process_log_path, sizeof(process_log_path), "%s/%s.txt", logs_dir, module_labels[current_module_id]);
 
     // *** clear process log file if exists ***
     FILE *file = fopen(process_log_path, "w");
@@ -69,18 +92,26 @@ void log_append(char *msg)
     {
         syslog(LOG_INFO, "%s", msg);
     }
+    else
+    {
+        printf("%s\n", msg);
+    }
 
     // preparing the txt log string
     char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
     struct tm now_dt = get_datetime();
 
-    snprintf(log_buff, sizeof(log_buff), "[%s]%s\n", process_label, msg);
+    snprintf(log_buff, sizeof(log_buff), "%s\n", msg);
 
     char formatted_log_buff[192] = {0};
     FILE *file = NULL;
 
     // *** write to process specific log txt file ***
-    snprintf(formatted_log_buff, sizeof(formatted_log_buff), "[%02u:%02u:%02u]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec, log_buff);
+    // *** TODO: move this somewhere else, no need to do it every write
+    // *** TODO: commented out for reference until the above is addressed
+    /*
+    snprintf(formatted_log_buff, sizeof(formatted_log_buff), "[%02u:%02u:%02u][%s]%s\n", now_dt.tm_hour, now_dt.tm_min, now_dt.tm_sec,
+            module_labels[current_module_id], log_buff);
     file = fopen(process_log_path, "a");
 
     // only retry once
@@ -96,6 +127,7 @@ void log_append(char *msg)
         fprintf(file, "%s", formatted_log_buff);
         fclose(file);
     } 
+    */
 
     if (!log_shm_initialized) return;
 
@@ -110,11 +142,14 @@ void log_append(char *msg)
         hub_log_ptr->head = (hub_log_ptr->head + 1) % HUB_MAX_LOG_COUNT;
     }
 
-    hub_log_ptr->timestamps[hub_log_ptr->head] = now_dt;
     strncpy(hub_log_ptr->logs[hub_log_ptr->head], log_buff, HUB_MAX_LOG_MSG_LENGTH);
     hub_log_ptr->timestamps[hub_log_ptr->head] = now_dt;
+    hub_log_ptr->module_ids[hub_log_ptr->head] = current_module_id;
 
-    // *** overwrite common log txt file from ring buffer, int descending order ***
+    // *** overwrite common log txt file from ring buffer, in descending order ***
+    // *** TODO: move this somewhere else, no need to do it every write
+    // *** TODO: commented out for reference until the above is addressed
+    /*
     file = fopen(common_log_path, "w");
 
     // only retry once
@@ -137,16 +172,18 @@ void log_append(char *msg)
                 break;
             }
 
-            fprintf(file, "[%u][%02u:%02u:%02u]%s\n",
+            fprintf(file, "[%u][%02u:%02u:%02u][%s]%s\n",
                     read_pos,
                     hub_log_ptr->timestamps[read_pos].tm_hour,
                     hub_log_ptr->timestamps[read_pos].tm_min,
                     hub_log_ptr->timestamps[read_pos].tm_sec,
+                    module_labels[hub_log_ptr->module_ids[read_pos]],
                     hub_log_ptr->logs[read_pos]);
         }
 
         fclose(file);
     } 
+    */
 
     // release common log ring buffer
     ipc_release_hub_log_ptr();

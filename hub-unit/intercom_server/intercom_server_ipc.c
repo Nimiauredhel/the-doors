@@ -67,7 +67,7 @@ static void ipc_out_loop(void)
     static ssize_t bytes_transmitted = 0;
     static char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
-    if (hub_queue_dequeue(clients_to_doors_queue, (DoorPacket_t *)&msg_buff) >= 0)
+    if (hub_queue_dequeue(clients_to_doors_queue, (DoorPacket_t *)msg_buff) >= 0)
     {
         log_append("Forwarding from internal queue to outbox.");
 
@@ -84,18 +84,6 @@ static void ipc_out_loop(void)
             if (bytes_transmitted >= 0) break;
 
             snprintf(log_buff, sizeof(log_buff), "Failed forwarding from internal queue to door manager inbox: %s", strerror(errno));
-            log_append(log_buff);
-            nanosleep(&loop_delay, NULL);
-        }
-
-        // send copy to db
-        while(!should_terminate)
-        {
-            bytes_transmitted = mq_timedsend(hub_handles_ptr->db_service_inbox_handle, msg_buff, sizeof(msg_buff), 0, &mq_timeout);
-
-            if (bytes_transmitted >= 0) break;
-
-            snprintf(log_buff, sizeof(log_buff), "Failed forwarding to DB inbox: %s", strerror(errno));
             log_append(log_buff);
             nanosleep(&loop_delay, NULL);
         }

@@ -1,20 +1,21 @@
 #include "hub_control_processes.h"
 #include "hub_common.h"
 
-#define NUM_PROCESSES (4)
+#define NUM_PROCESSES (HUB_MODULE_COUNT - 1)
 
 typedef struct HubProcess
 {
+    HubModuleId_t module_id;
     pid_t pid;
     char *exe_name;
 } HubProcess_t;
 
-static HubProcess_t processes[] =
+static HubProcess_t processes[NUM_PROCESSES] =
 {
-    {-1, "/usr/bin/doors_hub/door_manager"},
-    {-1, "/usr/bin/doors_hub/intercom_server"},
-    {-1, "/usr/bin/doors_hub/web_server"},
-    {-1, "/usr/bin/doors_hub/db_service"},
+    { HUB_MODULE_DOOR_MANAGER, -1, "/usr/bin/doors_hub/door_manager"},
+    { HUB_MODULE_INTERCOM_SERVER, -1, "/usr/bin/doors_hub/intercom_server"},
+    { HUB_MODULE_WEB_SERVER, -1, "/usr/bin/doors_hub/web_server"},
+    { HUB_MODULE_DATABASE_SERVICE, -1, "/usr/bin/doors_hub/db_service"},
 };
 
 static void processes_launch_one(uint8_t index)
