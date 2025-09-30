@@ -8,23 +8,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style type="text/css">
     body {
-        background-color: #000020;
+        background-color: #000040;
         margin: 0;
-        padding: 0;
         font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     div {
         width: auto;
         height: auto;
         margin: auto auto;
-        padding: 2em;
+        padding: 0.5em;
         background-color: #a0a0ff;
         border-radius: 0.5em;
-        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+        box-shadow: 2px 3px 7px 2px rgba(64,0,0,1);
     }
     button {
         color: #d0d0ff;
         background-color: #5050ff;
+        box-shadow: 4px 2px 2px 2px rgba(128,0,0,0.2);
     }
     p {
         background-color: #9090ff;
@@ -32,17 +32,27 @@
     h1 {
         color: #000088;
     }
+    h2 {
+        color: #000077;
+    }
     .infobox {
         color: #b0b0dd;
         background-color: #9090ff;
+        box-shadow: 2px 3px 7px 2px rgba(64,0,0,1);
     }
     .infoline {
         color: #0ff0ff;
         background-color: #0000aa;
+        box-shadow: 2px 3px 7px 2px rgba(64,0,0,0.4);
     }
     .logbox {
         color: #000088;
         background-color: #8080ff;
+        box-shadow: 2px 3px 7px 2px rgba(64,0,0,0.4);
+        overflow-y: auto;
+        max-height: 50vh;
+        scrollbar-color: #6060ff;
+        scrollbar-width: auto;
     }
     .logline {
         color: #000000;
@@ -60,31 +70,31 @@
         <p class="infoline">Welcome to the DOORS system Hub unit!</p>
 
         <p class="infoline">
-            <button hx-target="#info" hx-get="/help">Help</button>
-            <button hx-swap="none" hx-get="/actions/test">Test Button</button>
+            <button hx-target="#info" hx-get="/help" hx-indicator="#load_indicator">Help</button>
+            <button hx-swap="none" hx-get="/actions/test" hx-indicator="#load_indicator">Test Button</button>
         </p>
 
         <p class="infoline">
-            <button hx-target="#info" hx-get="/lists/doors">Door List</button>
-            <button hx-target="#info" hx-get="/lists/intercoms">Intercom List</button>
+            <button hx-target="#info" hx-get="/lists/doors" hx-indicator="#load_indicator">Door List</button>
+            <button hx-target="#info" hx-get="/lists/intercoms" hx-indicator="#load_indicator">Intercom List</button>
         </p>
 
         <p class="infoline">
-            <button hx-target="#info" hx-get="/logs/all">All Logs</button>
-            <button hx-target="#info" hx-get="/logs/hub_control">Hub Control Logs</button>
+            <button hx-target="#info" hx-get="/logs/all" hx-indicator="#load_indicator">All Logs</button>
+            <button hx-target="#info" hx-get="/logs/hub_control" hx-indicator="#load_indicator">Hub Control Logs</button>
         </p>
 
         <p class="infoline">
-            <button hx-target="#info" hx-get="/logs/door_manager">Door Manager Logs</button>
-            <button hx-target="#info" hx-get="/logs/intercom_server">Intercom Server Logs</button>
+            <button hx-target="#info" hx-get="/logs/door_manager" hx-indicator="#load_indicator">Door Manager Logs</button>
+            <button hx-target="#info" hx-get="/logs/intercom_server" hx-indicator="#load_indicator">Intercom Server Logs</button>
         </p>
 
         <p class="infoline">
-            <button hx-target="#info" hx-get="/logs/web_server">Web Server Logs</button>
-            <button hx-target="#info" hx-get="/logs/database_service">Database Service Logs</button>
+            <button hx-target="#info" hx-get="/logs/web_server" hx-indicator="#load_indicator">Web Server Logs</button>
+            <button hx-target="#info" hx-get="/logs/database_service" hx-indicator="#load_indicator">Database Service Logs</button>
         </p>
     </div>
-
+    <img id="load_indicator" class="htmx-indicator" src="svg-loaders/puff.svg"</img>
     <div id="info" class="infobox">
         <div class="logbox" hx-target="#info" hx-get="/help" hx-trigger="load">
         </div>

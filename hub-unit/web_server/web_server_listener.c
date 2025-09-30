@@ -56,7 +56,7 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
             {
                 snprintf(log_buff, sizeof(log_buff), "Test button pushed by a connection with message count of %d.", connection->data[0]);
                 log_append(log_buff);
-                mg_http_reply(connection, 200, "Cache-Control: no-cache", "");
+                mg_http_reply(connection, 200, "", "some text");
             }
             else if (mg_match(http_msg_ptr->uri, mg_str("/help"), NULL))
             {
@@ -78,7 +78,7 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
 
                 explicit_bzero(info_html_buff, sizeof(info_html_buff));
                 html_buff_pos += sprintf(html_buff_pos, info_html_prefix_refresh, log_request_strs[log_module], 2);
-                html_buff_pos += sprintf(html_buff_pos, "<h1>%s Logs</h1>", log_module == HUB_MODULE_NONE ? "All" : get_module_label(log_module));
+                html_buff_pos += sprintf(html_buff_pos, "<h2>%s Logs</h2>", log_module == HUB_MODULE_NONE ? "All" : get_module_label(log_module));
 
                 HubLogRing_t *hub_log_ptr = ipc_acquire_hub_log_ptr();
 
@@ -125,7 +125,7 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
                 uint16_t counted = 0;
 
                 html_buff_pos += sprintf(html_buff_pos, info_html_prefix_refresh, list_request_strs[list_id], 2);
-                html_buff_pos += sprintf(html_buff_pos, "<h1>%s List</h1>", list_id == 0 ? "Doors" : "Intercoms");
+                html_buff_pos += sprintf(html_buff_pos, "<h2>%s List</h2>", list_id == 0 ? "Doors" : "Intercoms");
 
                 if (list_id == 0)
                 {
