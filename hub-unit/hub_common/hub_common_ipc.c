@@ -429,26 +429,58 @@ void ipc_deinit_inbox_handles(void)
     }
 }
 
-HubIntercomStates_t *ipc_acquire_intercom_states_ptr(void)
+HubIntercomStates_t *ipc_acquire_intercom_states_ptr(bool blocking)
 {
-    sem_wait(hub_handles.intercom_states_sem_ptr);
+    if (hub_handles.intercom_states_sem_ptr == NULL || hub_handles.intercom_states_shm_ptr == NULL)
+    {
+        return NULL;
+    }
+
+    int ret = blocking ? sem_wait(hub_handles.intercom_states_sem_ptr)
+                       : sem_trywait(hub_handles.intercom_states_sem_ptr);
+
+    if (ret != 0)
+    {
+        int err = errno;
+        log_append(strerror(err));
+        return NULL;
+    }
+
+    log_append("Acquired intercom list.");
     return (HubIntercomStates_t *)hub_handles.intercom_states_shm_ptr;
 }
 
 void ipc_release_intercom_states_ptr(void)
 {
     sem_post(hub_handles.intercom_states_sem_ptr);
+    log_append("Released intercom list.");
 }
 
-HubDoorStates_t *ipc_acquire_door_states_ptr(void)
+HubDoorStates_t *ipc_acquire_door_states_ptr(bool blocking)
 {
-    sem_wait(hub_handles.door_states_sem_ptr);
-    return (HubDoorStates_t *)hub_handles.door_states_sem_ptr;
+    if (hub_handles.door_states_sem_ptr == NULL || hub_handles.door_states_shm_ptr == NULL)
+    {
+        return NULL;
+    }
+
+    int ret = blocking ? sem_wait(hub_handles.door_states_sem_ptr)
+                       : sem_trywait(hub_handles.door_states_sem_ptr);
+
+    if (ret != 0)
+    {
+        int err = errno;
+        log_append(strerror(err));
+        return NULL;
+    }
+
+    log_append("Acquired door list.");
+    return (HubDoorStates_t *)hub_handles.door_states_shm_ptr;
 }
 
 void ipc_release_door_states_ptr(void)
 {
     sem_post(hub_handles.door_states_sem_ptr);
+    log_append("Released door list.");
 }
 
 HubLogRing_t *ipc_acquire_hub_log_ptr(void)

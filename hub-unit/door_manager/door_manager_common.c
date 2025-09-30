@@ -6,7 +6,7 @@ HubQueue_t *doors_to_clients_queue = NULL;
 
 void door_manager_update_door_list_txt(HubDoorStates_t *door_states_ptr)
 {
-    static const char *door_list_txt_path = "logs/door-list.txt";
+    static const char *door_list_txt_path = "logs/Doors.txt";
 
     time_t t_now = time(NULL);
     struct tm tm_now = get_datetime();
@@ -19,7 +19,7 @@ void door_manager_update_door_list_txt(HubDoorStates_t *door_states_ptr)
 
     for (int i = 0; i < door_states_ptr->count; i++)
     {
-        fprintf(file, " [%u] %s [Updated %lds ago]\n", door_states_ptr->id[i], door_states_ptr->name[i], t_now - door_states_ptr->last_seen[i]);
+        fprintf(file, " [%u] %s [Updated %lds ago]\n", i, door_states_ptr->name[i], t_now - door_states_ptr->last_seen[i]);
     }
 
     fclose(file);

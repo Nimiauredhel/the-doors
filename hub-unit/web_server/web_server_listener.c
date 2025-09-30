@@ -10,7 +10,7 @@ static const struct mg_http_serve_opts server_options =
 
 static const char info_html_line_fmt[32] = "<p class=\"infoline\">%s</p>";
 static const char info_html_log_line_fmt[64] = "<p class=\"logline\">[%u][%02u:%02u:%02u][%s]%s</p>";
-static const char info_html_door_line_fmt[64] = "<p class=\"logline\">[%u] %s [Updated %lds ago]</p>";
+static const char info_html_door_line_fmt[64] = "<p class=\"logline\">[%u] %s [%s][Updated %lds ago]</p>";
 static const char info_html_intercom_line_fmt[84] = "<p class=\"logline\">[%u] [%02X:%02X:%02X:%02X:%02X:%02X:] %s [Updated %lds ago]</p>";
 static const char info_html_prefix_static[24] = "<div class=\"logbox\">";
 static const char info_html_prefix_refresh[76] = "<div class=\"logbox\" hx-target=\"#info\" hx-get=\"%s\" hx-trigger=\"every %us\">";
@@ -34,9 +34,6 @@ static const char list_request_strs[2][24] =
     "/lists/intercoms",
 };
 
-static char info_html_buff[sizeof(info_html_prefix_refresh) + sizeof(info_html_suffix)
-                        + (HUB_MAX_LOG_COUNT*(HUB_MAX_LOG_MSG_LENGTH+sizeof(info_html_line_fmt)))] = {0};
-
 // HTTP server event handler function
 static void ev_handler(struct mg_connection *connection, int event_id, void *event_data)
 {
@@ -45,12 +42,15 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
     char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
     struct mg_http_message *http_msg_ptr = NULL;
-    char *html_buff_pos = info_html_buff;
 
     switch (event_id)
     {
         case MG_EV_HTTP_MSG:
             http_msg_ptr = (struct mg_http_message *)event_data;
+
+            char response_buff[sizeof(info_html_prefix_refresh) + sizeof(info_html_suffix)
+                + (HUB_MAX_LOG_COUNT*(HUB_MAX_LOG_MSG_LENGTH+sizeof(info_html_line_fmt)))] = {0};
+            char *response_buff_pos = response_buff;
 
             if (mg_match(http_msg_ptr->uri, mg_str("/actions/test"), NULL))
             {
@@ -60,7 +60,6 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
             }
             else if (mg_match(http_msg_ptr->uri, mg_str("/help"), NULL))
             {
-                explicit_bzero(info_html_buff, sizeof(info_html_buff));
                 mg_http_reply(connection, 200, "", help_text);
             }
             else if (mg_match(http_msg_ptr->uri, mg_str("/logs/*"), NULL))
@@ -76,9 +75,8 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
                     }
                 }
 
-                explicit_bzero(info_html_buff, sizeof(info_html_buff));
-                html_buff_pos += sprintf(html_buff_pos, info_html_prefix_refresh, log_request_strs[log_module], 2);
-                html_buff_pos += sprintf(html_buff_pos, "<h2>%s Logs</h2>", log_module == HUB_MODULE_NONE ? "All" : get_module_label(log_module));
+                response_buff_pos += sprintf(response_buff_pos, info_html_prefix_refresh, log_request_strs[log_module], 2);
+                response_buff_pos += sprintf(response_buff_pos, "<h2>%s Logs</h2>", log_module == HUB_MODULE_NONE ? "All" : get_module_label(log_module));
 
                 HubLogRing_t *hub_log_ptr = ipc_acquire_hub_log_ptr();
 
@@ -95,18 +93,17 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
                     // filter to desired module's logs
                     if (log_module != HUB_MODULE_NONE && hub_log_ptr->module_ids[read_pos] != log_module) continue;
 
-                    html_buff_pos += sprintf(html_buff_pos, info_html_log_line_fmt, read_pos,
+                    response_buff_pos += sprintf(response_buff_pos, info_html_log_line_fmt, read_pos,
                         hub_log_ptr->timestamps[read_pos].tm_hour, hub_log_ptr->timestamps[read_pos].tm_min, hub_log_ptr->timestamps[read_pos].tm_sec,
                         get_module_label(hub_log_ptr->module_ids[read_pos]), hub_log_ptr->logs[read_pos]);
                 }
 
                 ipc_release_hub_log_ptr();
-                html_buff_pos += sprintf(html_buff_pos, info_html_suffix);
-                mg_http_reply(connection, 200, "", info_html_buff);
+                response_buff_pos += sprintf(response_buff_pos, info_html_suffix);
+                mg_http_reply(connection, 200, "", response_buff);
             }
             else if (mg_match(http_msg_ptr->uri, mg_str("/lists/*"), NULL))
             {
-                explicit_bzero(info_html_buff, sizeof(info_html_buff));
                 int8_t list_id = -1;
 
                 if (mg_match(http_msg_ptr->uri, mg_str(list_request_strs[0]), NULL))
@@ -124,50 +121,68 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
                 struct tm tm_now = get_datetime();
                 uint16_t counted = 0;
 
-                html_buff_pos += sprintf(html_buff_pos, info_html_prefix_refresh, list_request_strs[list_id], 2);
-                html_buff_pos += sprintf(html_buff_pos, "<h2>%s List</h2>", list_id == 0 ? "Doors" : "Intercoms");
+                response_buff_pos += sprintf(response_buff_pos, info_html_prefix_refresh, list_request_strs[list_id], 2);
+                response_buff_pos += sprintf(response_buff_pos, "<h2>%s List</h2>", list_id == 0 ? "Doors" : "Intercoms");
 
                 if (list_id == 0)
                 {
-                    HubDoorStates_t *doors = ipc_acquire_door_states_ptr();
+                    HubDoorStates_t *doors = ipc_acquire_door_states_ptr(false);
 
-                    html_buff_pos += sprintf(html_buff_pos, "<p class=\"infoline\">Count: %u</p><p class=\"infoline\">Logged [%02u:%02u:%02u]</p> ",
-                        doors->count, tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
-
-                    for (uint16_t i = 0; i < HUB_MAX_DOOR_COUNT; i++)
+                    if (doors != NULL)
                     {
-                        if (counted >= doors->count) break;
-                        if (doors->last_seen[i] <= 0) continue;
-                        counted++;
-                        html_buff_pos += sprintf(html_buff_pos, info_html_door_line_fmt, doors->id[i], doors->name[i], t_now - doors->last_seen[i]);
-                    }
+                        response_buff_pos += sprintf(response_buff_pos, "<p class=\"infoline\">Count: %u</p><p class=\"infoline\">Logged [%02u:%02u:%02u]</p> ",
+                            doors->count, tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
+                        char state_strs[4][8] = { "Open", "Closed", "Opening", "Closing" };
+                        uint8_t state_idx = 0;
 
-                    ipc_release_door_states_ptr();
+                        for (uint16_t i = 0; i < HUB_MAX_DOOR_COUNT; i++)
+                        {
+                            if (counted >= doors->count) break;
+                            if (doors->last_seen[i] <= 0) continue;
+                            counted++;
+                            state_idx = doors->flags[i] & DOOR_FLAG_CLOSED;
+                            state_idx += 2 * (doors->flags[i] & DOOR_FLAG_TRANSITION);
+                            response_buff_pos += sprintf(response_buff_pos, info_html_door_line_fmt, i, doors->name[i], state_strs[state_idx], t_now - doors->last_seen[i]);
+                        }
+
+                        ipc_release_door_states_ptr();
+                    }
+                    else
+                    {
+                        response_buff_pos += sprintf(response_buff_pos, "<p>Error reading door list.</p>");
+                    }
                 }
                 else if (list_id == 1)
                 {
-                    HubIntercomStates_t *intercoms = ipc_acquire_intercom_states_ptr();
+                    HubIntercomStates_t *intercoms = ipc_acquire_intercom_states_ptr(false);
 
-                    html_buff_pos += sprintf(html_buff_pos, "<p class=\"infoline\">Count: %u</p><p class=\"infoline\">Logged [%02u:%02u:%02u]</p> ",
-                        intercoms->count, tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
-
-                    for (uint16_t i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
+                    if (intercoms != NULL)
                     {
-                        if (counted >= intercoms->count) break;
-                        if (intercoms->last_seen[i] <= 0) continue;
-                        counted++;
-                        html_buff_pos += sprintf(html_buff_pos, info_html_intercom_line_fmt, i,
-                        intercoms->mac_addresses[i][0], intercoms->mac_addresses[i][1],
-                        intercoms->mac_addresses[i][2], intercoms->mac_addresses[i][3],
-                        intercoms->mac_addresses[i][4], intercoms->mac_addresses[i][5],
-                        intercoms->name[i],     t_now - intercoms->last_seen[i]);
-                    }
+                        response_buff_pos += sprintf(response_buff_pos, "<p class=\"infoline\">Count: %u</p><p class=\"infoline\">Logged [%02u:%02u:%02u]</p> ",
+                            intercoms->count, tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
 
-                    ipc_release_intercom_states_ptr();
+                        for (uint16_t i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
+                        {
+                            if (counted >= intercoms->count) break;
+                            if (intercoms->last_seen[i] <= 0) continue;
+                            counted++;
+                            response_buff_pos += sprintf(response_buff_pos, info_html_intercom_line_fmt, i,
+                            intercoms->mac_addresses[i][0], intercoms->mac_addresses[i][1],
+                            intercoms->mac_addresses[i][2], intercoms->mac_addresses[i][3],
+                            intercoms->mac_addresses[i][4], intercoms->mac_addresses[i][5],
+                            intercoms->name[i],     t_now - intercoms->last_seen[i]);
+                        }
+
+                        ipc_release_intercom_states_ptr();
+                    }
+                    else
+                    {
+                        response_buff_pos += sprintf(response_buff_pos, "<p>Error reading intercom list.</p>");
+                    }
                 }
 
-                html_buff_pos += sprintf(html_buff_pos, info_html_suffix);
-                mg_http_reply(connection, 200, "", info_html_buff);
+                response_buff_pos += sprintf(response_buff_pos, info_html_suffix);
+                mg_http_reply(connection, 200, "", response_buff);
             }
             else
             {

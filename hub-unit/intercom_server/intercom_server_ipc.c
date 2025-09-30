@@ -146,9 +146,13 @@ void ipc_init(void)
         log_append("IPC Initialization Completed.");
 
         /// initial update/creation of intercom states txt
-        HubIntercomStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
-        common_update_intercom_list_txt(intercom_states_ptr);
-        ipc_release_intercom_states_ptr();
+        HubIntercomStates_t *intercoms = ipc_acquire_intercom_states_ptr(true);
+
+        if (intercoms != NULL)
+        {
+            common_update_intercom_list_txt(intercoms);
+            ipc_release_intercom_states_ptr();
+        }
     }
     else
     {

@@ -14,11 +14,9 @@ static const struct timespec scanning_loop_delay =
 
 static int device_fd = -1;
 
-static bool target_addr_set[TARGET_ADDR_MAX_COUNT] = {false};
-static uint8_t target_addr_list[TARGET_ADDR_MAX_COUNT] = {0};
+static uint8_t live_addr_list[TARGET_ADDR_MAX_COUNT] = {0};
+static uint8_t live_addr_count = 0;
 static uint8_t current_target_addr = 0;
-
-static uint8_t target_addr_last_count = 0;
 
 static uint8_t rx_buff[sizeof(DoorPacket_t) + DOOR_DATA_BYTES_LARGE] = {0};
 static DoorPacket_t *rx_packet_ptr = (DoorPacket_t *)&rx_buff;
@@ -107,7 +105,7 @@ static void read_data_from_door(uint16_t length)
     log_append(log_buff);
 }
 
-static void process_data_from_door(void)
+static void process_data_from_door(HubDoorStates_t *doors)
 {
     char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
 
@@ -121,43 +119,47 @@ static void process_data_from_door(void)
                 door_info_ptr->name, INDEX_TO_I2C_ADDR(door_info_ptr->index), door_info_ptr->index, current_target_addr, I2C_ADDR_TO_INDEX(current_target_addr));
         log_append(log_buff);
 
-        if (door_info_ptr->index >= HUB_MAX_DOOR_COUNT)
+        uint8_t door_idx = I2C_ADDR_TO_INDEX(current_target_addr);
+
+        if (door_idx >= HUB_MAX_DOOR_COUNT)
         {
             log_append("Received index out of bounds.");
+            break;
+        }
+
+        if (doors == NULL)
+        {
+            log_append("Null door states pointer.");
+            break;
+        }
+
+        bool diff_name = (0 != strncmp(doors->name[door_idx], door_info_ptr->name, UNIT_NAME_MAX_LEN));
+
+        if (doors->last_seen[door_idx] > 0)
+        {
+            if (diff_name)
+            {
+                log_append("Updating existing entry with received data - name changed!");
+            }
+            else
+            {
+                log_append("Updating existing entry with received data.");
+            }
         }
         else
         {
-            HubDoorStates_t *door_states_ptr = ipc_acquire_door_states_ptr();
-
-            int8_t cell = -1;
-
-            for (int i = 0; i < door_states_ptr->count; i++)
-            {
-                if (door_states_ptr->id[i] == door_info_ptr->index)
-                {
-                    cell = i;
-                    log_append("Updating existing entry with received data.");
-                    break;
-                }
-            }
-
-            if (cell < 0)
-            {
-                log_append("Door ID unused, storing new entry.");
-
-                cell = door_states_ptr->count;
-                door_states_ptr->count++;
-                door_states_ptr->id[cell] = door_info_ptr->index;
-            }
-
-            door_states_ptr->last_seen[cell] = time(NULL);
-            strncpy(door_states_ptr->name[cell], door_info_ptr->name, UNIT_NAME_MAX_LEN);
-
-            door_manager_update_door_list_txt(door_states_ptr);
-
-            ipc_release_door_states_ptr();
+            log_append("Door ID unused, storing new entry.");
+            doors->count++;
         }
-	break;
+
+        if (diff_name)
+        {
+            strncpy(doors->name[door_idx], door_info_ptr->name, UNIT_NAME_MAX_LEN);
+        }
+
+        doors->last_seen[door_idx] = time(NULL);
+        door_manager_update_door_list_txt(doors);
+        break;
     case PACKET_DATA_NONE:
     case PACKET_DATA_CLIENT_INFO:
     case PACKET_DATA_IMAGE:
@@ -175,34 +177,49 @@ static void process_report(void)
     ipc_send_packet_copy_to_db(rx_packet_ptr);
     DoorReport_t report_type = rx_packet_ptr->body.Report.report_id;
 
+    uint16_t source_id = I2C_ADDR_TO_INDEX(current_target_addr);
+    HubDoorStates_t *doors = ipc_acquire_door_states_ptr(true);
+
+    if (doors != NULL)
+    {
+        if (doors->last_seen[source_id] == 0)
+        {
+            doors->count++;
+        }
+
+        doors->last_seen[source_id] = time(NULL);
+    }
+
     switch(report_type)
     {
     case PACKET_REPORT_NONE:
-         snprintf(log_buff, sizeof(log_buff), "Door %u event: NONE.", rx_packet_ptr->body.Report.source_id);
+         snprintf(log_buff, sizeof(log_buff), "Door %u event: NONE.", source_id);
          log_append(log_buff);
          break;
     case PACKET_REPORT_DOOR_OPENED:
-         snprintf(log_buff, sizeof(log_buff), "Door %u: Opened", rx_packet_ptr->body.Report.source_id);
+        if (doors != NULL) doors->flags[source_id] &= ~(DOOR_FLAG_CLOSED);
+         snprintf(log_buff, sizeof(log_buff), "Door %u: Opened", source_id);
          log_append(log_buff);
          break;
     case PACKET_REPORT_DOOR_CLOSED:
-         snprintf(log_buff, sizeof(log_buff), "Door %u: Closed", rx_packet_ptr->body.Report.source_id);
+        if (doors != NULL) doors->flags[source_id] |= DOOR_FLAG_CLOSED;
+         snprintf(log_buff, sizeof(log_buff), "Door %u: Closed", source_id);
          log_append(log_buff);
          break;
     case PACKET_REPORT_DOOR_BLOCKED:
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Blocked for %u seconds", rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Blocked for %u seconds", source_id, rx_packet_ptr->body.Report.report_data_32);
         log_append(log_buff);
         break;
     case PACKET_REPORT_PASS_CORRECT:
         bzero(debug_buff, sizeof(debug_buff));
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Correct Password Entered: %s.", rx_packet_ptr->body.Report.source_id, debug_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Correct Password Entered: %s.", source_id, debug_buff);
         log_append(log_buff);
         break;
     case PACKET_REPORT_PASS_WRONG:
         bzero(debug_buff, sizeof(debug_buff));
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_16, debug_buff);
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Wrong Password Entered: %s.", rx_packet_ptr->body.Report.source_id, debug_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Wrong Password Entered: %s.", source_id, debug_buff);
         log_append(log_buff);
         break;
     case PACKET_REPORT_PASS_CHANGED:
@@ -211,27 +228,27 @@ static void process_report(void)
         debug_buff[4] = '-';
         debug_buff[5] = '>';
         door_pw_to_str(rx_packet_ptr->body.Report.report_data_32, debug_buff+6);
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Password Changed. %s", rx_packet_ptr->body.Report.source_id, debug_buff);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Password Changed. %s", source_id, debug_buff);
         log_append(log_buff);
         break;
     case PACKET_REPORT_QUERY_RESULT:
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Query Result [%u][%u]", rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Query Result [%u][%u]", source_id, rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
         log_append(log_buff);
         break;
     case PACKET_REPORT_DATA_READY:
         snprintf(log_buff, sizeof(log_buff), "Door %u: Data Ready, size [%u].",
-                 rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_32);
+                 source_id, rx_packet_ptr->body.Report.report_data_32);
         log_append(log_buff);
         read_data_from_door(rx_packet_ptr->body.Report.report_data_32);
-        process_data_from_door();
+        process_data_from_door(doors);
         break;
     case PACKET_REPORT_ERROR:
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Error Code [%u][%u]", rx_packet_ptr->body.Report.source_id, rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Error Code [%u][%u]", source_id, rx_packet_ptr->body.Report.report_data_16, rx_packet_ptr->body.Report.report_data_32);
         log_append(log_buff);
         break;
     case PACKET_REPORT_TIME_SET:
         snprintf(log_buff, sizeof(log_buff), "Door %u: Time/Date Set to [%u|%u]: %02u/%02u/%02u %02u:%02u:%02u.",
-        rx_packet_ptr->body.Report.source_id,
+        source_id,
         rx_packet_ptr->body.Report.report_data_16,
         rx_packet_ptr->body.Report.report_data_32,
         packet_decode_day(rx_packet_ptr->body.Report.report_data_16),
@@ -243,15 +260,17 @@ static void process_report(void)
         log_append(log_buff);
         break;
     case PACKET_REPORT_FRESH_BOOT:
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Fresh Boot. Sending time sync!", rx_packet_ptr->body.Report.source_id);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Fresh Boot. Sending time sync!", source_id);
         log_append(log_buff);
         send_request_to_door(PACKET_REQUEST_SYNC_TIME, 0, 1);
         break;
     default:
-        snprintf(log_buff, sizeof(log_buff), "Door %u: Unknown Event", rx_packet_ptr->body.Report.source_id);
+        snprintf(log_buff, sizeof(log_buff), "Door %u: Unknown Event", source_id);
         log_append(log_buff);
         break;
     }
+
+    if (doors != NULL) ipc_release_door_states_ptr();
 }
 
 static void process_request_from_door(void)
@@ -260,10 +279,32 @@ static void process_request_from_door(void)
 
     DoorRequest_t request_type = rx_packet_ptr->body.Request.request_id;
 
+    uint16_t source_id = I2C_ADDR_TO_INDEX(current_target_addr);
+    HubDoorStates_t *doors = ipc_acquire_door_states_ptr(true);
+
+    if (doors != NULL)
+    {
+        if (doors->last_seen[source_id] == 0)
+        {
+            doors->count++;
+        }
+
+        doors->last_seen[source_id] = time(NULL);
+        ipc_release_door_states_ptr();
+    }
+
+    // fix id in packet if door supplied id is erroneous
+    if (rx_packet_ptr->body.Request.source_id != source_id)
+    {
+        rx_packet_ptr->body.Request.source_id = source_id;
+        log_append("!! Door request contained a source index different from the one derived from its I2C address.");
+    }
+
     switch(request_type)
     {
     case PACKET_REQUEST_BELL:
-        snprintf(log_buff, sizeof(log_buff), "Forwarding bell from door %u to client %u.", rx_packet_ptr->body.Request.source_id, rx_packet_ptr->body.Request.destination_id);
+        snprintf(log_buff, sizeof(log_buff), "Forwarding bell from door %u to client %u.", source_id, rx_packet_ptr->body.Request.destination_id);
+        log_append(log_buff);
         hub_queue_enqueue(doors_to_clients_queue, rx_packet_ptr);
         break;
     case PACKET_REQUEST_SYNC_TIME:
@@ -283,17 +324,16 @@ static void process_request_from_door(void)
     default:
       break;
     }
-
-    log_append(log_buff);
 }
 
 static void poll_slave_event_queue(void)
 {
 	static const uint8_t zero = 0;
 
-    for (int i = 0; i < target_addr_last_count; i++)
+    for (int i = 0; i < live_addr_count; i++)
     {
-        i2c_set_target(target_addr_list[i]);
+        i2c_set_target(live_addr_list[i]);
+        uint16_t source_id = I2C_ADDR_TO_INDEX(current_target_addr);
 
         bzero(rx_buff, sizeof(rx_buff));
 
@@ -311,24 +351,21 @@ static void poll_slave_event_queue(void)
             switch(rx_packet_ptr->header.category)
             {
             case PACKET_CAT_REPORT:
-                rx_packet_ptr->body.Report.source_id = i;
+                rx_packet_ptr->body.Report.source_id = source_id;
                 process_report();
                 break;
             case PACKET_CAT_REQUEST:
-                rx_packet_ptr->body.Request.source_id = i;
+                rx_packet_ptr->body.Request.source_id = source_id;
                 process_request_from_door();
                 break;
             case PACKET_CAT_DATA:
                 // shouldn't happen
-                rx_packet_ptr->body.Data.source_id = i;
-                process_data_from_door();
                 break;
             case PACKET_CAT_NONE:
             case PACKET_CAT_MAX:
             default:
               break;
             }
-
         }
 
         i2c_master_write(I2C_REG_EVENT_COUNT, &zero, 1);
@@ -338,14 +375,14 @@ static void poll_slave_event_queue(void)
 static void scan_i2c_bus(void)
 {
     char log_buff[HUB_MAX_LOG_MSG_LENGTH] = {0};
+    bool target_addr_set[TARGET_ADDR_MAX_COUNT] = {false};
     int32_t read_bytes = 0;
 
-    explicit_bzero(target_addr_set, TARGET_ADDR_MAX_COUNT);
-    explicit_bzero(target_addr_list, TARGET_ADDR_MAX_COUNT);
+    explicit_bzero(live_addr_list, TARGET_ADDR_MAX_COUNT);
 
-    target_addr_last_count = 0;
+    live_addr_count = 0;
 
-    while (target_addr_last_count == 0)
+    while (live_addr_count == 0)
     {
         log_append("Scanning I2C bus for target devices.");
 
@@ -358,21 +395,21 @@ static void scan_i2c_bus(void)
             if (read_bytes > 0)
             {
                 target_addr_set[i] = true;
-                target_addr_list[target_addr_last_count] = addr;
-                snprintf(log_buff, sizeof(log_buff), "Detected target device at address [0x%X].", target_addr_list[target_addr_last_count]);
+                live_addr_list[live_addr_count] = addr;
+                snprintf(log_buff, sizeof(log_buff), "Detected target device at address [0x%X].", live_addr_list[live_addr_count]);
                 log_append(log_buff);
-                target_addr_last_count += 1;
+                live_addr_count += 1;
             }
         }
 
-        if (target_addr_last_count == 0)
+        if (live_addr_count == 0)
         {
             log_append("Concluded I2C bus scan, no devices detected - retrying in 2 seconds.");
             nanosleep(&scanning_loop_delay, NULL);
         }
     }
 
-    snprintf(log_buff, sizeof(log_buff), "Concluded I2C bus scan, %d devices detected.", target_addr_last_count);
+    snprintf(log_buff, sizeof(log_buff), "Concluded I2C bus scan, %d devices detected.", live_addr_count);
     log_append(log_buff);
 }
 
@@ -382,12 +419,32 @@ static void scan_i2c_bus(void)
  **/
 void i2c_forward_request(DoorPacket_t *request)
 {
-    log_append("Forwarding request to door");
-    if (target_addr_last_count > 0)
+    log_append("Forwarding request to door.");
+
+    uint16_t dest_id = request->body.Request.destination_id;
+
+    if (dest_id >= HUB_MAX_DOOR_COUNT)
     {
-        i2c_set_target(target_addr_list[0]);
+        log_append("Request has invalid destination door ID.");
+        return;
     }
-    i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)request, sizeof(DoorPacket_t));
+
+    HubDoorStates_t *doors = ipc_acquire_door_states_ptr(true);
+
+    if (doors != NULL)
+    {
+        if (doors->count > 0 && doors->last_seen[dest_id] > 0)
+        {
+            i2c_set_target(live_addr_list[request->body.Request.destination_id]);
+            i2c_master_write(I2C_REG_HUB_COMMAND, (const uint8_t *)request, sizeof(DoorPacket_t));
+        }
+        else
+        {
+            log_append("Request destination door is not online.");
+        }
+
+        ipc_release_door_states_ptr();
+    }
 }
 
 static void i2c_loop(void)

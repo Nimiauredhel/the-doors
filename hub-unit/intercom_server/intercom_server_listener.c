@@ -242,7 +242,13 @@ static void connection_send_door_list(ClientData_t *data)
     snprintf(log_buff, sizeof(log_buff), "Sending door list to client.");
     log_append(log_buff);
 
-    HubDoorStates_t *door_list = ipc_acquire_door_states_ptr();
+    HubDoorStates_t *door_list = ipc_acquire_door_states_ptr(false);
+
+    while (door_list == NULL)
+    {
+        nanosleep(&listener_loop_delay, NULL);
+        door_list = ipc_acquire_door_states_ptr(false);
+    }
 
 	struct tm datetime = get_datetime();
 
@@ -302,37 +308,49 @@ static void process_request_from_intercom(DoorPacket_t *packet, ClientData_t *cl
 
 static void connection_update_client_info(ClientInfo_t *info, ClientData_t *client)
 {
-    HubIntercomStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+    HubIntercomStates_t *intercoms = ipc_acquire_intercom_states_ptr(false);
 
-    // "last seen: 0" signifies a previously vacant slot, so the count is incremented
-    if (intercom_states_ptr->last_seen[client->index] == 0)
+    while (intercoms == NULL)
     {
-        intercom_states_ptr->count++;
+        nanosleep(&listener_loop_delay, NULL);
+        intercoms = ipc_acquire_intercom_states_ptr(false);
     }
 
-    intercom_states_ptr->last_seen[client->index] = time(NULL);
+    // "last seen: 0" signifies a previously vacant slot, so the count is incremented
+    if (intercoms->last_seen[client->index] == 0)
+    {
+        intercoms->count++;
+    }
+
+    intercoms->last_seen[client->index] = time(NULL);
 
     for (uint8_t i = 0; i < 6; i++)
     {
-        intercom_states_ptr->mac_addresses[client->index][i] = info->mac_address[i];
+        intercoms->mac_addresses[client->index][i] = info->mac_address[i];
     }
 
-    strncpy(intercom_states_ptr->name[client->index], info->name, sizeof(intercom_states_ptr->name));
+    strncpy(intercoms->name[client->index], info->name, sizeof(intercoms->name));
 
-    common_update_intercom_list_txt(intercom_states_ptr);
+    common_update_intercom_list_txt(intercoms);
 
     ipc_release_intercom_states_ptr();
 }
 
 static void connection_remove_client_info(ClientData_t *client)
 {
-    HubIntercomStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+    HubIntercomStates_t *intercoms = ipc_acquire_intercom_states_ptr(false);
+
+    while (intercoms == NULL)
+    {
+        nanosleep(&listener_loop_delay, NULL);
+        intercoms = ipc_acquire_intercom_states_ptr(false);
+    }
 
     // set "last seen" to 0, which signifies a vacant slot, and decrement count
-    intercom_states_ptr->last_seen[client->index] = 0;
-    intercom_states_ptr->count--;
+    intercoms->last_seen[client->index] = 0;
+    intercoms->count--;
 
-    common_update_intercom_list_txt(intercom_states_ptr);
+    common_update_intercom_list_txt(intercoms);
 
     ipc_release_intercom_states_ptr();
 }
