@@ -234,7 +234,7 @@ bool ipc_init_intercom_states_ptrs(bool init_shm)
     int shm_fd = 0;
 
     hub_handles.intercom_states_sem_ptr = NULL;
-    hub_handles.intercom_states_sem_ptr = sem_open(CLIENT_STATES_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
+    hub_handles.intercom_states_sem_ptr = sem_open(INTERCOM_STATES_SEM_NAME, O_CREAT | O_RDWR, 0666, 0);
 
     if (hub_handles.intercom_states_sem_ptr == NULL)
     {
@@ -257,7 +257,7 @@ bool ipc_init_intercom_states_ptrs(bool init_shm)
         log_append("Opened intercom states semaphore.");
     }
 
-    shm_fd = shm_open(CLIENT_STATES_SHM_NAME, O_CREAT | O_RDWR, 0666);
+    shm_fd = shm_open(INTERCOM_STATES_SHM_NAME, O_CREAT | O_RDWR, 0666);
 
     if (shm_fd <= 0)
     {
@@ -265,13 +265,13 @@ bool ipc_init_intercom_states_ptrs(bool init_shm)
         goto err;
     }
 
-    if (0 > ftruncate(shm_fd, sizeof(HubClientStates_t)))
+    if (0 > ftruncate(shm_fd, sizeof(HubIntercomStates_t)))
     {
         log_append("Failed to truncate intercom states shm.");
         goto err;
     }
 
-    hub_handles.intercom_states_shm_ptr = mmap(0, sizeof(HubClientStates_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    hub_handles.intercom_states_shm_ptr = mmap(0, sizeof(HubIntercomStates_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     if (hub_handles.intercom_states_shm_ptr == NULL)
     {
@@ -281,7 +281,7 @@ bool ipc_init_intercom_states_ptrs(bool init_shm)
 
     if (init_shm)
     {
-        explicit_bzero(hub_handles.intercom_states_shm_ptr, sizeof(HubClientStates_t));
+        explicit_bzero(hub_handles.intercom_states_shm_ptr, sizeof(HubIntercomStates_t));
         sem_post(hub_handles.intercom_states_sem_ptr);
         log_append("Initialized intercom states shm.");
     }
@@ -429,10 +429,10 @@ void ipc_deinit_inbox_handles(void)
     }
 }
 
-HubClientStates_t *ipc_acquire_intercom_states_ptr(void)
+HubIntercomStates_t *ipc_acquire_intercom_states_ptr(void)
 {
     sem_wait(hub_handles.intercom_states_sem_ptr);
-    return (HubClientStates_t *)hub_handles.intercom_states_shm_ptr;
+    return (HubIntercomStates_t *)hub_handles.intercom_states_shm_ptr;
 }
 
 void ipc_release_intercom_states_ptr(void)

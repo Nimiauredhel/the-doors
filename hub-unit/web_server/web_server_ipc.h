@@ -5,7 +5,7 @@
 
 #include "hub_common_ipc.h"
 
-HubClientStates_t *ipc_acquire_intercom_states_ptr(void);
+HubIntercomStates_t *ipc_acquire_intercom_states_ptr(void);
 void ipc_release_intercom_states_ptr(void);
 HubDoorStates_t *ipc_acquire_door_states_ptr(void);
 void ipc_release_door_states_ptr(void);

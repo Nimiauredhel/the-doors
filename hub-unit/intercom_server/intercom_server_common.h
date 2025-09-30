@@ -34,7 +34,7 @@ typedef struct ServerDoorList
 
 extern HubQueue_t *clients_to_doors_queue;
 
-void common_update_intercom_list_txt(HubClientStates_t *client_states_ptr);
+void common_update_intercom_list_txt(HubIntercomStates_t *client_states_ptr);
 void server_start(void);
 
 #endif

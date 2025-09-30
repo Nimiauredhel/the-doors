@@ -15,11 +15,11 @@
 #define MQ_MSG_COUNT_MAX (10)
 
 #define DOOR_STATES_SHM_NAME "DOORS_DOOR_STATES_SHM"
-#define CLIENT_STATES_SHM_NAME "DOORS_CLIENT_STATES_SHM"
+#define INTERCOM_STATES_SHM_NAME "DOORS_INTERCOM_STATES_SHM"
 #define HUB_LOG_SHM_NAME "DOORS_HUB_LOG_SHM"
 
 #define DOOR_STATES_SEM_NAME "DOORS_DOOR_STATES_SEM"
-#define CLIENT_STATES_SEM_NAME "DOORS_CLIENT_STATES_SEM"
+#define INTERCOM_STATES_SEM_NAME "DOORS_INTERCOM_STATES_SEM"
 #define HUB_LOG_SEM_NAME "DOORS_HUB_LOG_SEM"
 
 typedef struct HubHandles
@@ -47,7 +47,7 @@ bool ipc_init_intercom_states_ptrs(bool init_shm);
 bool ipc_init_inbox_handles(void);
 void ipc_deinit_inbox_handles(void);
 
-HubClientStates_t *ipc_acquire_intercom_states_ptr(void);
+HubIntercomStates_t *ipc_acquire_intercom_states_ptr(void);
 void ipc_release_intercom_states_ptr(void);
 
 HubDoorStates_t *ipc_acquire_door_states_ptr(void);

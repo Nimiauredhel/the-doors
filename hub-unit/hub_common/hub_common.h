@@ -32,9 +32,9 @@
 #define HUB_MODULE_COUNT (5)
 #define HUB_MODULE_NAME_MAX_LEN (32)
 
-#define HUB_MAX_DOOR_COUNT (100)
-#define HUB_MAX_CLIENT_COUNT (100)
-#define HUB_MAX_LOG_COUNT (100)
+#define HUB_MAX_DOOR_COUNT (16)
+#define HUB_MAX_INTERCOM_COUNT (128)
+#define HUB_MAX_LOG_COUNT (1024)
 #define HUB_MAX_LOG_MSG_LENGTH (128)
 
 typedef enum HubModuleId
@@ -55,13 +55,13 @@ typedef struct HubDoorStates
     char name[HUB_MAX_DOOR_COUNT][UNIT_NAME_MAX_LEN];
 } HubDoorStates_t;
 
-typedef struct HubClientStates
+typedef struct HubIntercomStates
 {
-    bool slot_used[HUB_MAX_CLIENT_COUNT];
-    time_t last_seen[HUB_MAX_CLIENT_COUNT];
-    uint8_t mac_addresses[HUB_MAX_CLIENT_COUNT][6];
-    char name[HUB_MAX_CLIENT_COUNT][UNIT_NAME_MAX_LEN];
-} HubClientStates_t;
+    uint8_t count;
+    time_t last_seen[HUB_MAX_INTERCOM_COUNT];
+    uint8_t mac_addresses[HUB_MAX_INTERCOM_COUNT][6];
+    char name[HUB_MAX_INTERCOM_COUNT][UNIT_NAME_MAX_LEN];
+} HubIntercomStates_t;
 
 typedef struct HubLogRing
 {

@@ -15,7 +15,7 @@ static uint8_t client_count = 0;
 static int8_t next_slot_idx = 0;
 
 static pthread_mutex_t slots_mutex;
-static ClientData_t client_slots[HUB_MAX_CLIENT_COUNT];
+static ClientData_t client_slots[HUB_MAX_INTERCOM_COUNT];
 
 void send_request(DoorRequest_t request, ClientData_t *client)
 {
@@ -41,7 +41,7 @@ void forward_door_to_client_request(DoorPacket_t *request)
     log_append("Forwarding to first active client...");
     pthread_mutex_lock(&slots_mutex);
 
-    for(int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
+    for(int i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
     {
          if (client_slots[i].slot_state == SLOTSTATE_ACTIVE)
          {
@@ -141,7 +141,7 @@ static void init_client_slots(void)
 {
     pthread_mutex_init(&slots_mutex, NULL);
 
-    for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
+    for (int i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
     {
         client_slots[i].slot_state = SLOTSTATE_VACANT;
         client_slots[i].client_socket = -1;
@@ -151,7 +151,7 @@ static void init_client_slots(void)
 
 static void increment_next_client_slot(void)
 {
-    if (client_count >= HUB_MAX_CLIENT_COUNT)
+    if (client_count >= HUB_MAX_INTERCOM_COUNT)
     {
         next_slot_idx = -1;
         return;
@@ -159,7 +159,7 @@ static void increment_next_client_slot(void)
 
     next_slot_idx++;
 
-    if (next_slot_idx > HUB_MAX_CLIENT_COUNT) next_slot_idx = 0;
+    if (next_slot_idx > HUB_MAX_INTERCOM_COUNT) next_slot_idx = 0;
 
     pthread_mutex_lock(&slots_mutex);
 
@@ -172,9 +172,9 @@ static void increment_next_client_slot(void)
     do
     {
         next_slot_idx++;
-    } while(next_slot_idx < HUB_MAX_CLIENT_COUNT && client_slots[next_slot_idx].slot_state != SLOTSTATE_VACANT);
+    } while(next_slot_idx < HUB_MAX_INTERCOM_COUNT && client_slots[next_slot_idx].slot_state != SLOTSTATE_VACANT);
 
-    if (next_slot_idx > HUB_MAX_CLIENT_COUNT) next_slot_idx = -1;
+    if (next_slot_idx > HUB_MAX_INTERCOM_COUNT) next_slot_idx = -1;
 
     pthread_mutex_unlock(&slots_mutex);
 }
@@ -183,7 +183,7 @@ static void update_client_slots(bool acquire_slots_mutex)
 {
     if (acquire_slots_mutex) pthread_mutex_lock(&slots_mutex);
 
-    for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
+    for (int i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
     {
         if (client_slots[i].slot_state == SLOTSTATE_GARBAGE)
         {
@@ -302,10 +302,15 @@ static void process_request_from_intercom(DoorPacket_t *packet, ClientData_t *cl
 
 static void connection_update_client_info(ClientInfo_t *info, ClientData_t *client)
 {
-    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+    HubIntercomStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+
+    // "last seen: 0" signifies a previously vacant slot, so the count is incremented
+    if (intercom_states_ptr->last_seen[client->index] == 0)
+    {
+        intercom_states_ptr->count++;
+    }
 
     intercom_states_ptr->last_seen[client->index] = time(NULL);
-    intercom_states_ptr->slot_used[client->index] = true;
 
     for (uint8_t i = 0; i < 6; i++)
     {
@@ -321,9 +326,11 @@ static void connection_update_client_info(ClientInfo_t *info, ClientData_t *clie
 
 static void connection_remove_client_info(ClientData_t *client)
 {
-    HubClientStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
+    HubIntercomStates_t *intercom_states_ptr = ipc_acquire_intercom_states_ptr();
 
-    intercom_states_ptr->slot_used[client->index] = false;
+    // set "last seen" to 0, which signifies a vacant slot, and decrement count
+    intercom_states_ptr->last_seen[client->index] = 0;
+    intercom_states_ptr->count--;
 
     common_update_intercom_list_txt(intercom_states_ptr);
 
@@ -471,7 +478,7 @@ static void listen_loop(void)
     socklen_t new_client_addr_len = sizeof(new_client_addr);
     int new_client_socket = -1;
 
-    if (next_slot_idx < 0 || client_count >= HUB_MAX_CLIENT_COUNT)
+    if (next_slot_idx < 0 || client_count >= HUB_MAX_INTERCOM_COUNT)
     {
         // TODO: put this check after accept() and handle with some sort of response
         nanosleep(&listener_loop_delay, NULL);
@@ -494,7 +501,7 @@ static void listen_loop(void)
         bool new = true;
         pthread_mutex_lock(&slots_mutex);
 
-        for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
+        for (int i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
         {
             if (client_slots[i].slot_state == SLOTSTATE_ACTIVE || client_slots[i].slot_state == SLOTSTATE_TAKEN)
             {

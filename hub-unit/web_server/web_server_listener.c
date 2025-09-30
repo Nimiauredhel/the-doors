@@ -146,32 +146,21 @@ static void ev_handler(struct mg_connection *connection, int event_id, void *eve
                 }
                 else if (list_id == 1)
                 {
-                    uint16_t count = 0;
-                    uint16_t indices[HUB_MAX_CLIENT_COUNT] = {0};
-
-                    HubClientStates_t *intercoms = ipc_acquire_intercom_states_ptr();
-
-                    // TODO: maintain count in shm to void this nonsense
-                    for (int i = 0; i < HUB_MAX_CLIENT_COUNT; i++)
-                    {
-                        if (intercoms->slot_used[i] == true)
-                        {
-                            indices[count] = i;
-                            count++;
-                        }
-                    }
+                    HubIntercomStates_t *intercoms = ipc_acquire_intercom_states_ptr();
 
                     html_buff_pos += sprintf(html_buff_pos, "<p class=\"infoline\">Count: %u</p><p class=\"infoline\">Logged [%02u:%02u:%02u]</p> ",
-                        count, tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
+                        intercoms->count, tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec);
 
-                    for (uint16_t i = 0; i < count; i++)
+                    for (uint16_t i = 0; i < HUB_MAX_INTERCOM_COUNT; i++)
                     {
+                        if (counted >= intercoms->count) break;
+                        if (intercoms->last_seen[i] <= 0) continue;
                         counted++;
-                        html_buff_pos += sprintf(html_buff_pos, info_html_intercom_line_fmt, indices[i],
-                        intercoms->mac_addresses[indices[i]][0], intercoms->mac_addresses[indices[i]][1],
-                        intercoms->mac_addresses[indices[i]][2], intercoms->mac_addresses[indices[i]][3],
-                        intercoms->mac_addresses[indices[i]][4], intercoms->mac_addresses[indices[i]][5],
-                        intercoms->name[indices[i]],     t_now - intercoms->last_seen[indices[i]]);
+                        html_buff_pos += sprintf(html_buff_pos, info_html_intercom_line_fmt, i,
+                        intercoms->mac_addresses[i][0], intercoms->mac_addresses[i][1],
+                        intercoms->mac_addresses[i][2], intercoms->mac_addresses[i][3],
+                        intercoms->mac_addresses[i][4], intercoms->mac_addresses[i][5],
+                        intercoms->name[i],     t_now - intercoms->last_seen[i]);
                     }
 
                     ipc_release_intercom_states_ptr();
