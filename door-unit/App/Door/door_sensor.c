@@ -7,8 +7,8 @@
 
 #include "door_sensor.h"
 
-#define TIMER_MHZ 1
-#define SENSOR_BUFFER_LENGTH 16
+#define TIMER_MHZ (1)
+#define SENSOR_BUFFER_LENGTH (16)
 
 #define PERIOD_TO_DIST_CM_FLOAT(period) (period / TIMER_MHZ / cm_to_us)
 #define DIST_CM_FLOAT_TO_PERIOD(dist_cm_float) (dist_cm_float * TIMER_MHZ * cm_to_us)

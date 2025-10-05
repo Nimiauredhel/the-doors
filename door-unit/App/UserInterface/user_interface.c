@@ -81,7 +81,6 @@ static const char *imsg_command_unknown = "Unknown\r\nCommand.";
 static const char *imsg_auth_already = "Auth already\r\ngranted,\r\nskipping\r\npassword\r\ncheck.";
 static const char *imsg_auth_required = "Cannot\r\nproceeed\r\nwithout\r\nauthentication.";
 
-
 static bool phase_just_reset = false;
 static bool touched = false;
 static bool msg_is_dirty = true;
@@ -180,7 +179,7 @@ static void touch_scan_update_timer_percent(void)
 	TickType_t expiry = xTimerGetExpiryTime(input_timer_handle);
 	TickType_t count = xTaskGetTickCount();
 	TickType_t elapsed = expiry > count ? expiry - count : count - expiry;
-	input_timer_percent = (elapsed * 100) / xTimerGetPeriod(input_timer_handle);
+	input_timer_percent = (uint8_t)(((elapsed * 100) / xTimerGetPeriod(input_timer_handle)) % 100);
 }
 
 static int8_t touch_scan(const uint8_t max_len, uint16_t timeout_ms)

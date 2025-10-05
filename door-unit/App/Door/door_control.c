@@ -121,7 +121,6 @@ void door_control_init(void)
 	serial_print_line("Door Control Initialized.", 0);
 	vTaskDelay(pdMS_TO_TICKS(500));
 	door_sensor_enable(false);
-
 }
 
 void door_control_loop(void)

@@ -6,6 +6,7 @@
  */
 
 #include "persistence.h"
+#include "packet_defs.h"
 
 #define FLASH_SECTOR_3_ADDRESS 0x08018000 // decimal: 134,316,032
 #define FLASH_SECTOR_4_ADDRESS 0x08020000 // decimal: 134,348,800
@@ -115,6 +116,6 @@ void persistence_save_name(const char *name)
 void persistence_get_name(char *return_buffer)
 {
 	TAKE_PERSISTENCE_MUTEX;
-	strncpy(return_buffer, inmem_latest_data.name, 32);
+	strncpy(return_buffer, inmem_latest_data.name, UNIT_NAME_MAX_LEN);
 	GIVE_PERSISTENCE_MUTEX;
 }
