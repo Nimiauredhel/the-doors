@@ -176,9 +176,6 @@ void comms_init(void)
 {
 	command_queues_lock = xSemaphoreCreateMutexStatic(&command_queues_lock_buffer);
 
-	while(!door_control_is_init())
-		vTaskDelay(pdMS_TO_TICKS(1));
-
 	//randomize_i2c_address();
 	i2c_io_init();
 	serial_print_line("Initialized I2C listening to hub unit.", 0);

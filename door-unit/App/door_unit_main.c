@@ -77,33 +77,49 @@ static uint32_t task_buffers[DOOR_TASKS_COUNT][DOOR_TASKS_STACK_SIZE] = {0};
 static StaticTask_t task_control_blocks[DOOR_TASKS_COUNT] = {0};
 static osThreadAttr_t task_attributes[DOOR_TASKS_COUNT] = {0};
 
+static void init_modules(void)
+{
+	serial_uart_initialize();
+	event_log_initialize();
+	event_log_append_report_minimal(PACKET_REPORT_FRESH_BOOT);
+
+	door_control_init();
+	// the Low Power Timer is used for the door auto-closing countdown
+	// TODO: move this to the door control file ?
+	HAL_LPTIM_Counter_Start_IT(&hlptim1, 28125);
+	comms_init();
+    interface_init();
+	display_init();
+}
+
+static void create_tasks(void)
+{
+	for (uint8_t i = 0; i < DOOR_TASKS_COUNT; i++)
+	{
+		task_attributes[i].name = task_names[i];
+		task_attributes[i].cb_mem = &task_control_blocks[i];
+		task_attributes[i].cb_size = sizeof(StaticTask_t);
+		task_attributes[i].stack_mem = &task_buffers[i];
+		task_attributes[i].stack_size = DOOR_TASKS_STACK_SIZE;
+		task_attributes[i].priority = task_priorities[i];
+		task_handles[i] = osThreadNew(task_functions[i], NULL, &task_attributes[i]);
+	}
+}
+
 void door_unit_main(void)
 {
-  //hi2c1.Init.OwnAddress1 = persistence_get_i2c_addr();
-  serial_uart_initialize();
-  event_log_initialize();
-  event_log_append_report_minimal(PACKET_REPORT_FRESH_BOOT);
-
-  for (uint8_t i = 0; i < DOOR_TASKS_COUNT; i++)
-  {
-      task_attributes[i].name = task_names[i];
-      task_attributes[i].cb_mem = &task_control_blocks[i];
-      task_attributes[i].cb_size = sizeof(StaticTask_t);
-      task_attributes[i].stack_mem = &task_buffers[i];
-      task_attributes[i].stack_size = DOOR_TASKS_STACK_SIZE;
-      task_attributes[i].priority = task_priorities[i];
-      task_handles[i] = osThreadNew(task_functions[i], NULL, &task_attributes[i]);
-  }
+	//hi2c1.Init.OwnAddress1 = persistence_get_i2c_addr();
+	init_modules();
+	create_tasks();
 }
 
 /**
-  * @brief  Function implementing the UserInterfaceTa thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+* @brief  Function implementing the UserInterfaceTa thread.
+* @param  argument: Not used
+* @retval None
+*/
 void StartUserInterfaceTask(void *argument)
 {
-	interface_init();
 	for(;;)
 	{
 		interface_loop();
@@ -117,13 +133,10 @@ void StartUserInterfaceTask(void *argument)
 */
 void StartDoorOpsTask(void *argument)
 {
-	door_control_init();
-	// the Low Power Timer is used for the door auto-closing countdown
-	HAL_LPTIM_Counter_Start_IT(&hlptim1, 28125);
-  for(;;)
-  {
+	for(;;)
+	{
 	  door_control_loop();
-  }
+	}
 }
 
 /**
@@ -133,11 +146,10 @@ void StartDoorOpsTask(void *argument)
 */
 void StartCommsTask(void *argument)
 {
-	comms_init();
-  for(;;)
-  {
-	  comms_loop();
-  }
+	for(;;)
+	{
+		comms_loop();
+	}
 }
 
 /**
@@ -160,7 +172,6 @@ void StartDoorSensorTask(void *argument)
 */
 void StartDisplayTask(void *argument)
 {
-	display_init();
 	for(;;)
 	{
 		display_loop();

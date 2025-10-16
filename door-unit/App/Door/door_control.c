@@ -119,7 +119,6 @@ void door_control_init(void)
 	door_set_closed(true);
 	initialized = true;
 	serial_print_line("Door Control Initialized.", 0);
-	vTaskDelay(pdMS_TO_TICKS(500));
 	door_sensor_enable(false);
 }
 
