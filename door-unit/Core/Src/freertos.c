@@ -122,10 +122,7 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   door_unit_main();
-  for(;;)
-  {
-	  vTaskDelay(pdMS_TO_TICKS(1000));
-  }
+  vTaskDelete(NULL);
   /* USER CODE END StartDefaultTask */
 }
 
