@@ -17,7 +17,7 @@
 	else xSemaphoreGive(uart_tx_lock)
 
 static SemaphoreHandle_t uart_tx_lock = NULL;
-static StaticSemaphore_t uart_tx_lock_buffer;
+static StaticSemaphore_t uart_tx_lock_buffer = {0};
 
 static void serial_backspace_destructive(uint16_t count)
 {
