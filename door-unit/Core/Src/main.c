@@ -218,17 +218,6 @@ static void MX_NVIC_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-
-volatile uint16_t touch_it = 0;
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-	if (GPIO_Pin == TOUCH_IRQ_Pin)
-	{
-		touch_it = 0;
-	}
-}
 /* USER CODE END 4 */
 
 /**
