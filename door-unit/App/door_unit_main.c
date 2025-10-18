@@ -22,7 +22,7 @@
 #include "user_interface.h"
 #include "hub_comms.h"
 
-#define DOOR_TASKS_STACK_SIZE (512)
+#define DOOR_TASKS_STACK_SIZE (1024)
 #define DOOR_TASKS_COUNT (5)
 #define DOOR_TASKS_NAME_MAX_LEN (configMAX_TASK_NAME_LEN)
 

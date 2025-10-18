@@ -15,22 +15,32 @@ static uint32_t admin_password = 0x00000000;
 static bool is_user_auth = false;
 static bool is_admin_auth = false;
 
+/**
+ * @brief Converts a user-input password string to its compressed numeric equivalent.
+ * @param input_str The user-input password string to be converted.
+ * @return The compressed numeric representation of the user-input password string.
+ */
 static uint32_t str_to_pass(const char *input_str)
 {
-	char debug_buff[32] = {0};
 	uint8_t idx = 0;
 	uint8_t len = strlen(input_str);
 	uint32_t in_pass = 0x00000000;
 
 	for (idx = 0; idx < len; idx++)
 	{
+		/**
+		 * Converting the input char to its int equivalent
+		 * by subtracting the value of the '0' character.
+		 **/
 		uint32_t input = (input_str[idx] - '0') << (idx * 4);
 		in_pass |= input;
-		snprintf(debug_buff, sizeof(debug_buff), "%lu ", input);
-		serial_print(debug_buff, 0);
 	}
 
-	serial_print_line(NULL, 0);
+	/**
+	 * Printing the input password over UART for debugging purposes.
+	 * TODO: remove this and other unnecessary instances of password propagation.
+	 **/
+	serial_print_line(input_str, len);
 
 	return in_pass;
 }
