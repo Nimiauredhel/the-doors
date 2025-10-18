@@ -23,7 +23,7 @@ static uint8_t display_draw_info_bar(void)
 	static const uint8_t row1_y = font_height / 2;
 	static const uint8_t row2_y = (font_height*2) + (font_height / 2);
 
-	static char buff[16] = {0};
+	static char buff[UNIT_NAME_MAX_LEN*2] = {0};
 	// initialized at nonsensical value to ensure first draw
 	static RTC_TimeTypeDef prev_time = {255, 255, 255};
 	static uint32_t prev_i2c_hit_count = 0;
@@ -52,7 +52,7 @@ static uint8_t display_draw_info_bar(void)
 		date_time_get_date_str(buff);
 		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), row1_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
 
-		sprintf(buff, "[%lu]", persistence_get_i2c_addr() >> (uint32_t)1);
+		snprintf(buff, sizeof(buff), "[%lu]", persistence_get_i2c_addr() >> (uint32_t)1);
 		gfx_print_string(buff, 2, row2_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
 
 		persistence_get_name(buff);
