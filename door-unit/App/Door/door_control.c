@@ -119,7 +119,6 @@ void door_control_init(void)
 	door_set_closed(true);
 	initialized = true;
 	serial_print_line("Door Control Initialized.", 0);
-	vTaskDelay(pdMS_TO_TICKS(500));
 	door_sensor_enable(false);
 }
 
@@ -127,7 +126,7 @@ void door_control_loop(void)
 {
 	static uint16_t last_timer_notification = 0;
 
-	char msg_buff[64];
+	char msg_buff[128];
 
 	if (door_open_duration_seconds >= 15)
 	{
@@ -135,7 +134,7 @@ void door_control_loop(void)
 		&& door_open_duration_seconds % 10 == 5)
 		{
 			last_timer_notification = door_open_duration_seconds;
-			sprintf(msg_buff, "The door has been open for %lu seconds.", door_open_duration_seconds);
+			snprintf(msg_buff, sizeof(msg_buff), "The door has been open for %lu seconds.", door_open_duration_seconds);
 			serial_print_line(msg_buff, 0);
 			door_set_closed(true);
 		}

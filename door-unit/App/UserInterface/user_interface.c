@@ -541,11 +541,7 @@ void interface_init(void)
 	init_audio();
 	interface_initialized = true;
 
-	while(!display_is_initialized() || !door_control_is_init())
-		vTaskDelay(pdMS_TO_TICKS(1));
-
 	phase_reset();
-	vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 void interface_loop(void)

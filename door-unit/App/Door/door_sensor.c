@@ -41,13 +41,13 @@ static void door_sensor_print_debug(void)
 	static int8_t sample_idx = -1;
 	static uint16_t sample_value;
 
-	char result_buff[64] = {0};
+	char result_buff[128] = {0};
 
 	if (sample_idx != sensor_buffer_idx)
 	{
 		sample_idx = sensor_buffer_idx;
 		sample_value = sensor_buffer[sample_idx];
-		sprintf(result_buff, result_format, sample_idx, PERIOD_TO_DIST_CM_FLOAT(sample_value), sample_value);
+		snprintf(result_buff, sizeof(result_buff), result_format, sample_idx, PERIOD_TO_DIST_CM_FLOAT(sample_value), sample_value);
 		serial_print_line(result_buff, 0);
 	}
 }

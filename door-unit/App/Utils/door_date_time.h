@@ -27,10 +27,10 @@ volatile RTC_TimeTypeDef time_get();
 volatile RTC_DateTypeDef date_get();
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc);
 void date_time_alarm_reset();
-void date_time_get_time_str_hhmm(char *buf);
-void date_time_get_time_str(char *buf);
-void date_time_get_date_str(char *buf);
-void date_time_get_str(char *buf);
+void date_time_get_time_str_hhmm(char *buf, size_t buf_size);
+void date_time_get_time_str(char *buf, size_t buf_size);
+void date_time_get_date_str(char *buf, size_t buf_size);
+void date_time_get_str(char *buf, size_t buf_size);
 void date_time_print();
 void date_time_set_from_packet(uint16_t date, uint32_t time);
 

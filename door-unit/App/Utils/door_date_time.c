@@ -81,31 +81,31 @@ void date_time_alarm_reset()
 	}
 }
 
-void date_time_get_time_str_hhmm(char *buf)
+void date_time_get_time_str_hhmm(char *buf, size_t buf_size)
 {
-	sprintf(buf, "%02u:%02u", time_now.Hours, time_now.Minutes);
+	snprintf(buf, buf_size, "%02u:%02u", time_now.Hours, time_now.Minutes);
 }
 
-void date_time_get_time_str(char *buf)
+void date_time_get_time_str(char *buf, size_t buf_size)
 {
-	sprintf(buf, "%02u:%02u:%02u", time_now.Hours, time_now.Minutes, time_now.Seconds);
+	snprintf(buf, buf_size, "%02u:%02u:%02u", time_now.Hours, time_now.Minutes, time_now.Seconds);
 }
 
-void date_time_get_date_str(char *buf)
+void date_time_get_date_str(char *buf, size_t buf_size)
 {
-	sprintf(buf, "%02u/%02u/%02u", date_now.Date, date_now.Month, date_now.Year);
+	snprintf(buf, buf_size, "%02u/%02u/%02u", date_now.Date, date_now.Month, date_now.Year);
 }
 
-void date_time_get_str(char *buf)
+void date_time_get_str(char *buf, size_t buf_size)
 {
-	sprintf(buf, "%02u:%02u:%02u %02u/%02u/%02u", time_now.Hours, time_now.Minutes, time_now.Seconds, date_now.Date, date_now.Month, date_now.Year);
+	snprintf(buf, buf_size, "%02u:%02u:%02u %02u/%02u/%02u", time_now.Hours, time_now.Minutes, time_now.Seconds, date_now.Date, date_now.Month, date_now.Year);
 }
 
 void date_time_print()
 {
-	sprintf(output_buffer, "\n\rThe current date is: %02u/%02u/%02u.", date_now.Date, date_now.Month, date_now.Year);
+	snprintf(output_buffer, sizeof(output_buffer), "\n\rThe current date is: %02u/%02u/%02u.", date_now.Date, date_now.Month, date_now.Year);
     serial_print_line(output_buffer, 0);
-	sprintf(output_buffer, "The current time is: %02u:%02u:%02u.", time_now.Hours, time_now.Minutes, time_now.Seconds);
+	snprintf(output_buffer, sizeof(output_buffer), "The current time is: %02u:%02u:%02u.", time_now.Hours, time_now.Minutes, time_now.Seconds);
     serial_print_line(output_buffer, 0);
 }
 

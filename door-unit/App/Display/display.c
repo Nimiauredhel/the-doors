@@ -46,10 +46,10 @@ static uint8_t display_draw_info_bar(void)
 		gfx_fill_screen(i2c_hit_count > 0 ? color_blue : color_grey_dark);
 		bzero(buff, sizeof(buff));
 
-		date_time_get_time_str_hhmm(buff);
+		date_time_get_time_str_hhmm(buff, sizeof(buff));
 		gfx_print_string(buff, 2, row1_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
 
-		date_time_get_date_str(buff);
+		date_time_get_date_str(buff, sizeof(buff));
 		gfx_print_string(buff, screen_get_x_size()-2-(strlen(buff) * font_width), row1_y, i2c_hit_count > 0 ? color_cyan : color_grey_light, text_scale);
 
 		snprintf(buff, sizeof(buff), "[%lu]", persistence_get_i2c_addr() >> (uint32_t)1);

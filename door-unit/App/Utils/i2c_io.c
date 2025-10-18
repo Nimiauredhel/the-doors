@@ -16,7 +16,6 @@ static uint16_t i2c_tx_count = 0;
 static I2CRegisterDefinition_t i2c_tx_register;
 static uint8_t *i2c_tx_position;
 
-static uint8_t i2c_tx_buff[I2C_TX_BUFF_SIZE] = {0};
 static uint8_t i2c_rx_buff[I2C_RX_BUFF_SIZE] = {0};
 
 static volatile bool data_dirty = false;
@@ -190,7 +189,12 @@ extern void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirect
 	i2c_direction = TransferDirection;
 	i2c_addr_hit_counter = 100;
 
-	if(i2c_direction == I2C_DIRECTION_TRANSMIT)  // if the master wants to transmit the data
+	/**
+	 * The 'I2C DIRECTION' here refers to the other side,
+	 * so TRANSMIT means that this unit is about to receive data,
+	 * and RECEIVE means that it is about to transmit it.
+	 **/
+	if(i2c_direction == I2C_DIRECTION_TRANSMIT)
 	{
 		i2c_rx_buff[0] = 0;
 		i2c_rx_count = 0;

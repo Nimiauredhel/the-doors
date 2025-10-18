@@ -20,6 +20,9 @@
 #include "event_log.h"
 #include "user_interface.h"
 
+/**
+ * @brief Resets (to false) both user and admin authorization states.
+ */
 void auth_reset_auth(void);
 bool auth_is_user_auth(void);
 bool auth_is_admin_auth(void);

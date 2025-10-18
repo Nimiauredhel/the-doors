@@ -39,12 +39,12 @@ static DoorPacket_t priority_command_queue[PRIORITY_COMMAND_QUEUE_CAPACITY] = {0
 
 static void randomize_i2c_address(void)
 {
-	char buff[32] = {0};
+	char debug_buff[64] = {0};
 	while(HAL_OK != HAL_I2C_DisableListen_IT(&hi2c1));
 	while(HAL_OK != HAL_I2C_DeInit(&hi2c1));
 	int new_address = random_range(I2C_MIN_ADDRESS, I2C_MAX_ADDRESS);
-	sprintf(buff, "Randomized I2C address: [0x%X]", new_address);
-	serial_print_line(buff, 0);
+	snprintf(debug_buff, sizeof(debug_buff), "Randomized I2C address: [0x%X]", new_address);
+	serial_print_line(debug_buff, 0);
 	hi2c1.Init.OwnAddress1 = new_address << 1;
 	while(HAL_OK != HAL_I2C_Init(&hi2c1));
 	while(HAL_OK != HAL_I2C_EnableListen_IT(&hi2c1));
@@ -52,7 +52,7 @@ static void randomize_i2c_address(void)
 
 static void comms_debug_output(void)
 {
-	char buff[64] = {0};
+	char debug_buff[64] = {0};
 	uint8_t count = 0;
 
 	if (comms_debug_enabled)
@@ -62,8 +62,8 @@ static void comms_debug_output(void)
 		if (outbox_event_count < outbox_current_length)
 		{
 			outbox_event_count = outbox_current_length;
-			sprintf(buff, "Event Log Outbox has %u events.", outbox_event_count);
-			serial_print_line(buff, 0);
+			snprintf(debug_buff, sizeof(debug_buff), "Event Log Outbox has %u events.", outbox_event_count);
+			serial_print_line(debug_buff, 0);
 		}
 		else if (outbox_event_count > 0 && outbox_current_length == 0)
 		{
@@ -81,10 +81,10 @@ static void comms_debug_output(void)
 		{
 			for (int i = 0; i < count; i++)
 			{
-				sprintf(buff, "I2C reports: %s event on %s.",
+				snprintf(debug_buff, sizeof(debug_buff), "I2C reports: %s event on %s.",
 						comms_debug_log[i].action == COMMS_EVENT_SENT ? "TX" : "RX",
 						i2c_register_names[comms_debug_log[i].subject/2]);
-				serial_print_line(buff, 0);
+				serial_print_line(debug_buff, 0);
 			}
 		}
 	}
@@ -132,8 +132,16 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		serial_print_line("Received PING from hub.", 0);
 		event_log_append_report_minimal(PACKET_REPORT_PONG);
 		break;
+	case PACKET_REQUEST_RESET_UNIT:
+		// TODO: implement remote RESET on command
+		serial_print_line("Received RESET command from hub, not implemented yet.", 0);
+		break;
+	case PACKET_REQUEST_FORCE_ADMIN:
+		// TODO: implement remote FORCE ADMIN on command
+		serial_print_line("Received FORCE ADMIN command from hub, not implemented yet.", 0);
+		break;
 	case PACKET_REQUEST_MAX:
-		serial_print_line("Received MAX command from hub, this makes no sense.", 0);
+		serial_print_line("Received REQUEST_MAX command from hub, this should not happen.", 0);
 		break;
 	}
 }
@@ -175,9 +183,6 @@ static void comms_check_command_queue(void)
 void comms_init(void)
 {
 	command_queues_lock = xSemaphoreCreateMutexStatic(&command_queues_lock_buffer);
-
-	while(!door_control_is_init())
-		vTaskDelay(pdMS_TO_TICKS(1));
 
 	//randomize_i2c_address();
 	i2c_io_init();
