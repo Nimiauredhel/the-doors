@@ -30,7 +30,6 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
-typedef StaticTask_t osStaticThreadDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -51,14 +50,9 @@ typedef StaticTask_t osStaticThreadDef_t;
 /* USER CODE END Variables */
 /* Definitions for DefaultTask */
 osThreadId_t DefaultTaskHandle;
-uint32_t DefaultTaskBuffer[ 256 ];
-osStaticThreadDef_t DefaultTaskControlBlock;
 const osThreadAttr_t DefaultTask_attributes = {
   .name = "DefaultTask",
-  .cb_mem = &DefaultTaskControlBlock,
-  .cb_size = sizeof(DefaultTaskControlBlock),
-  .stack_mem = &DefaultTaskBuffer[0],
-  .stack_size = sizeof(DefaultTaskBuffer),
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 

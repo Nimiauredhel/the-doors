@@ -132,8 +132,16 @@ static void comms_process_command(DoorPacket_t *cmd_ptr)
 		serial_print_line("Received PING from hub.", 0);
 		event_log_append_report_minimal(PACKET_REPORT_PONG);
 		break;
+	case PACKET_REQUEST_RESET_UNIT:
+		// TODO: implement remote RESET on command
+		serial_print_line("Received RESET command from hub, not implemented yet.", 0);
+		break;
+	case PACKET_REQUEST_FORCE_ADMIN:
+		// TODO: implement remote FORCE ADMIN on command
+		serial_print_line("Received FORCE ADMIN command from hub, not implemented yet.", 0);
+		break;
 	case PACKET_REQUEST_MAX:
-		serial_print_line("Received MAX command from hub, this makes no sense.", 0);
+		serial_print_line("Received REQUEST_MAX command from hub, this should not happen.", 0);
 		break;
 	}
 }

@@ -53,6 +53,12 @@ bool screen_fill_rect_loop(uint8_t *data, uint32_t data_length, uint16_t x_origi
 
 	int32_t ret = BSP_LCD_SetDisplayWindow(0, x_origin, y_origin, width, height);
 
+	if (ret != 0)
+	{
+		// TODO: handle/report error
+		return false;
+	}
+
 	// TODO: figure out enabling DMA
     if(divisor <= 2)
     {

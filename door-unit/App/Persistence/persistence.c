@@ -39,7 +39,7 @@ void persistence_init(void)
 	{
 		flash_erase_sector(4);
 		inmem_latest_data.i2c_addr = 118;
-		strncpy(inmem_latest_data.name, "Untitled", 32);
+		strncpy((char *)inmem_latest_data.name, "Untitled", 32);
 		inmem_latest_data.user_pass = 0x0000;
 		inmem_latest_data.admin_pass = 0x00000000;
 		inmem_latest_data.fresh_flag = 0;
@@ -106,7 +106,7 @@ uint32_t persistence_get_admin_pass(void)
 void persistence_save_name(const char *name)
 {
 	TAKE_PERSISTENCE_MUTEX;
-	strncpy(inmem_latest_data.name, name, 32);
+	strncpy((char *)inmem_latest_data.name, name, 32);
 	flash_erase_sector(4);
 	flash_write(FLASH_SECTOR_4_ADDRESS, (uint8_t *)&inmem_latest_data, sizeof(inmem_latest_data));
 	vTaskDelay(pdMS_TO_TICKS(500));
@@ -116,6 +116,6 @@ void persistence_save_name(const char *name)
 void persistence_get_name(char *return_buffer)
 {
 	TAKE_PERSISTENCE_MUTEX;
-	strncpy(return_buffer, inmem_latest_data.name, UNIT_NAME_MAX_LEN);
+	strncpy(return_buffer, (char *)inmem_latest_data.name, UNIT_NAME_MAX_LEN);
 	GIVE_PERSISTENCE_MUTEX;
 }

@@ -26,7 +26,7 @@ static uint32_t str_to_pass(const char *input_str)
 	{
 		uint32_t input = (input_str[idx] - '0') << (idx * 4);
 		in_pass |= input;
-		sprintf(debug_buff, "%lu ", input);
+		snprintf(debug_buff, sizeof(debug_buff), "%lu ", input);
 		serial_print(debug_buff, 0);
 	}
 

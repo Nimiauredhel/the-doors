@@ -22,6 +22,7 @@ void flash_erase_sector(uint32_t sector_to_erase)
     flash_erase_struct.VoltageRange = 2;
 
 	return_error_status = HAL_FLASHEx_Erase(&flash_erase_struct, &error_status);
+	// TODO: handle/report error
 
 	while(HAL_OK != HAL_FLASH_Lock());
 }
