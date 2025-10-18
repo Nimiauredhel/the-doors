@@ -17,13 +17,13 @@ uint32_t screen_init(uint32_t orientation)
     serial_print_line("Initializing LCD.\n", 0);
 
 	ret = BSP_LCD_Init(0, orientation);
-	sprintf(buffer, "LCD Init result: %ld.\r\n", ret);
+	snprintf(buffer, sizeof(buffer), "LCD Init result: %ld.\r\n", ret);
 	HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer)+1, 0xff);
 
 	uint32_t xs, ys;
 	xs = screen_get_x_size();
 	ys = screen_get_y_size();
-	sprintf(buffer, "Screen XY sizes: %lu, %lu\r\n", xs, ys);
+	snprintf(buffer, sizeof(buffer), "Screen XY sizes: %lu, %lu\r\n", xs, ys);
 	HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer)+1, 0xff);
 
 	// clear out the screen
@@ -33,13 +33,13 @@ uint32_t screen_init(uint32_t orientation)
 	vTaskDelay(pdMS_TO_TICKS(100));
 
 	ret = BSP_LCD_DisplayOff(0);
-	sprintf(buffer, "Display Off result: %ld\r\n", ret);
+	snprintf(buffer, sizeof(buffer), "Display Off result: %ld\r\n", ret);
 	HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer)+1, 0xff);
 
 	vTaskDelay(pdMS_TO_TICKS(100));
 
 	ret = BSP_LCD_DisplayOn(0);
-	sprintf(buffer, "Display On result: %ld\r\n", ret);
+	snprintf(buffer, sizeof(buffer), "Display On result: %ld\r\n", ret);
 	HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer)+1, 0xff);
 
 	return ret;
